@@ -1,7 +1,8 @@
 {
   "name": "brindley",
   "version": "0.1.0",
-  "description": "Design fully before anyone digs — in-repo Markdown initiatives for AI-agent workflows, plus an MCP server",
+  "description": "Design fully before anyone digs \u2014 in-repo Markdown initiatives for AI-agent workflows, plus an MCP server",
+  "license": "MIT",
   "type": "module",
   "bin": {
     "brindley": "dist/cli.js"

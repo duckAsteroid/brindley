@@ -72,3 +72,7 @@ brindley readmes [--check] [--dir <path>]            Regenerate README blocks; -
 
 `migrate` (from a numbered + `completed/` layout), `renumber`, and `rename_collection` are
 specified in [MCP-SERVER.md](MCP-SERVER.md) but not implemented in 0.1.
+
+## Licence
+
+[MIT](LICENSE) © 2026 Chris Senior
