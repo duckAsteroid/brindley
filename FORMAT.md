@@ -439,7 +439,7 @@ Warnings:
 - [ ] Status mapping: what statuses do existing initiative collections use beyond "Proposed" and
       "draft"? Is anything like `in-review` or `blocked` needed in the core set?
 - [x] Cross-collection dependencies — `"<collection>#<n>"`, checkable because there is one root (§3).
-- [ ] **Name for a collection**: collection / theme / epic / changeset? (Placeholder: collection.)
+- [x] **Name for a collection** — "collection": deliberately vague, so it fits themes, epics, tickets or changesets alike.
 - [ ] Should initiative numbers be unique per collection (current) or across the whole root, so
       a bare number is unambiguous repo-wide? Per-collection keeps today's numbering; root-wide
       would make `"<collection>#<n>"` unnecessary.
