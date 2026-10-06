@@ -32,7 +32,7 @@ export interface Initiative {
   slug: string;
   /** Absolute path. */
   file: string;
-  /** Path relative to the initiatives root. */
+  /** Path relative to the repo root. */
   rel: string;
   fm: Record<string, unknown>;
   fmText: string | null;
@@ -62,34 +62,25 @@ export interface CollectionMeta {
   link?: string;
   agent?: string;
   docs?: string[];
+  /** Declared initiative types; when present, others are flagged. */
+  types?: string[];
+  /** Declared tags (themes) with descriptions; when present, others are flagged. */
+  tags?: Record<string, string>;
 }
 
 export interface Collection {
-  /** Path relative to the initiatives root, using "/" separators. */
+  /** Short name used in references ("name#n"): front-matter `name`, else the folder name. */
+  name: string;
+  /** Folder path relative to the repo root, using "/" separators. */
   path: string;
   dir: string;
   readme: string;
-  hasReadme: boolean;
   meta: CollectionMeta;
   initiatives: Initiative[];
 }
 
-export interface RootMeta {
-  format: number;
-  agent?: string;
-  docs?: string[];
-  types?: string[];
-  tags?: Record<string, string>;
-}
-
+/** Everything Brindley knows about one repository: its collections. There is no repo-level file. */
 export interface Root {
   repoRoot: string;
-  dir: string;
-  /** Root directory relative to the repo root. */
-  rel: string;
-  readme: string;
-  meta: RootMeta;
   collections: Collection[];
-  /** Initiative-looking files directly in the root (invalid). */
-  strays: string[];
 }

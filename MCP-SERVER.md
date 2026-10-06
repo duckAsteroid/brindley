@@ -7,14 +7,14 @@
 
 ## 1. Goals
 
-- Make the convention **trivial to adopt** in any repo (`init` + one entry in the agent's MCP
-  config).
+- Make the convention **trivial to adopt** in any repo (mark a folder as a collection + one entry
+  in the agent's MCP config).
 - Give agents **structured, safe operations** over initiatives so they don't hand-edit
   front-matter, mis-number files, or forget lifecycle rules.
 - Answer the questions people actually ask: *what's ready? what's blocked, and on what? what's
   still undecided?*
 - **Never require mass rewrites.** Every write touches only the initiative being changed, plus the
-  generated blocks in the collection and root READMEs (tables + Mermaid graph, §6.1).
+  generated block in that collection's README (tables + Mermaid graph, §6.1).
 - **Shrink repo agent files** to repo-specific workflow. In a typical implementing agent,
   step 1 (validate dependencies) becomes one `get` call, and step 6 (move to `completed/`, update
   README table and graph) becomes one `complete` call (see Appendix A).
@@ -34,17 +34,15 @@
 - **Language:** TypeScript on Node, using the official MCP TypeScript SDK.
 - **Transport:** stdio.
 - **Install:** `npx -y brindley` — no global install, nothing added to the repo's build.
-- **Repo root:** nearest git root above the server's working directory (or `--root`). A server
-  started inside a worktree therefore operates on that worktree's files — which is what an
-  implementing agent wants.
-- **Initiatives root:** the server operates on **one directory** — the repo's initiatives root
-  (FORMAT §2). Resolved from `--dir`, else `BRINDLEY_DIR`, else the first of `initiatives/`,
-  `docs/initiatives/` that has root front-matter. Nothing outside the root is ever **written** — project docs
-  are written by the agent, not the server. Outside the root the server only *reads*: project docs
-  matched by the `docs:` globs (for `check_docs`), and git metadata (§6). If no root exists, every tool except `init` returns an
-  error pointing at `init`.
-- **Collections** are the directories under the root that directly contain initiative files.
-  Cached and invalidated on file change.
+- **Repo:** the nearest git root above the server's working directory. A server started inside a
+  worktree therefore operates on that worktree's files — which is what an implementing agent wants.
+- **Collections** are found on every call by scanning the repo for `README.md` files whose
+  front-matter has `brindley` (FORMAT §2), using `git ls-files` so gitignored paths (including
+  worktrees under ignored folders) are skipped. There is no repo-level config file. With no
+  collections yet, tools return empty results with a note pointing at `create_collection`.
+- **Writes** go only to collection folders: initiatives and collection READMEs. Project docs are
+  written by the agent, never the server; outside collections the server only *reads* project
+  docs matched by `docs:` globs (for `check_docs`) and git metadata (§6).
 
 ```json
 {
@@ -56,11 +54,11 @@
 
 ### Addressing
 
-- A **collection** is addressed by its path relative to the initiatives root
-  (`LOCK-42/slot-booking`). Tools take an optional `collection` param; it can be
-  omitted when the root has exactly one collection, or when the `ref` is unambiguous.
-- An **initiative** is addressed by `ref`: `"<collection>#<number>"`, a bare number (`39`), or a
-  path. A bare number is resolved within `collection`, or across the root if unambiguous;
+- A **collection** is addressed by its name (`slot-booking`) or its folder path relative to the
+  repo root (`docs/initiatives/LOCK-42/slot-booking`). Tools take an optional `collection`
+  param; it can be omitted when the `ref` is unambiguous.
+- An **initiative** is addressed by `ref`: `"<name>#<number>"`, a bare number (`39`), or a
+  path. A bare number is resolved within `collection`, or across the repo if unambiguous;
   otherwise the error lists the candidates.
 
 ## 3. Tools
@@ -71,25 +69,23 @@ All tools return structured JSON plus a short text rendering.
 
 | Tool | Params | Behaviour |
 |------|--------|-----------|
-| `init` | `dir = "docs/initiatives"`, `agent?` | Creates the initiatives root: directory + README with root front-matter and an empty generated overview. Returns the format-rules agent snippet (FORMAT §9) for the caller to add to `AGENTS.md`/`CLAUDE.md`. Idempotent; refuses if a different root already exists. |
-| `create_collection` | `path`, `title?`, `summary?`, `owner?`, `link?`, `agent?` | Creates a collection folder under the root, with a README holding any details given plus the generated block; updates the root overview. Optional convenience — `create` into a new path makes the collection implicitly. |
-| `update_collection` | `collection`, `title?`, `summary?`, `owner?`, `link?`, `agent?`, `docs?` | Edits the collection README's front-matter (creating the README if absent). |
+| `create_collection` | `path`, `name?`, `title?`, `summary?`, `owner?`, `link?`, `agent?`, `docs?`, `types?`, `tags?` | Marks a folder as a collection: adds `brindley: 1` and the given details to its README front-matter, creating the folder and README if needed and keeping any existing README text. Works on a folder already full of numbered initiatives. Refuses a name already used by another collection. For the repo's first collection, also returns the format-rules agent snippet (FORMAT §9) to add to `AGENTS.md`/`CLAUDE.md`. `create` given a new folder path does the same implicitly. |
+| `update_collection` | `collection`, `status?`, `title?`, `summary?`, `owner?`, `link?`, `agent?`, `docs?`, `types?`, `tags?` | Edits the collection README's front-matter, including the changeset's status (`active` / `done` / `abandoned`; warns when marking `done` with unfinished initiatives). Refuses to change `name`, since references would break. |
 | `rename_collection` | `collection`, `to` | Moves the folder and rewrites `"<collection>#<n>"` references and relative links that point into it — the only other sanctioned multi-file rewrite besides `migrate`. |
-| `set_collection_status` | `collection`, `status` | `active` / `done` / `abandoned` for the changeset as a whole; warns if marking `done` with unfinished initiatives. |
 | `migrate` | `collection`, `dry_run = true` | Converts a numbered + `completed/` collection (FORMAT §11). Infers front-matter from status/owner/last-updated metadata (as `## Status` sections or `**Status:**` lead-in lines) and from `## Dependencies` / "Relationship to" prose; anything it can't map confidently is listed for a human/agent to decide rather than guessed. Dry run returns the full plan (moves, front-matter, link rewrites). The **one** sanctioned mass-rewrite. |
 
 ### Reading
 
 | Tool | Params | Returns |
 |------|--------|---------|
-| `collections` | — | Every collection: path, title, status, counts by initiative status, number ready. |
-| `list` | `collection?`, `type?`, `status?`, `tag?`, `owner?`, `ready?` | Across the whole root unless `collection` is given. Summaries: number, title, type, status, owner, `ready`, blocking deps, open question counts. |
+| `collections` | — | Every collection: name, folder path, details, counts by initiative status, number ready. |
+| `list` | `collection?`, `type?`, `status?`, `tag?`, `owner?`, `ready?` | Across the whole repo unless `collection` is given. Summaries: number, title, type, status, owner, `ready`, blocking deps, open question counts. |
 | `get` | `ref` | Front-matter, title, body, parsed open questions and acceptance criteria, plus a **dependency report**: each `depends_on` entry classified `satisfied` / `blocking` / `external` (FORMAT §5), with the dependency's title and path; `related` items; dependants. This is the implementing agent's "select and validate" step in one call. |
-| `ready` | `collection?`, `type?` | Across the root unless `collection` is given. Initiatives that are `designed` with nothing blocking (including cross-collection deps), in suggested order (topological, then number), each with its external deps listed. |
+| `ready` | `collection?`, `type?` | Across the repo unless `collection` is given. Initiatives that are `designed` with nothing blocking (including cross-collection deps), in suggested order (topological, then number), each with its external deps listed. |
 | `graph` | `collection?`, `ref?`, `tag?`, `include_done = false` | Dependency graph as adjacency list + Mermaid. With `tag`, the graph of that theme across all collections. |
 | `tags` | — | Every tag in use (plus declared-but-unused ones), with description and initiative counts by status. |
 | `questions` | `collection?`, `ref?`, `include_implementation = true` | Unresolved open questions, grouped by initiative. |
-| `check_docs` | `paths?` | Lints project docs (default: those changed vs `HEAD`, else all matching `docs:`) against FORMAT §7.1: history phrasing, rejected-alternative/debate wording, links into the initiatives root. Returns findings with file/line and the offending phrase. Heuristic; warnings only. |
+| `check_docs` | `paths?` | Lints project docs (default: those changed vs `HEAD`, else all matching `docs:`) against FORMAT §7.1: history phrasing, rejected-alternative/debate wording, links into collection folders. Returns findings with file/line and the offending phrase. Heuristic; warnings only. |
 | `next_question` | `ref`, `after?` | The next unresolved question in one initiative, with its index, related body sections and count remaining. Drives `design-review` (§5.1). |
 | `validate` | `collection?` | FORMAT §10 results: errors and warnings with file/line. Suitable as a CI check. |
 
@@ -100,7 +96,7 @@ Every write preserves unknown front-matter fields and the author's Markdown form
 
 | Tool | Params | Behaviour |
 |------|--------|-----------|
-| `create` | `collection` (existing or new path), `title`, `type?`, `tags?`, `goal?`, `depends_on?`, `related?`, `owner?` | Coins the next number by repo scan (§6), writes `<n>-<slug>.md` with `status: draft`, H1, and a section skeleton (Goal, Dependencies, Open Questions, Acceptance criteria). |
+| `create` | `collection` (a name, or a folder path — a new folder is marked as a collection), `title`, `type?`, `tags?`, `goal?`, `depends_on?`, `related?`, `owner?` | Coins the next number by repo scan (§6), writes `<n>-<slug>.md` with `status: draft`, H1, and a section skeleton (Goal, Dependencies, Open Questions, Acceptance criteria). |
 | `update` | `ref`, `title?`, `type?`, `owner?`, `tags?`, `section?`, `content?` | Edits front-matter / H1, or replaces a named body section. Cannot change the number or filename. |
 | `set_status` | `ref`, `status`, `force = false` | Enforces transition rules (refuses `→ designed` with blocking open questions; refuses `→ in-progress` when blocked), explaining why. `force` overrides with a warning. |
 | `add_question` | `ref`, `text`, `implementation = false` | Appends to `## Open Questions` (creating it if needed). A blocking question on a `designed` initiative moves it back to `draft`, and says so. |
@@ -108,15 +104,16 @@ Every write preserves unknown front-matter fields and the author's Markdown form
 | `set_dependencies` | `ref`, `add?`, `remove?`, `related_add?`, `related_remove?` | Edits `depends_on`/`related`; refuses cycles and unknown numbers. Does not touch the narrative `## Dependencies` section, but warns if it no longer mentions a dependency. |
 | `complete` | `ref`, `docs_impact` | `docs_impact` is **required**: the project doc paths updated, or `"none: <reason>"`. Each listed path must exist, match the `docs:` globs, and differ from `HEAD` (i.e. actually edited in this change); otherwise refused with the reason. Runs `check_docs` on the listed files and returns any warnings. Then sets `done` (pre-check: was `in-progress`, warns otherwise), warns if design-debate content (e.g. a rejected-alternatives table or section) is still in the main body rather than in `## Appendix: Rejected alternatives`, regenerates the READMEs, and reports which initiatives **became ready** as a result. No other initiative files are modified. |
 | `renumber` | `ref`, `to?` | Fixes a post-merge number collision: renames file and asset dir, rewrites the (few) references to it. |
-| `regenerate_readmes` | `collection?`, `check = false` | Rebuilds the generated blocks (root + collection, or all). `check: true` only reports which are stale — for CI. Rarely needed by hand, since writes and the staleness check (§6.1) keep them current. |
+| `regenerate_readmes` | `collection?`, `check = false` | Rebuilds the generated blocks in collection READMEs (one, or all). `check: true` only reports which are stale — for CI. Rarely needed by hand, since writes and the staleness check (§6.1) keep them current. |
 
 ## 4. Resources
 
 - `brindley://initiative/<collection>/<number>` — raw Markdown of one initiative, so a client can attach it
   as context when handing it to an implementer.
-- `brindley://collection/<collection>` — the same overview the README index contains, generated on the
-  fly.
-- `brindley://index` — the root overview: all collections and cross-collection edges.
+- `brindley://collection/<name>` — the same overview the collection README contains, generated
+  on the fly.
+- `brindley://index` — the overview of every collection: counts, cross-collection dependencies
+  and themes (FORMAT §8.2). This is the only place the repo-wide view lives; no file is written.
 - `brindley://tag/<tag>` — every initiative with that tag, across collections, as one document
   (useful context for a design session on a cross-cutting theme).
 - The resource list enumerates all initiatives for clients with resource pickers.
@@ -128,7 +125,7 @@ Reusable workflows, so hand-off instructions live in the tool rather than being 
 | Prompt | Args | Content |
 |--------|------|---------|
 | `design-review` | `ref` | Interactive session resolving an initiative's open questions with the user. See §5.1 — this is the primary design-time workflow. |
-| `implement` | `ref` | Hand-off brief: the initiative, its dependency report, summaries of its done dependencies, the generic lifecycle rules (FORMAT §9 layer 1), the docs it is expected to change (`docs`, falling back to the collection's) with the current-state writing rules (FORMAT §7.1) and the requirement to finish with `complete(docs_impact)`, and — if the collection declares `agent:`, else the root does — an instruction to read and follow that repo workflow file. |
+| `implement` | `ref` | Hand-off brief: the initiative, its dependency report, summaries of its done dependencies, the generic lifecycle rules (FORMAT §9 layer 1), the docs it is expected to change (`docs`, falling back to the collection's) with the current-state writing rules (FORMAT §7.1) and the requirement to finish with `complete(docs_impact)`, and — if the collection declares `agent:` — an instruction to read and follow that repo workflow file. |
 | `triage` | `collection?` | Review a collection: stale drafts, unresolved questions, blocked chains, external deps nobody has confirmed, suggested next pick. |
 
 ### 5.1 `design-review`: interactive question resolution
@@ -201,12 +198,12 @@ through without re-parsing the document each turn.
 
 ### 6.1 Keeping READMEs current
 
-The server owns the generated blocks in the root README and every collection README (FORMAT §8).
+The server owns the generated block in every collection README (FORMAT §8).
 
 **After every write.** Any tool that changes an initiative or collection regenerates, in the same
-call, the generated block of that collection's README **and** the root README. A status change
-alters tables, the graph and readiness of dependants, and the root counts, so both always
-regenerate. Because output is deterministic, an unaffected README is not rewritten. The tool
+call, every collection README's generated block. Usually only the edited collection's changes,
+but a status change can alter readiness in other collections through cross-collection
+dependencies. Because output is deterministic, an unaffected README is not rewritten. The tool
 result lists every file it touched, so the agent can include them in its commit.
 
 **After edits the server didn't make.** Initiatives are also edited by hand, by agents without the
@@ -231,7 +228,7 @@ server only ever rewrites between them.
 
 ## 7. Testing
 
-- Fixture repos: fresh `init`; mid-project collection; a legacy numbered layout (with a
+- Fixture repos: an unmarked folder being adopted; a mid-project collection; a legacy numbered layout (with a
   `completed/` folder) for `migrate`; deliberately broken files for `validate`.
 - Golden-file tests for every write tool, asserting untouched parts of a file are byte-for-byte
   unchanged.
@@ -249,7 +246,7 @@ server only ever rewrites between them.
       history (§6).
 - [ ] Should the `implement` prompt *inline* the resolved `agent:` file, or just tell the agent
       to read it?
-- [ ] Should `init` write the format-rules snippet into `AGENTS.md`/`CLAUDE.md`, or only return it?
+- [ ] Should `create_collection` write the format-rules snippet into `AGENTS.md`/`CLAUDE.md`, or only return it?
 - [ ] `check_docs` heuristics: a fixed English phrase list, or configurable per repo? Should it
       ever fail CI, or stay advisory?
 - [ ] A companion CLI over the same core library (for humans, and `validate` in CI)?
@@ -271,5 +268,4 @@ A worktree-based implementing agent written for the pre-Brindley practice has ro
 | 7–9. Verify, commit, merge | Repo-specific. | Unchanged. |
 
 The agent file loses its hard-coded collection path and its README-maintenance instructions; the
-collection's `agent:` field points back at it (or the root's, if it becomes the repo-wide
-workflow), so `implement` can find it.
+collection's `agent:` field points back at it, so `implement` can find it.

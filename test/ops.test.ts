@@ -6,7 +6,7 @@ import * as ops from "../src/ops.js";
 import { resolveRef } from "../src/repo.js";
 import { isReady } from "../src/deps.js";
 import { validate } from "../src/validate.js";
-import { regenerate } from "../src/readme.js";
+import { regenerate, rootBlock } from "../src/readme.js";
 
 let fx: Fixture;
 afterEach(() => fx?.cleanup());
@@ -16,7 +16,7 @@ const read = (p: string) => readFileSync(join(fx.repo, p), "utf8");
 describe("numbering", () => {
   it("coins the next number in the collection", () => {
     fx = fixture({ files: lockExample });
-    const r = ops.create(fx.load(), { collection: "LOCK-42/slot-booking", title: "Slot pairing", type: "feature" });
+    const r = ops.create(fx.load(), { collection: "slot-booking", title: "Slot pairing", type: "feature" });
     expect(r.result.number).toBe(24);
     expect(r.result.path).toBe(`${C}/24-slot-pairing.md`);
     expect(read(r.result.path)).toContain("status: draft");
@@ -27,7 +27,7 @@ describe("numbering", () => {
     rmSync(join(fx.repo, C, "23-passage-recorded-event.md"));
     rmSync(join(fx.repo, C, "22-opening-hours-change-impact.md"));
     git(fx.repo, "commit", "-qam", "drop");
-    const r = ops.create(fx.load(), { collection: "LOCK-42/slot-booking", title: "Next" });
+    const r = ops.create(fx.load(), { collection: "slot-booking", title: "Next" });
     expect(r.result.number).toBe(24);
   });
 
@@ -38,14 +38,19 @@ describe("numbering", () => {
     git(fx.repo, "add", "-A");
     git(fx.repo, "commit", "-qm", "branch");
     git(fx.repo, "checkout", "-q", "main");
-    expect(ops.create(fx.load(), { collection: "LOCK-42/slot-booking", title: "Next" }).result.number).toBe(31);
+    expect(ops.create(fx.load(), { collection: "slot-booking", title: "Next" }).result.number).toBe(31);
   });
 
-  it("starts a new collection at 1", () => {
+  it("starts a new collection at 1 when given a folder path", () => {
     fx = fixture({ files: lockExample });
-    const r = ops.create(fx.load(), { collection: "search-rework", title: "Query parser" });
-    expect(r.result.ref).toBe("search-rework#1");
-    expect(existsSync(join(fx.rootDir, "search-rework", "README.md"))).toBe(true);
+    const r = ops.create(fx.load(), { collection: "services/search/plans", title: "Query parser" });
+    expect(r.result.ref).toBe("plans#1");
+    expect(read("services/search/plans/README.md")).toMatch(/^---\nbrindley: 1\nstatus: active\n---/);
+  });
+
+  it("refuses an unknown collection name", () => {
+    fx = fixture({ files: lockExample });
+    expect(() => ops.create(fx.load(), { collection: "nope", title: "X" })).toThrow(/create_collection/);
   });
 });
 
@@ -53,8 +58,8 @@ describe("readiness and lifecycle", () => {
   it("is ready when designed with every numbered dependency done", () => {
     fx = fixture({ files: lockExample });
     const root = fx.load();
-    expect(isReady(root, resolveRef(root, "LOCK-42/slot-booking#21"))).toBe(true);
-    expect(isReady(root, resolveRef(root, "LOCK-42/slot-booking#22"))).toBe(false);
+    expect(isReady(root, resolveRef(root, "slot-booking#21"))).toBe(true);
+    expect(isReady(root, resolveRef(root, "slot-booking#22"))).toBe(false);
   });
 
   it("refuses designed while blocking questions remain", () => {
@@ -151,7 +156,7 @@ describe("READMEs", () => {
   it("generates deterministic tables and Mermaid, and leaves text outside the markers alone", () => {
     fx = fixture({ files: lockExample });
     const changes = regenerate(fx.load());
-    expect(changes.map((c) => c.reason)).toEqual(["updated", "updated"]);
+    expect(changes.map((c) => c.reason)).toEqual(["updated"]);
     const readme = read(`${C}/README.md`);
     expect(readme).toContain("Captains book slots to take boats up or down through the lock.");
     expect(readme).toContain("| 21 | [Lock sensor CSV import](21-lock-sensor-import.md) | feature | designed | ✅ ready · ext: `lib:geo-coords` |");
@@ -159,9 +164,10 @@ describe("READMEs", () => {
     expect(readme).toContain('n23["23 Passage recorded event"]:::ready');
     expect(readme).toContain("n23 --> n22");
     expect(regenerate(fx.load())).toEqual([]); // second run: no diff
-    const rootReadme = read("docs/initiatives/README.md");
-    expect(rootReadme).toContain("#### `notifications`");
-    expect(rootReadme).toContain("Telling captains about changes to their slots");
+    const overview = rootBlock(fx.load());
+    expect(overview).toContain("#### `notifications`");
+    expect(overview).toContain("Telling captains about changes to their slots");
+    expect(overview).toContain("[slot-booking](docs/initiatives/LOCK-42/slot-booking/README.md)");
   });
 
   it("replaces a conflicted generated block outright", () => {
@@ -199,12 +205,40 @@ describe("validate", () => {
 });
 
 describe("collections", () => {
-  it("writes only collection fields to the README", () => {
+  it("marks a new folder, writing only collection fields", () => {
     fx = fixture({ files: lockExample });
-    const args = { path: "search-rework", title: "Search rework", summary: "Faster search", collection: "x" } as never;
-    ops.createCollection(fx.load(), "search-rework", args);
-    const text = read("docs/initiatives/search-rework/README.md");
-    expect(text).toMatch(/^---\ntitle: Search rework\nsummary: Faster search\nstatus: active\n---\n# Search rework/);
-    expect(fx.load().collections.map((c) => c.path)).toContain("search-rework");
+    const args = { title: "Search rework", summary: "Faster search", collection: "x" } as never;
+    const r = ops.createCollection(fx.load(), "services/search/plans", args);
+    expect(r.result).toMatchObject({ collection: "plans", path: "services/search/plans" });
+    expect(r.result.agentSnippet).toBeUndefined(); // not the first collection in the repo
+    expect(read("services/search/plans/README.md")).toMatch(
+      /^---\nbrindley: 1\ntitle: Search rework\nsummary: Faster search\nstatus: active\n---\n# Search rework/,
+    );
+    expect(fx.load().collections.map((c) => c.name)).toContain("plans");
+  });
+
+  it("adopts an existing folder of initiatives, keeping its README text", () => {
+    fx = fixture({
+      files: {
+        "plans/README.md": "# Plans\n\nOur plans.\n",
+        "plans/1-first.md": "---\nstatus: draft\n---\n# First\n",
+      },
+    });
+    expect(fx.load().collections).toEqual([]);
+    const r = ops.createCollection(fx.load(), "plans", {});
+    expect(r.result.agentSnippet).toContain("## Initiatives");
+    expect(read("plans/README.md")).toMatch(/^---\nbrindley: 1\nstatus: active\n---\n# Plans\n\nOur plans\./);
+    expect(resolveRef(fx.load(), "plans#1").title).toBe("First");
+  });
+
+  it("refuses duplicate collection names", () => {
+    fx = fixture({ files: lockExample });
+    expect(() => ops.createCollection(fx.load(), "elsewhere/slot-booking", {})).toThrow(/distinct `name`/);
+    expect(ops.createCollection(fx.load(), "elsewhere/slot-booking", { name: "slot-booking-2" }).result.collection).toBe("slot-booking-2");
+  });
+
+  it("ignores README markers in gitignored folders", () => {
+    fx = fixture({ files: { ...lockExample, ".gitignore": "worktrees/\n", "worktrees/copy/README.md": "---\nbrindley: 1\n---\n# Copy\n" } });
+    expect(fx.load().collections.map((c) => c.name)).toEqual(["slot-booking"]);
   });
 });

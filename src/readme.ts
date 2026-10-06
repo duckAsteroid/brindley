@@ -1,8 +1,8 @@
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { posix } from "node:path";
 import type { Collection, Initiative, Root } from "./model.js";
 import { blockers, dependencyReport, displayRef, isActive, isReady, target } from "./deps.js";
-import { allInitiatives, initiativeKey, lookup } from "./repo.js";
-import { joinFrontMatter } from "./markdown.js";
+import { allInitiatives, declaredTags, initiativeKey, lookup } from "./repo.js";
 
 export const BEGIN = "<!-- brindley:generated:begin — do not edit by hand; regenerate instead -->";
 export const END = "<!-- brindley:generated:end -->";
@@ -17,9 +17,9 @@ function titleOf(i: Initiative): string {
   return i.title ?? i.slug;
 }
 
-function link(i: Initiative, fromCollection?: string): string {
-  const href = fromCollection === i.collection ? i.rel.split("/").pop()! : i.rel;
-  return `[${esc(titleOf(i))}](${href})`;
+/** Markdown link to an initiative from a file in repo-relative folder `fromDir`. */
+function link(i: Initiative, fromDir: string): string {
+  return `[${esc(titleOf(i))}](${posix.relative(fromDir, i.rel)})`;
 }
 
 function openQs(i: Initiative): string {
@@ -120,7 +120,7 @@ export function collectionBlock(root: Root, c: Collection): string {
       );
     }
   }
-  const graph = mermaid(root, active, c.path);
+  const graph = mermaid(root, active, c.name);
   if (graph) out.push("", "### Dependencies", "", graph);
   out.push("", "### Completed", "");
   if (done.length === 0) out.push("_None._");
@@ -132,14 +132,15 @@ export function collectionBlock(root: Root, c: Collection): string {
     out.push("", "### Closed", "");
     for (const i of closed) {
       const by =
-        i.status === "superseded" && i.supersededBy ? ` — superseded by ${displayRef(i.supersededBy, c.path)}` : "";
+        i.status === "superseded" && i.supersededBy ? ` — superseded by ${displayRef(i.supersededBy, c.name)}` : "";
       out.push(`- ${i.number} ${link(i, c.path)} (${i.status}${by})`);
     }
   }
   return out.join("\n");
 }
 
-export function rootBlock(root: Root): string {
+/** Overview of every collection (served as the brindley://index resource), with links relative to `fromDir`. */
+export function rootBlock(root: Root, fromDir = "."): string {
   const out: string[] = ["### Collections", ""];
   if (root.collections.length === 0) out.push("_None yet._");
   else {
@@ -148,9 +149,9 @@ export function rootBlock(root: Root): string {
     for (const c of root.collections) {
       const n = (s: string) => c.initiatives.filter((i) => i.status === s).length;
       const ready = c.initiatives.filter((i) => isReady(root, i)).length;
-      const href = `${c.path}/${c.hasReadme ? "README.md" : ""}`;
+      const href = posix.relative(fromDir, `${c.path}/README.md`);
       out.push(
-        `| [${c.path}](${href}) | ${esc(c.meta.title)} | ${c.meta.status} | ${n("draft")} | ${n("designed")} | ${n("in-progress")} | ${n("done")} | ${ready} |`,
+        `| [${c.name}](${href}) | ${esc(c.meta.title)} | ${c.meta.status} | ${n("draft")} | ${n("designed")} | ${n("in-progress")} | ${n("done")} | ${ready} |`,
       );
     }
   }
@@ -184,12 +185,12 @@ export function rootBlock(root: Root): string {
     out.push("", "### Themes");
     for (const tag of [...tagNames].sort()) {
       out.push("", `#### \`${tag}\``, "");
-      const desc = root.meta.tags?.[tag];
+      const desc = declaredTags(root)?.[tag];
       if (desc) out.push(desc, "");
       const items = allInitiatives(root).filter((i) => i.tags.includes(tag));
       const ordered = [...items.filter(isActive), ...items.filter((i) => !isActive(i))];
       for (const i of ordered) {
-        out.push(`- \`${initiativeKey(i)}\` ${link(i)} — ${i.type ?? "untyped"}, ${i.status ?? "?"}`);
+        out.push(`- \`${initiativeKey(i)}\` ${link(i, fromDir)} — ${i.type ?? "untyped"}, ${i.status ?? "?"}`);
       }
     }
   }
@@ -237,38 +238,22 @@ export interface ReadmeChange {
 }
 
 /**
- * Regenerate generated blocks. With onlyConflicted, only blocks containing
- * conflict markers are rewritten (used during merges/rebases).
+ * Regenerate each collection README's generated block. With onlyConflicted,
+ * only blocks containing conflict markers are rewritten (used during merges/rebases).
  */
 export function regenerate(
   root: Root,
-  opts: {
-    collections?: Collection[];
-    includeRoot?: boolean;
-    onlyConflicted?: boolean;
-    check?: boolean;
-    /** Create missing collection READMEs (default true). Self-healing passes false. */
-    createMissing?: boolean;
-  } = {},
+  opts: { collections?: Collection[]; onlyConflicted?: boolean; check?: boolean } = {},
 ): ReadmeChange[] {
   const changes: ReadmeChange[] = [];
-  const handle = (path: string, block: string, initial: () => string) => {
-    const exists = existsSync(path);
-    if (!exists && opts.createMissing === false) return;
-    const current = exists ? readFileSync(path, "utf8") : null;
-    const conflicted = current !== null && hasConflictMarkers(blockOf(current) ?? "");
-    if (opts.onlyConflicted && !conflicted) return;
-    const base = current ?? initial();
-    const next = applyBlock(base, block);
-    if (next === current) return;
-    changes.push({ path, reason: !exists ? "created" : conflicted ? "conflict" : "updated" });
-    if (!opts.check) writeFileSync(path, next);
-  };
   for (const c of opts.collections ?? root.collections) {
-    handle(c.readme, collectionBlock(root, c), () => `# ${c.meta.title}\n`);
-  }
-  if (opts.includeRoot ?? true) {
-    handle(root.readme, rootBlock(root), () => joinFrontMatter("brindley: 1\n", "# Initiatives\n"));
+    const current = existsSync(c.readme) ? readFileSync(c.readme, "utf8") : null;
+    const conflicted = current !== null && hasConflictMarkers(blockOf(current) ?? "");
+    if (opts.onlyConflicted && !conflicted) continue;
+    const next = applyBlock(current ?? `# ${c.meta.title}\n`, collectionBlock(root, c));
+    if (next === current) continue;
+    changes.push({ path: c.readme, reason: current === null ? "created" : conflicted ? "conflict" : "updated" });
+    if (!opts.check) writeFileSync(c.readme, next);
   }
   return changes;
 }

@@ -2,7 +2,7 @@ import { existsSync, readdirSync, statSync } from "node:fs";
 import { dirname, join, relative, resolve } from "node:path";
 import { ASSET_DIR, COLLECTION_STATUSES, STATUSES, type Initiative, type Root } from "./model.js";
 import { cycles, target } from "./deps.js";
-import { allInitiatives, initiativeKey, toPosix } from "./repo.js";
+import { allInitiatives, declaredTags, findCollection, initiativeKey, toPosix } from "./repo.js";
 import { stripCodeFences } from "./markdown.js";
 import { regenerate } from "./readme.js";
 import { checkDocs } from "./docs.js";
@@ -26,9 +26,16 @@ export function validate(root: Root, opts: { collection?: string; docs?: boolean
   const warn = (rule: string, file: string, message: string, line?: number) =>
     out.push({ level: "warning", rule, file, message, line });
 
-  for (const s of root.strays) err("root-stray", rel(s), "Initiative files must live in a collection, not directly in the root.");
+  const names = new Map<string, string>();
+  for (const c of root.collections) {
+    const prev = names.get(c.name);
+    if (prev) err("duplicate-collection", rel(c.readme), `Collection name "${c.name}" is also used by ${prev}; set a distinct \`name\` in one README.`);
+    else names.set(c.name, c.path);
+    if (root.collections.some((o) => o !== c && o.path !== "." && c.path.startsWith(o.path + "/") && c.initiatives.length && o.initiatives.length))
+      warn("nested-collection", rel(c.readme), "Collection is nested inside another collection's folder.");
+  }
 
-  const collections = root.collections.filter((c) => !opts.collection || c.path === opts.collection);
+  const collections = root.collections.filter((c) => !opts.collection || c.name === opts.collection || c.path === opts.collection);
   for (const c of collections) {
     if (!(COLLECTION_STATUSES as readonly string[]).includes(c.meta.status))
       err("collection-status", rel(c.readme), `Collection status "${c.meta.status}" is not one of ${COLLECTION_STATUSES.join(", ")}.`);
@@ -56,7 +63,7 @@ export function validate(root: Root, opts: { collection?: string; docs?: boolean
     err("cycle", cycle[0]!, `Dependency cycle: ${cycle.join(" → ")}.`);
   }
 
-  for (const ch of regenerate(root, { check: true, collections: collections, includeRoot: !opts.collection })) {
+  for (const ch of regenerate(root, { check: true, collections })) {
     warn("readme-stale", rel(ch.path), "Generated README content is out of date; run regenerate_readmes.");
   }
 
@@ -103,11 +110,13 @@ function checkInitiative(
     warn("open-questions", f, `${i.status}, but ${open.length} open question(s) remain.`);
   if (i.status === "done" && i.docsImpact === undefined) warn("docs-impact", f, "Done, but no `docs_impact` recorded.");
 
-  if (i.type && root.meta.types && !root.meta.types.includes(i.type))
-    warn("type-unknown", f, `Type "${i.type}" is not declared in the root's \`types\`.`);
+  const types = findCollection(root, i.collection)?.meta.types;
+  if (i.type && types && !types.includes(i.type))
+    warn("type-unknown", f, `Type "${i.type}" is not declared in the collection's \`types\`.`);
+  const tags = declaredTags(root);
   for (const t of i.tags) {
     if (!KEBAB.test(t)) warn("tag-format", f, `Tag "${t}" should be lowercase kebab-case.`);
-    else if (root.meta.tags && !(t in root.meta.tags)) warn("tag-unknown", f, `Tag "${t}" is not declared in the root's \`tags\`.`);
+    else if (tags && !(t in tags)) warn("tag-unknown", f, `Tag "${t}" is not declared in any collection's \`tags\`.`);
   }
 
   for (const { line, text } of stripCodeFences(i.body)) {

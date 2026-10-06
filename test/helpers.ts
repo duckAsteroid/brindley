@@ -11,16 +11,6 @@ process.env["GIT_AUTHOR_EMAIL"] = "test@example.com";
 process.env["GIT_COMMITTER_NAME"] = "Test";
 process.env["GIT_COMMITTER_EMAIL"] = "test@example.com";
 
-export const ROOT_README = `---
-brindley: 1
-docs: ["services/**/docs/*.md"]
-types: [feature, bug, refactor, perf, docs, chore, spike]
-tags:
-  notifications: Telling captains about changes to their slots
----
-# Initiatives
-`;
-
 export function git(dir: string, ...args: string[]): string {
   return execFileSync("git", args, { cwd: dir, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
 }
@@ -33,36 +23,38 @@ export function write(dir: string, rel: string, text: string): void {
 
 export interface Fixture {
   repo: string;
-  rootDir: string;
   load: () => Root;
   cleanup: () => void;
 }
 
-/** A git repo with docs/initiatives and the lock slot-booking example collection. */
+/** A git repo containing the lock slot-booking example collection. */
 export function fixture(opts: { files?: Record<string, string>; commit?: boolean } = {}): Fixture {
   const repo = mkdtempSync(join(tmpdir(), "brindley-"));
   git(repo, "init", "-q", "-b", "main");
-  const rootDir = join(repo, "docs", "initiatives");
-  write(repo, "docs/initiatives/README.md", ROOT_README);
   for (const [rel, text] of Object.entries(opts.files ?? {})) write(repo, rel, text);
   if (opts.commit !== false) {
     git(repo, "add", "-A");
-    git(repo, "commit", "-q", "-m", "fixture");
+    git(repo, "commit", "-q", "--allow-empty", "-m", "fixture");
   }
   return {
     repo,
-    rootDir,
-    load: () => loadRoot(repo, rootDir),
+    load: () => loadRoot(repo),
     cleanup: () => rmSync(repo, { recursive: true, force: true }),
   };
 }
 
 export const C = "docs/initiatives/LOCK-42/slot-booking";
+export const N = "slot-booking";
 
 export const lockExample: Record<string, string> = {
   [`${C}/README.md`]: `---
+brindley: 1
 title: LOCK-42 lock slot booking
 status: active
+docs: ["services/**/docs/*.md"]
+types: [feature, bug, refactor, perf, docs, chore, spike]
+tags:
+  notifications: Telling captains about changes to their slots
 ---
 # LOCK-42 lock slot booking
 

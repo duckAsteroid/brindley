@@ -21,15 +21,21 @@ export function globToRegExp(glob: string): RegExp {
   return new RegExp(`^${re}$`);
 }
 
-/** Docs globs in effect: the collection's (if any) narrows the root's. */
+/** Docs globs in effect: the given collection's, else every collection's combined. */
 export function docsGlobs(root: Root, collectionDocs?: string[]): string[] {
-  return collectionDocs ?? root.meta.docs ?? [];
+  return collectionDocs ?? [...new Set(root.collections.flatMap((c) => c.meta.docs ?? []))];
 }
 
-/** Is this repo-relative path project documentation (and not inside the initiatives root)? */
+/** Is this repo-relative path inside a collection folder (an initiative, its assets or README)? */
+export function inCollection(root: Root, repoPath: string): boolean {
+  const p = toPosix(repoPath).replace(/^\.\//, "");
+  return root.collections.some((c) => c.path === "." || p === c.path || p.startsWith(c.path + "/"));
+}
+
+/** Is this repo-relative path project documentation (and not part of a collection)? */
 export function isProjectDoc(root: Root, repoPath: string, globs: string[]): boolean {
   const p = toPosix(repoPath).replace(/^\.\//, "");
-  if (root.rel !== "." && (p === root.rel || p.startsWith(root.rel + "/"))) return false;
+  if (inCollection(root, p)) return false;
   return globs.some((g) => globToRegExp(g).test(p));
 }
 
@@ -85,7 +91,7 @@ export function checkDoc(root: Root, repoPath: string): DocFinding[] {
       const href = m[1]!.split("#")[0]!;
       if (!href || /^[a-z]+:/i.test(href)) continue;
       const target = toPosix(relative(root.repoRoot, resolve(dirname(abs), href)));
-      if (root.rel !== "." && (target === root.rel || target.startsWith(root.rel + "/"))) {
+      if (inCollection(root, target)) {
         findings.push({ file: repoPath, line: line + 1, kind: "initiative-link", text: m[0] });
       }
     }

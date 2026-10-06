@@ -7,9 +7,10 @@ import {
   allInitiatives,
   findCollection,
   initiativeKey,
+  declaredTags,
   loadRoot,
-  locateRoot,
   lookup,
+  openRepo,
   resolveRef,
 } from "./repo.js";
 import { blockers, dependants, dependencyReport, displayRef, isActive, isReady, target, topoSort } from "./deps.js";
@@ -23,7 +24,6 @@ export const VERSION = "0.1.0";
 
 export interface ServerOptions {
   cwd: string;
-  dir?: string;
   autoReadme?: boolean;
 }
 
@@ -69,24 +69,24 @@ function detail(root: Root, i: Initiative) {
 }
 
 function agentFile(root: Root, i: Initiative): string | undefined {
-  return findCollection(root, i.collection)?.meta.agent ?? root.meta.agent;
+  return findCollection(root, i.collection)?.meta.agent;
 }
 
 export function createServer(opts: ServerOptions): McpServer {
   const server = new McpServer({ name: "brindley", version: VERSION });
 
   const open = (): { root: Root; notes: string[] } => {
-    const loc = locateRoot(opts.cwd, opts.dir);
-    if (!loc.dir) throw new BrindleyError("No initiatives root found in this repository. Run the `init` tool first.");
-    let root = loadRoot(loc.repoRoot, loc.dir);
+    let root = openRepo(opts.cwd);
     const notes: string[] = [];
+    if (root.collections.length === 0)
+      notes.push("No collections in this repository yet. Mark a folder as one with create_collection.");
     if (opts.autoReadme !== false) {
       const onlyConflicted = mergeInProgress(root.repoRoot);
-      const changes = regenerate(root, { createMissing: false, onlyConflicted });
+      const changes = regenerate(root, { onlyConflicted });
       if (changes.length) {
         for (const c of changes)
           notes.push(`${c.path.slice(root.repoRoot.length + 1)} was ${c.reason === "conflict" ? "conflicted" : "stale"}; regenerated.`);
-        root = loadRoot(loc.repoRoot, loc.dir);
+        root = loadRoot(root.repoRoot);
       }
     }
     return { root, notes };
@@ -123,25 +123,10 @@ export function createServer(opts: ServerOptions): McpServer {
 
   // --- Setup ------------------------------------------------------------------
 
-  server.registerTool(
-    "init",
-    {
-      description:
-        "Create the repository's initiatives root (default docs/initiatives) with a README carrying `brindley: 1` front-matter. Returns the agent-instructions snippet to add to AGENTS.md / CLAUDE.md. Idempotent.",
-      inputSchema: { dir: z.string().optional(), agent: z.string().optional().describe("Default repo workflow agent file") },
-    },
-    async (args) => {
-      try {
-        const r = ops.init(opts.cwd, args.dir ?? opts.dir, args.agent);
-        return reply({ ...r.result, touched: r.touched, warnings: r.warnings });
-      } catch (e) {
-        return fail(e);
-      }
-    },
-  );
-
   const collectionFields = {
     title: z.string().optional(),
+    types: z.array(z.string()).optional().describe("Initiative types this collection uses; others are flagged"),
+    tags: z.record(z.string(), z.string()).optional().describe("Tags (themes) with one-line descriptions"),
     summary: z.string().optional(),
     owner: z.string().optional(),
     link: z.string().optional().describe("External ticket/epic URL"),
@@ -151,15 +136,19 @@ export function createServer(opts: ServerOptions): McpServer {
 
   tool(
     "create_collection",
-    "Start a new collection (a folder under the initiatives root) with a README holding the given details. Optional: `create` into a new path also makes one.",
-    { path: z.string().describe('Collection path relative to the root, e.g. "LOCK-42/slot-booking"'), ...collectionFields },
+    "Mark a folder as a collection: adds `brindley: 1` and the given details to its README.md front-matter, creating the folder and README if needed. Works on a folder that already holds numbered initiative files. The first collection in a repo also returns the agent-instructions snippet for AGENTS.md / CLAUDE.md.",
+    {
+      path: z.string().describe('Folder relative to the repo root, e.g. "docs/initiatives/LOCK-42/slot-booking"'),
+      name: z.string().optional().describe("Short name used in references (name#n); defaults to the folder name"),
+      ...collectionFields,
+    },
     (root, a) => ops.createCollection(root, a.path, a),
   );
 
   tool(
     "update_collection",
     "Edit a collection README's details, including its status (active | done | abandoned).",
-    { collection: z.string(), status: z.enum(["active", "done", "abandoned"]).optional(), ...collectionFields },
+    { collection: z.string().describe("Collection name or folder path"), status: z.enum(["active", "done", "abandoned"]).optional(), ...collectionFields },
     (root, a) => ops.updateCollection(root, a.collection, a),
   );
 
@@ -173,7 +162,8 @@ export function createServer(opts: ServerOptions): McpServer {
       root.collections.map((c) => {
         const count = (s: string) => c.initiatives.filter((i) => i.status === s).length;
         return {
-          collection: c.path,
+          collection: c.name,
+          path: c.path,
           ...c.meta,
           counts: Object.fromEntries(["draft", "designed", "in-progress", "done", "abandoned", "superseded"].map((s) => [s, count(s)])),
           ready: c.initiatives.filter((i) => isReady(root, i)).length,
@@ -288,12 +278,13 @@ export function createServer(opts: ServerOptions): McpServer {
     "Every tag (theme) in use plus declared-but-unused ones, with descriptions and counts by status.",
     {},
     (root) => {
-      const names = new Set([...allInitiatives(root).flatMap((i) => i.tags), ...Object.keys(root.meta.tags ?? {})]);
+      const declared = declaredTags(root);
+      const names = new Set([...allInitiatives(root).flatMap((i) => i.tags), ...Object.keys(declared ?? {})]);
       return [...names].sort().map((tag) => {
         const items = allInitiatives(root).filter((i) => i.tags.includes(tag));
         const counts: Record<string, number> = {};
         for (const i of items) counts[i.status ?? "?"] = (counts[i.status ?? "?"] ?? 0) + 1;
-        return { tag, description: root.meta.tags?.[tag] ?? null, declared: !!root.meta.tags && tag in root.meta.tags, total: items.length, counts };
+        return { tag, description: declared?.[tag] ?? null, declared: !!declared && tag in declared, total: items.length, counts };
       });
     },
     { readOnlyHint: true },
@@ -319,9 +310,9 @@ export function createServer(opts: ServerOptions): McpServer {
 
   tool(
     "create",
-    "Create a new initiative. The number is coined automatically by scanning the working tree, other worktrees, branches and history. A new collection path creates the collection.",
+    "Create a new initiative. The number is coined automatically by scanning the working tree, other worktrees, branches and history. A folder path that isn't a collection yet is marked as one.",
     {
-      collection: z.string(),
+      collection: z.string().describe("Collection name, or a folder path"),
       title: z.string(),
       type: z.string().optional().describe("feature, bug, refactor, perf, docs, chore, spike, …"),
       tags: z.array(z.string()).optional(),
@@ -443,7 +434,7 @@ export function createServer(opts: ServerOptions): McpServer {
     new ResourceTemplate("brindley://collection/{+path}", {
       list: async () => ({
         resources: (tryRoot()?.collections ?? []).map((c) => ({
-          uri: `brindley://collection/${c.path}`,
+          uri: `brindley://collection/${c.name}`,
           name: c.meta.title,
           mimeType: "text/markdown",
         })),
@@ -493,7 +484,7 @@ export function createServer(opts: ServerOptions): McpServer {
       const root = open().root;
       const tag = String(vars["tag"]);
       const items = allInitiatives(root).filter((i) => i.tags.includes(tag));
-      const desc = root.meta.tags?.[tag];
+      const desc = declaredTags(root)?.[tag];
       const text = [
         `# Theme: ${tag}`,
         ...(desc ? ["", desc] : []),
@@ -567,7 +558,7 @@ ${readFileSync(i.file, "utf8")}
       const report = dependencyReport(root, i);
       const done = report.filter((x) => x.classification === "satisfied");
       const agent = agentFile(root, i);
-      const docs = i.docs.length ? i.docs : (findCollection(root, i.collection)?.meta.docs ?? root.meta.docs ?? []);
+      const docs = i.docs.length ? i.docs : (findCollection(root, i.collection)?.meta.docs ?? []);
       return prompt(`Implement initiative ${initiativeKey(i)} "${i.title}" — this one only; do not pick up other initiatives.
 
 ${agent ? `**Repo workflow:** read and follow \`${agent}\` (worktrees, verification, commits). Where it conflicts with the generic rules below on repo specifics, it wins.\n` : ""}

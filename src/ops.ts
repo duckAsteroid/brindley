@@ -22,9 +22,9 @@ import {
   findCollection,
   initiativeKey,
   loadRoot,
-  locateRoot,
   lookup,
   parseRef,
+  requireCollection,
   resolveRef,
   toPosix,
 } from "./repo.js";
@@ -48,11 +48,14 @@ function rel(root: Root, abs: string): string {
   return toPosix(relative(root.repoRoot, abs));
 }
 
-/** Reload, regenerate READMEs for the affected collections + root, and collect touched files. */
-function finish<T>(root: Root, collections: string[], written: string[], result: T, warnings: string[] = []): OpResult<T> {
-  const fresh = loadRoot(root.repoRoot, root.dir);
-  const affected = fresh.collections.filter((c) => collections.includes(c.path));
-  const changes = regenerate(fresh, { collections: affected, includeRoot: true });
+/**
+ * Reload, regenerate collection READMEs, and collect touched files. Every
+ * collection is regenerated because cross-collection dependencies change other
+ * collections' readiness; output is deterministic, so unaffected READMEs aren't rewritten.
+ */
+function finish<T>(root: Root, _collections: string[], written: string[], result: T, warnings: string[] = []): OpResult<T> {
+  const fresh = loadRoot(root.repoRoot);
+  const changes = regenerate(fresh);
   const touched = [...new Set([...written.map((w) => rel(root, w)), ...changes.map((c) => rel(root, c.path))])];
   return { result, touched, warnings };
 }
@@ -62,11 +65,13 @@ function writeInitiative(i: Initiative, changes: Record<string, unknown>, body?:
   writeFileSync(i.file, joinFrontMatter(fm, body ?? i.body));
 }
 
-function checkCollectionPath(path: string): string {
-  const p = toPosix(path).replace(/^\/+|\/+$/g, "");
+/** Validate a repo-relative folder path for a collection. */
+function checkFolderPath(path: string): string {
+  const p = toPosix(path).replace(/^\.\//, "").replace(/^\/+|\/+$/g, "");
   if (!p || p.split("/").some((seg) => seg === ".." || seg === "." || seg.startsWith(".")))
-    throw new BrindleyError(`Invalid collection path "${path}".`);
-  if (/(^|\/)\d+-/.test(p)) throw new BrindleyError(`Collection folder names must not start with "<number>-" (reserved for asset directories): "${path}".`);
+    throw new BrindleyError(`Invalid collection folder "${path}" (use a path relative to the repo root).`);
+  if (/^\d+-/.test(p.split("/").pop()!))
+    throw new BrindleyError(`Collection folder names must not start with "<number>-" (reserved for asset directories): "${path}".`);
   return p;
 }
 
@@ -78,9 +83,10 @@ function refValue(raw: string | number): string | number {
 // ---------------------------------------------------------------------------
 // Setup
 
-export const AGENT_SNIPPET = (rootRel: string) => `## Initiatives
-Planned work lives under \`${rootRel}/\`, grouped into collections (sub-directories), one Markdown
-file per initiative (Brindley format: https://github.com/duckAsteroid/brindley/blob/main/FORMAT.md).
+export const AGENT_SNIPPET = `## Initiatives
+Planned work lives in Brindley collections: folders whose \`README.md\` front-matter contains
+\`brindley: 1\`, holding one Markdown file per initiative, named \`<number>-<slug>.md\`
+(format: https://github.com/duckAsteroid/brindley/blob/main/FORMAT.md).
 - Never rename or move initiative files or their asset directories. Status is the \`status\`
   front-matter field.
 - Implement only an initiative that is \`designed\` and whose numbered \`depends_on\` are all
@@ -100,32 +106,8 @@ file per initiative (Brindley format: https://github.com/duckAsteroid/brindley/b
   \`status: draft\`, and a \`type\` (e.g. \`feature\`, \`bug\`, \`refactor\`).
 `;
 
-export function init(cwd: string, dir = join("docs", "initiatives"), agent?: string): OpResult<{ root: string; agentSnippet: string }> {
-  const located = locateRoot(cwd);
-  const want = resolve(located.repoRoot, dir);
-  if (located.dir && resolve(located.dir) !== want)
-    throw new BrindleyError(`This repo already has an initiatives root at ${rel({ repoRoot: located.repoRoot } as Root, located.dir)}.`);
-  mkdirSync(want, { recursive: true });
-  const readme = join(want, "README.md");
-  const written: string[] = [];
-  if (!existsSync(readme)) {
-    const fm = editFrontMatter(null, { brindley: 1, ...(agent ? { agent } : {}) });
-    writeFileSync(readme, joinFrontMatter(fm, "# Initiatives\n\nPlanned work for this repository, in the [Brindley](https://github.com/duckAsteroid/brindley) format.\n"));
-    written.push(readme);
-  } else {
-    const { fmText, body } = splitFrontMatter(readFileSync(readme, "utf8"));
-    const { data } = parseFrontMatter(fmText);
-    if (data["brindley"] === undefined || (agent && data["agent"] !== agent)) {
-      writeFileSync(readme, joinFrontMatter(editFrontMatter(fmText, { brindley: data["brindley"] ?? 1, ...(agent ? { agent } : {}) }), body));
-      written.push(readme);
-    }
-  }
-  const root = loadRoot(located.repoRoot, want);
-  const r = finish(root, [], written, { root: root.rel, agentSnippet: AGENT_SNIPPET(root.rel) });
-  return r;
-}
-
 export interface CollectionInput {
+  name?: string;
   title?: string;
   summary?: string;
   status?: string;
@@ -133,32 +115,64 @@ export interface CollectionInput {
   link?: string;
   agent?: string;
   docs?: string[];
+  types?: string[];
+  tags?: Record<string, string>;
 }
 
-const COLLECTION_KEYS = ["title", "summary", "status", "owner", "link", "agent", "docs"] as const;
+const COLLECTION_KEYS = ["name", "title", "summary", "status", "owner", "link", "agent", "docs", "types", "tags"] as const;
 
 /** Keep only collection README fields, dropping undefined values and any other arguments. */
 function collectionFields(input: CollectionInput): Record<string, unknown> {
   return Object.fromEntries(COLLECTION_KEYS.map((k) => [k, input[k]]).filter(([, v]) => v !== undefined));
 }
 
-export function createCollection(root: Root, path: string, meta: CollectionInput): OpResult<{ collection: string }> {
-  const p = checkCollectionPath(path);
-  if (findCollection(root, p)) throw new BrindleyError(`Collection "${p}" already exists.`);
-  const dir = join(root.dir, p);
+/**
+ * Mark a folder as a collection: add `brindley: 1` (and any details) to its
+ * README.md front-matter, creating the folder and README if needed. Works on a
+ * folder that already holds numbered initiative files.
+ */
+function markCollection(root: Root, path: string, meta: CollectionInput): { path: string; name: string; readme: string } {
+  const p = checkFolderPath(path);
+  const existing = root.collections.find((c) => c.path === p);
+  if (existing) throw new BrindleyError(`${p} is already a collection ("${existing.name}").`);
+  const name = meta.name ?? p.split("/").pop()!;
+  const clash = root.collections.find((c) => c.name === name);
+  if (clash) throw new BrindleyError(`A collection named "${name}" already exists at ${clash.path}; pass a distinct \`name\`.`);
+  const dir = join(root.repoRoot, p);
   mkdirSync(dir, { recursive: true });
   const readme = join(dir, "README.md");
-  if (existsSync(readme)) throw new BrindleyError(`${rel(root, readme)} already exists.`);
-  const fmData = collectionFields({ ...meta, status: meta.status ?? "active" });
-  const title = meta.title ?? p.split("/").pop()!;
-  const body = `# ${title}\n${meta.summary ? `\n${meta.summary}\n` : ""}`;
-  writeFileSync(readme, joinFrontMatter(editFrontMatter(null, fmData), body));
-  return finish(root, [p], [readme], { collection: p });
+  const fields = collectionFields({ ...meta, status: meta.status ?? "active" });
+  if (existsSync(readme)) {
+    const { fmText, body } = splitFrontMatter(readFileSync(readme, "utf8"));
+    const fm = editFrontMatter(fmText, { brindley: 1, ...fields });
+    writeFileSync(readme, joinFrontMatter(fm, meta.title ? setH1(body, meta.title) : body));
+  } else {
+    const title = meta.title ?? p.split("/").pop()!;
+    const body = `# ${title}\n${meta.summary ? `\n${meta.summary}\n` : ""}`;
+    writeFileSync(readme, joinFrontMatter(editFrontMatter(null, { brindley: 1, ...fields }), body));
+  }
+  return { path: p, name, readme };
 }
 
-export function updateCollection(root: Root, path: string, changes: CollectionInput): OpResult<{ collection: string }> {
-  const c = findCollection(root, path);
-  if (!c) throw new BrindleyError(`No collection "${path}".`);
+export function createCollection(
+  root: Root,
+  path: string,
+  meta: CollectionInput,
+): OpResult<{ collection: string; path: string; agentSnippet?: string }> {
+  const first = root.collections.length === 0;
+  const m = markCollection(root, path, meta);
+  return finish(root, [m.name], [m.readme], {
+    collection: m.name,
+    path: m.path,
+    // The first collection in a repo: hand back the instructions for AGENTS.md / CLAUDE.md.
+    ...(first ? { agentSnippet: AGENT_SNIPPET } : {}),
+  });
+}
+
+export function updateCollection(root: Root, nameOrPath: string, changes: CollectionInput): OpResult<{ collection: string }> {
+  const c = requireCollection(root, nameOrPath);
+  if (changes.name !== undefined && changes.name !== c.name)
+    throw new BrindleyError("A collection's name can't be changed here: references to it would break.");
   if (changes.status && !(COLLECTION_STATUSES as readonly string[]).includes(changes.status))
     throw new BrindleyError(`Collection status must be one of ${COLLECTION_STATUSES.join(", ")}.`);
   const warnings: string[] = [];
@@ -166,13 +180,11 @@ export function updateCollection(root: Root, path: string, changes: CollectionIn
     const open = c.initiatives.filter((i) => ["draft", "designed", "in-progress"].includes(i.status ?? ""));
     if (open.length) warnings.push(`Collection marked done with open initiatives: ${open.map((i) => i.number).join(", ")}.`);
   }
-  const text = existsSync(c.readme) ? readFileSync(c.readme, "utf8") : `# ${c.meta.title}\n`;
-  const { fmText, body } = splitFrontMatter(text);
-  const defined = collectionFields(changes);
-  let newBody = body;
-  if (changes.title) newBody = setH1(body, changes.title);
+  const { fmText, body } = splitFrontMatter(readFileSync(c.readme, "utf8"));
+  const defined = collectionFields({ ...changes, name: undefined });
+  const newBody = changes.title ? setH1(body, changes.title) : body;
   writeFileSync(c.readme, joinFrontMatter(editFrontMatter(fmText, defined), newBody));
-  return finish(root, [c.path], [c.readme], { collection: c.path }, warnings);
+  return finish(root, [c.name], [c.readme], { collection: c.name }, warnings);
 }
 
 // ---------------------------------------------------------------------------
@@ -189,10 +201,9 @@ export interface CreateInput {
   owner?: string;
 }
 
-export function nextNumber(root: Root, collection: string): { number: number; note?: string } {
-  const local = Math.max(0, ...(findCollection(root, collection)?.initiatives.map((i) => i.number) ?? []));
-  const repoPath = root.rel === "." ? collection : `${root.rel}/${collection}`;
-  const elsewhere = highestNumberElsewhere(root.repoRoot, repoPath);
+export function nextNumber(root: Root, c: Collection): { number: number; note?: string } {
+  const local = Math.max(0, ...c.initiatives.map((i) => i.number));
+  const elsewhere = highestNumberElsewhere(root.repoRoot, c.path);
   return {
     number: Math.max(local, elsewhere.max) + 1,
     note: elsewhere.usedGit ? undefined : "git unavailable: number allocated from the working tree only.",
@@ -200,12 +211,23 @@ export function nextNumber(root: Root, collection: string): { number: number; no
 }
 
 export function create(root: Root, input: CreateInput): OpResult<{ ref: string; number: number; path: string }> {
-  const collection = checkCollectionPath(input.collection);
-  const { number, note } = nextNumber(root, collection);
+  let c = findCollection(root, input.collection);
+  const written: string[] = [];
+  if (!c) {
+    if (!input.collection.includes("/"))
+      throw new BrindleyError(
+        `No collection "${input.collection}". Mark a folder as a collection with create_collection, or pass a folder path to create one here.`,
+      );
+    const m = markCollection(root, input.collection, {});
+    written.push(m.readme);
+    root = loadRoot(root.repoRoot);
+    c = requireCollection(root, m.path);
+  }
+  const { number, note } = nextNumber(root, c);
   const deps = (input.depends_on ?? []).map(refValue);
   const related = (input.related ?? []).map(refValue);
   for (const r of [...deps, ...related]) {
-    const ref = parseRef(r, collection);
+    const ref = parseRef(r, c.name);
     if (ref.kind === "initiative" && !lookup(root, ref.collection, ref.number))
       throw new BrindleyError(`Dependency ${ref.raw} does not exist.`);
   }
@@ -235,11 +257,10 @@ export function create(root: Root, input: CreateInput): OpResult<{ ref: string; 
     "## Acceptance criteria",
     "",
   ].join("\n");
-  const dir = join(root.dir, collection);
-  mkdirSync(dir, { recursive: true });
-  const file = join(dir, `${number}-${slugify(input.title)}.md`);
+  const file = join(c.dir, `${number}-${slugify(input.title)}.md`);
   writeFileSync(file, joinFrontMatter(fm, body));
-  return finish(root, [collection], [file], { ref: `${collection}#${number}`, number, path: rel(root, file) }, note ? [note] : []);
+  written.push(file);
+  return finish(root, [c.name], written, { ref: `${c.name}#${number}`, number, path: rel(root, file) }, note ? [note] : []);
 }
 
 export interface UpdateInput {
@@ -421,7 +442,7 @@ export function complete(
   docsImpact: string | string[],
 ): OpResult<{ ref: string; becameReady: string[]; docFindings: unknown[] }> {
   const warnings: string[] = [];
-  const collection = findCollection(root, i.collection)!;
+  const collection = requireCollection(root, i.collection);
   let impact: string | string[];
   if (typeof docsImpact === "string" && /^none:/i.test(docsImpact.trim())) {
     if (docsImpact.trim().slice(5).trim().length === 0) throw new BrindleyError("`docs_impact: none:` needs a reason.");
@@ -429,8 +450,8 @@ export function complete(
   } else {
     const paths = (Array.isArray(docsImpact) ? docsImpact : [docsImpact]).map((p) => toPosix(p).replace(/^\.\//, "")).filter(Boolean);
     if (paths.length === 0) throw new BrindleyError('`docs_impact` must list the docs updated, or be "none: <reason>".');
-    const globs = [...new Set([...(root.meta.docs ?? []), ...(collection.meta.docs ?? [])])];
-    if (!globs.length) warnings.push("No `docs` globs declared in the root README; doc paths were not checked against them.");
+    const globs = docsGlobs(root, collection.meta.docs);
+    if (!globs.length) warnings.push("No `docs` globs declared in any collection README; doc paths were not checked against them.");
     let gitChecked = true;
     for (const p of paths) {
       if (!existsSync(join(root.repoRoot, p))) throw new BrindleyError(`docs_impact path does not exist: ${p}`);
@@ -453,7 +474,7 @@ export function complete(
   const before = new Set(dependants(root, i).filter((d) => isReady(root, d)).map(initiativeKey));
   writeInitiative(i, { status: "done", docs_impact: impact });
   const out = finish(root, [i.collection], [i.file], { ref: initiativeKey(i), becameReady: [] as string[], docFindings: [] as unknown[] }, warnings);
-  const fresh = loadRoot(root.repoRoot, root.dir);
+  const fresh = loadRoot(root.repoRoot);
   const self = lookup(fresh, i.collection, i.number)!;
   out.result.becameReady = dependants(fresh, self)
     .filter((d) => isReady(fresh, d) && !before.has(initiativeKey(d)))
@@ -463,8 +484,8 @@ export function complete(
 }
 
 export function regenerateReadmes(root: Root, collection?: string, check = false) {
-  const cs = collection ? [findCollection(root, collection) ?? (() => { throw new BrindleyError(`No collection "${collection}".`); })()] : undefined;
-  const changes = regenerate(root, { collections: cs as Collection[] | undefined, includeRoot: true, check });
+  const cs = collection ? [requireCollection(root, collection)] : undefined;
+  const changes = regenerate(root, { collections: cs, check });
   return changes.map((c) => ({ path: rel(root, c.path), reason: c.reason }));
 }
 

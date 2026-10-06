@@ -8,11 +8,10 @@ import {
   type Initiative,
   type Ref,
   type Root,
-  type RootMeta,
 } from "./model.js";
 import { h1, humanise, parseAcceptance, parseFrontMatter, parseQuestions, splitFrontMatter } from "./markdown.js";
+import { git } from "./git.js";
 
-export const ROOT_CANDIDATES = ["initiatives", join("docs", "initiatives")];
 const SKIP_DIRS = new Set(["node_modules", ".git"]);
 
 export function toPosix(p: string): string {
@@ -29,34 +28,6 @@ export function findRepoRoot(start: string): string {
   }
 }
 
-export function hasRootMarker(dir: string): boolean {
-  const readme = join(dir, "README.md");
-  if (!existsSync(readme)) return false;
-  const { fmText } = splitFrontMatter(readFileSync(readme, "utf8"));
-  const { data } = parseFrontMatter(fmText);
-  return data["brindley"] !== undefined;
-}
-
-export interface Locate {
-  repoRoot: string;
-  dir: string | null;
-}
-
-/** Find the initiatives root: explicit dir, BRINDLEY_DIR, then the default candidates. */
-export function locateRoot(cwd: string, explicit?: string): Locate {
-  const repoRoot = findRepoRoot(cwd);
-  const chosen = explicit ?? process.env["BRINDLEY_DIR"];
-  if (chosen) {
-    const dir = resolve(repoRoot, chosen);
-    return { repoRoot, dir: existsSync(dir) ? dir : null };
-  }
-  for (const c of ROOT_CANDIDATES) {
-    const dir = join(repoRoot, c);
-    if (hasRootMarker(dir)) return { repoRoot, dir };
-  }
-  return { repoRoot, dir: null };
-}
-
 function str(v: unknown): string | undefined {
   if (v === undefined || v === null) return undefined;
   return String(v);
@@ -65,6 +36,18 @@ function str(v: unknown): string | undefined {
 function strList(v: unknown): string[] {
   if (v === undefined || v === null) return [];
   return (Array.isArray(v) ? v : [v]).map((x) => String(x));
+}
+
+export function readFrontMatterOf(file: string): Record<string, unknown> | null {
+  if (!existsSync(file)) return null;
+  const { fmText } = splitFrontMatter(readFileSync(file, "utf8"));
+  if (fmText === null) return null;
+  return parseFrontMatter(fmText).data;
+}
+
+/** A folder is a collection when its README.md front-matter has a `brindley` key. */
+export function isCollectionReadme(readme: string): boolean {
+  return readFrontMatterOf(readme)?.["brindley"] !== undefined;
 }
 
 export function parseRef(raw: unknown, fromCollection: string): Ref {
@@ -82,7 +65,12 @@ export function refKey(collection: string, number: number): string {
   return `${collection}#${number}`;
 }
 
-export function loadInitiative(file: string, rootDir: string, collection: string): Initiative {
+function strListOrNums(v: unknown): unknown[] {
+  if (v === undefined || v === null) return [];
+  return Array.isArray(v) ? v : [v];
+}
+
+export function loadInitiative(file: string, repoRoot: string, collection: string): Initiative {
   const name = file.split(sep).pop()!;
   const m = INITIATIVE_FILE.exec(name)!;
   const text = readFileSync(file, "utf8");
@@ -91,14 +79,12 @@ export function loadInitiative(file: string, rootDir: string, collection: string
   const problems: string[] = [];
   if (error) problems.push(`front-matter does not parse: ${error}`);
   if (fmText === null) problems.push("no front-matter");
-  const dependsOn = strListOrNums(fm["depends_on"]).map((r) => parseRef(r, collection));
-  const related = strListOrNums(fm["related"]).map((r) => parseRef(r, collection));
   return {
     collection,
     number: Number(m[1]),
     slug: m[2]!,
     file,
-    rel: toPosix(relative(rootDir, file)),
+    rel: toPosix(relative(repoRoot, file)),
     fm,
     fmText,
     body,
@@ -109,8 +95,8 @@ export function loadInitiative(file: string, rootDir: string, collection: string
     tags: strList(fm["tags"]),
     owner: str(fm["owner"]),
     updated: str(fm["updated"]),
-    dependsOn,
-    related,
+    dependsOn: strListOrNums(fm["depends_on"]).map((r) => parseRef(r, collection)),
+    related: strListOrNums(fm["related"]).map((r) => parseRef(r, collection)),
     supersededBy: fm["superseded_by"] !== undefined ? parseRef(fm["superseded_by"], collection) : undefined,
     docs: strList(fm["docs"]),
     docsImpact: fm["docs_impact"],
@@ -120,118 +106,119 @@ export function loadInitiative(file: string, rootDir: string, collection: string
   };
 }
 
-function strListOrNums(v: unknown): unknown[] {
-  if (v === undefined || v === null) return [];
-  return Array.isArray(v) ? v : [v];
+function tagMap(raw: unknown): Record<string, string> | undefined {
+  if (Array.isArray(raw)) return Object.fromEntries(raw.map((t) => [String(t), ""]));
+  if (raw && typeof raw === "object")
+    return Object.fromEntries(Object.entries(raw).map(([k, v]) => [k, v == null ? "" : String(v)]));
+  return undefined;
 }
 
-function readCollectionMeta(readme: string, path: string): { meta: CollectionMeta; hasReadme: boolean } {
-  const folder = path.split("/").pop() ?? path;
-  const defaults: CollectionMeta = { title: humanise(folder), status: "active" };
-  if (!existsSync(readme)) return { meta: defaults, hasReadme: false };
-  const { fmText } = splitFrontMatter(readFileSync(readme, "utf8"));
-  const { data } = parseFrontMatter(fmText);
+function collectionMeta(data: Record<string, unknown>, folder: string): CollectionMeta {
   return {
-    hasReadme: true,
-    meta: {
-      title: str(data["title"]) ?? defaults.title,
-      summary: str(data["summary"]),
-      status: str(data["status"]) ?? "active",
-      owner: str(data["owner"]),
-      link: str(data["link"]),
-      agent: str(data["agent"]),
-      docs: data["docs"] !== undefined ? strList(data["docs"]) : undefined,
-    },
-  };
-}
-
-function readRootMeta(readme: string): RootMeta {
-  if (!existsSync(readme)) return { format: 1 };
-  const { fmText } = splitFrontMatter(readFileSync(readme, "utf8"));
-  const { data } = parseFrontMatter(fmText);
-  const tagsRaw = data["tags"];
-  let tags: Record<string, string> | undefined;
-  if (Array.isArray(tagsRaw)) tags = Object.fromEntries(tagsRaw.map((t) => [String(t), ""]));
-  else if (tagsRaw && typeof tagsRaw === "object")
-    tags = Object.fromEntries(Object.entries(tagsRaw).map(([k, v]) => [k, v == null ? "" : String(v)]));
-  return {
-    format: Number(data["brindley"] ?? 1),
+    title: str(data["title"]) ?? humanise(folder),
+    summary: str(data["summary"]),
+    status: str(data["status"]) ?? "active",
+    owner: str(data["owner"]),
+    link: str(data["link"]),
     agent: str(data["agent"]),
     docs: data["docs"] !== undefined ? strList(data["docs"]) : undefined,
     types: data["types"] !== undefined ? strList(data["types"]) : undefined,
-    tags,
+    tags: tagMap(data["tags"]),
   };
 }
 
-function readmeHasFrontMatter(readme: string): boolean {
-  if (!existsSync(readme)) return false;
-  return splitFrontMatter(readFileSync(readme, "utf8")).fmText !== null;
+/**
+ * Repo-relative paths of every README.md that marks a collection. Uses git to
+ * honour .gitignore (which also skips worktrees under ignored folders); falls
+ * back to walking the tree outside git.
+ */
+export function findCollectionReadmes(repoRoot: string): string[] {
+  const listed = git(repoRoot, ["ls-files", "--cached", "--others", "--exclude-standard", "--", "README.md", "**/README.md"]);
+  let candidates: string[];
+  if (listed !== null) {
+    candidates = [...new Set(listed.split("\n").filter(Boolean))];
+  } else {
+    candidates = [];
+    const walk = (d: string) => {
+      for (const e of readdirSync(d)) {
+        if (e.startsWith(".") || SKIP_DIRS.has(e)) continue;
+        const p = join(d, e);
+        if (statSync(p).isDirectory()) walk(p);
+        else if (e === "README.md") candidates.push(toPosix(relative(repoRoot, p)));
+      }
+    };
+    walk(repoRoot);
+  }
+  return candidates
+    .filter((p) => existsSync(join(repoRoot, p)) && isCollectionReadme(join(repoRoot, p)))
+    .sort();
 }
 
-export function loadRoot(repoRoot: string, dir: string): Root {
-  const collections: Collection[] = [];
-  const strays: string[] = [];
+export function loadCollection(repoRoot: string, readmeRel: string): Collection {
+  const readme = join(repoRoot, readmeRel);
+  const dir = dirname(readme);
+  const path = toPosix(relative(repoRoot, dir)) || ".";
+  const folder = path === "." ? (repoRoot.split(sep).pop() ?? "repo") : path.split("/").pop()!;
+  const data = readFrontMatterOf(readme) ?? {};
+  const name = str(data["name"]) ?? folder;
+  const files = readdirSync(dir)
+    .filter((e) => INITIATIVE_FILE.test(e) && statSync(join(dir, e)).isFile())
+    .sort();
+  const initiatives = files.map((f) => loadInitiative(join(dir, f), repoRoot, name)).sort((a, b) => a.number - b.number);
+  return { name, path, dir, readme, meta: collectionMeta(data, folder), initiatives };
+}
 
-  const walk = (d: string) => {
-    let entries: string[];
-    try {
-      entries = readdirSync(d).sort();
-    } catch {
-      return;
-    }
-    const files = entries.filter((e) => INITIATIVE_FILE.test(e) && statSync(join(d, e)).isFile());
-    const isCollection = d !== dir && (files.length > 0 || readmeHasFrontMatter(join(d, "README.md")));
-    if (d === dir) strays.push(...files.map((f) => join(d, f)));
-    if (isCollection) {
-      const path = toPosix(relative(dir, d));
-      const readme = join(d, "README.md");
-      const { meta, hasReadme } = readCollectionMeta(readme, path);
-      const initiatives = files.map((f) => loadInitiative(join(d, f), dir, path)).sort((a, b) => a.number - b.number);
-      collections.push({ path, dir: d, readme, hasReadme, meta, initiatives });
-    }
-    for (const e of entries) {
-      if (e.startsWith(".") || SKIP_DIRS.has(e)) continue;
-      // Asset directories belong to an initiative; never treat them as collections.
-      if (isCollection && ASSET_DIR.test(e)) continue;
-      const p = join(d, e);
-      if (statSync(p).isDirectory()) walk(p);
-    }
-  };
-  walk(dir);
-  collections.sort((a, b) => a.path.localeCompare(b.path));
-  const readme = join(dir, "README.md");
-  return {
-    repoRoot,
-    dir,
-    rel: toPosix(relative(repoRoot, dir)) || ".",
-    readme,
-    meta: readRootMeta(readme),
-    collections,
-    strays,
-  };
+export function loadRoot(repoRoot: string): Root {
+  const collections = findCollectionReadmes(repoRoot).map((r) => loadCollection(repoRoot, r));
+  collections.sort((a, b) => a.name.localeCompare(b.name) || a.path.localeCompare(b.path));
+  return { repoRoot, collections };
+}
+
+/** Tags declared by any collection, merged (first description wins); undefined if none declare tags. */
+export function declaredTags(root: Root): Record<string, string> | undefined {
+  const declaring = root.collections.filter((c) => c.meta.tags);
+  if (declaring.length === 0) return undefined;
+  const out: Record<string, string> = {};
+  for (const c of declaring) for (const [k, v] of Object.entries(c.meta.tags!)) if (!out[k]) out[k] = v;
+  return out;
+}
+
+/** Load the Brindley view of the repository containing `cwd`. */
+export function openRepo(cwd: string): Root {
+  return loadRoot(findRepoRoot(cwd));
 }
 
 // ---------------------------------------------------------------------------
 // Lookup
 
+export class BrindleyError extends Error {}
+
 export function allInitiatives(root: Root): Initiative[] {
   return root.collections.flatMap((c) => c.initiatives);
 }
 
-export function findCollection(root: Root, path: string): Collection | undefined {
-  const p = path.replace(/^\/+|\/+$/g, "");
-  return root.collections.find((c) => c.path === p);
+/** Find a collection by name or by repo-relative folder path. */
+export function findCollection(root: Root, nameOrPath: string): Collection | undefined {
+  const p = toPosix(nameOrPath).replace(/^\.\//, "").replace(/\/+$/, "");
+  return root.collections.find((c) => c.name === p) ?? root.collections.find((c) => c.path === p);
+}
+
+export function requireCollection(root: Root, nameOrPath: string): Collection {
+  const c = findCollection(root, nameOrPath);
+  if (!c) {
+    const known = root.collections.map((x) => x.name).join(", ") || "none — mark a folder with create_collection";
+    throw new BrindleyError(`No collection "${nameOrPath}". Known collections: ${known}.`);
+  }
+  return c;
 }
 
 export function lookup(root: Root, collection: string, number: number): Initiative | undefined {
   return findCollection(root, collection)?.initiatives.find((i) => i.number === number);
 }
 
-export class BrindleyError extends Error {}
-
 /**
  * Resolve a user-supplied reference: "collection#n", a bare number (within
- * `collection`, else across the root when unambiguous), or a path.
+ * `collection`, else across the repo when unambiguous), or a path.
  */
 export function resolveRef(root: Root, ref: string | number, collection?: string): Initiative {
   const s = String(ref).trim();
@@ -244,9 +231,9 @@ export function resolveRef(root: Root, ref: string | number, collection?: string
   if (/^\d+$/.test(s)) {
     const n = Number(s);
     if (collection) {
-      if (!findCollection(root, collection)) throw new BrindleyError(`No collection "${collection}".`);
-      const found = lookup(root, collection, n);
-      if (!found) throw new BrindleyError(`No initiative ${n} in ${collection}.`);
+      const c = requireCollection(root, collection);
+      const found = c.initiatives.find((i) => i.number === n);
+      if (!found) throw new BrindleyError(`No initiative ${n} in ${c.name}.`);
       return found;
     }
     const matches = allInitiatives(root).filter((i) => i.number === n);
@@ -257,9 +244,7 @@ export function resolveRef(root: Root, ref: string | number, collection?: string
     );
   }
   const norm = toPosix(s).replace(/^\.?\//, "");
-  const found = allInitiatives(root).find(
-    (i) => i.rel === norm || toPosix(relative(root.repoRoot, i.file)) === norm || i.file === resolve(s),
-  );
+  const found = allInitiatives(root).find((i) => i.rel === norm || i.file === resolve(s));
   if (!found) throw new BrindleyError(`No initiative matching "${s}".`);
   return found;
 }

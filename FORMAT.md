@@ -44,81 +44,65 @@ Typical lifecycle:
 > Examples throughout this spec use a fictional system that lets boat captains book a slot to take
 > their boat through a canal lock, ascending or descending.
 
-A repo has **one initiatives root** directory. Beneath it, initiatives are grouped into
-**collections** — the larger changesets (themes, epics, tickets) that individual initiatives
-belong to. Each collection is one flat directory:
+Initiatives are grouped into **collections** — the larger changesets (themes, epics, tickets)
+that individual initiatives belong to. **A collection is a folder you mark as one**, anywhere in
+the repo. There is no repo-level file: nothing sits above a collection.
 
 ```
-docs/initiatives/                                  # the root (one per repo)
-  README.md                                        # root front-matter + generated overview of collections
-  LOCK-42/
-    slot-booking/                                  # a collection
-      README.md                                    # collection overview + generated index (§8)
-      19-boat-identity.md
-      20-slot-calendar-and-read-model.md
-      21-lock-sensor-import.md
-      21-sensor-readings/                          # assets belonging to initiative 21 (§3)
-        castlefield-lock-2026-09.csv
-      39-paged-slot-listings.md
-  search-rework/                                   # another collection
-    README.md
-    1-query-parser.md
+docs/initiatives/LOCK-42/slot-booking/             # a collection (marked by its README)
+  README.md                                        # marker, collection details + generated index (§8)
+  19-boat-identity.md
+  20-slot-calendar-and-read-model.md
+  21-lock-sensor-import.md
+  21-sensor-readings/                              # assets belonging to initiative 21 (§3)
+    castlefield-lock-2026-09.csv
+  39-paged-slot-listings.md
+services/search/plans/                             # another collection, somewhere else entirely
+  README.md
+  1-query-parser.md
 ```
 
-**Root.** The root's `README.md` carries root front-matter, which is how tools find it:
+**The marker.** A folder is a collection when its `README.md` front-matter contains `brindley`
+(the value is the format version):
 
 ```yaml
 ---
-brindley: 1            # marks the initiatives root; value = format version
-agent: .github/agents/implement-initiative.agent.md   # optional default repo workflow, see §9
-docs: ["docs/**/*.md", "*/docs/**/*.md"]              # optional: what counts as project docs, see §7.1
-types: [feature, bug, refactor, perf, docs, chore, spike]   # optional: the repo's initiative types, see §4.1
-tags:                                                  # optional: the repo's themes, see §4.2
-  accessibility: Booking usable with screen readers and keyboard only
-  notifications: Telling captains about changes to their slots
----
-```
-
-Tools look for the root at `initiatives/` then `docs/initiatives/`, or take an explicit path.
-There is exactly one root per repo.
-
-**Collections.** The folder *is* the collection. Any directory under the root that directly
-contains initiative files — or a `README.md` with front-matter, so a collection can exist before
-its first initiative — is a collection, and its identity is its path relative to the root
-(`LOCK-42/slot-booking`, `search-rework`). Collections can be grouped one or more levels deep
-however suits the project, but initiatives are always directly inside their collection.
-
-- Initiatives never declare their collection — it is always where the file is. There is no
-  `collection:` field to drift out of sync.
-- Nothing else is needed to create a collection: a new folder with one initiative in it is one.
-
-The collection's `README.md` is **optional** and only *adds* detail. Its front-matter (all
-optional) describes the changeset as a whole, and its body is a free-form introduction above the
-generated content (§8):
-
-```yaml
----
+brindley: 1                           # marks this folder as a collection (format version 1)
+name: slot-booking                    # short name used in references; default: the folder name
 title: LOCK-42 lock slot booking      # display name; default: derived from the folder name
 summary: Let captains book ascending and descending lock slots online
 status: active                        # active | done | abandoned — of the changeset as a whole
 owner: locks team
 link: https://tracker.example.com/LOCK-42   # external ticket/epic, if any
-agent: .github/agents/slot-booking.agent.md # overrides the root default (§9)
-docs: ["services/locks/docs/*.md"]          # docs this changeset usually affects (§7.1)
+agent: .github/agents/slot-booking.agent.md # implementing-agent workflow for this collection (§9)
+docs: ["services/locks/docs/*.md"]          # what counts as project docs for this collection (§7.1)
+types: [feature, bug, refactor, perf, docs, chore, spike]   # initiative types in use (§4.1)
+tags:                                       # themes (§4.2)
+  notifications: Telling captains about changes to their slots
 ---
+# LOCK-42 lock slot booking
+
+Free-form introduction, above the generated content (§8).
 ```
 
-When the README is absent, tools treat the title as the folder name (`slot-booking` →
-"Slot booking") and the status as `active`, and create the README the first time they generate
-content for the collection.
+Everything except `brindley` is optional. Marking an existing folder — for example one already
+full of numbered initiative files — only adds front-matter to its README; nothing moves.
 
-**Renaming a collection** is renaming its folder — a move, so links into it from other
-collections break. Avoid it; when unavoidable, validation catches the dangling
-`"<collection>#<n>"` references and links, and a tool can rewrite them.
+**Identity.** A collection is referred to by its **name**: the `name` field, else the folder name
+(`slot-booking`, `plans`). Names must be unique in the repo; when two folders share a name, give
+one an explicit `name`. Tools also accept the folder path (`docs/initiatives/LOCK-42/slot-booking`)
+wherever a collection is expected.
 
+- Initiatives never declare their collection — it is always the folder they are in. There is no
+  `collection:` field to drift out of sync.
+- A file in a collection folder is an initiative iff its name matches `<number>-<slug>.md`.
 - **No status sub-folders** (no `completed/`).
-- A file in a collection directory is an initiative iff its name matches `<number>-<slug>.md`.
-- Initiative files directly in the root, outside any collection, are not allowed (validation error).
+- Collection folders in gitignored paths (such as worktrees under an ignored directory) are not
+  collections of this working tree.
+
+**Renaming a collection** means changing its `name` (or, without one, its folder), which breaks
+`"<name>#<n>"` references from other collections. Avoid it; when unavoidable, validation catches
+the dangling references and a tool can rewrite them.
 
 ## 3. Identity, filenames and assets
 
@@ -133,9 +117,9 @@ collections break. Avoid it; when unavoidable, validation catches the dangling
 - **Referencing** an initiative:
   - same collection: by number in front-matter (`20`), by relative link in prose
     (`[20](20-slot-calendar-and-read-model.md)`);
-  - another collection: `"<collection>#<number>"` in front-matter
-    (`"search-rework#1"`), relative link in prose (`[query parser](../../search-rework/1-query-parser.md)`).
-    Because there is one root, these are checkable just like same-collection references.
+  - another collection: `"<name>#<number>"` in front-matter (`"plans#1"`), relative link in
+    prose (`[query parser](../../../../services/search/plans/1-query-parser.md)`). Tools find every
+    collection in the repo, so these are checkable just like same-collection references.
 
 **Collision handling.** Numbers are allocated where design happens — normally the main branch, one
 author at a time — so collisions are rare. Tooling should reduce them further by scanning other
@@ -194,7 +178,7 @@ updated: 2026-09-24
 | `chore` | Build, dependencies, tooling, CI. |
 | `spike` | Time-boxed investigation whose output is knowledge (often new initiatives), not shipped code. |
 
-- A repo may declare its own list with `types:` in the root front-matter. When declared, an
+- A collection may declare its list with `types:` in its README front-matter. When declared, an
   unlisted `type` is a validation warning (typo protection); when not, any string is accepted.
 - Type is descriptive only: it never affects readiness or lifecycle rules.
 - Tools may use it for grouping and filtering, and an implementing agent may use it to choose a
@@ -214,9 +198,10 @@ A tag is a theme that cuts across collections — e.g. `notifications` might cov
 in `LOCK-42/slot-booking` and another in `search-rework`.
 
 - Tags are lowercase kebab-case strings (`slot-pairing`, `accessibility`).
-- A repo may declare its themes with `tags:` in the root front-matter, as a map of tag →
-  one-line description. When declared, an unlisted tag is a validation warning (typo protection)
-  and the description is shown in the generated README; when not, any tag is accepted.
+- A collection may declare themes with `tags:` in its README front-matter, as a map of tag →
+  one-line description. Declarations from all collections are combined, since themes cut across
+  them. Once any collection declares tags, an undeclared tag is a validation warning (typo
+  protection) and descriptions are shown in the overview; when none do, any tag is accepted.
 - Tags are descriptive only: they never affect readiness or lifecycle rules.
 
 ## 5. Status lifecycle
@@ -339,8 +324,8 @@ Two kinds of document, with a strict division of labour:
 | Lifetime | Frozen once done — a record | Edited with every change that affects it |
 | Audience | People and agents deciding or implementing a change | Anyone using or changing the code today |
 
-Which files are project docs is declared by `docs:` globs in the root front-matter (collections may
-narrow it). The initiatives root itself is never project docs.
+Which files are project docs is declared by `docs:` globs in each collection's README front-matter.
+Files inside collection folders are never project docs.
 
 Project docs must:
 
@@ -358,7 +343,7 @@ is not allowed — the implementer must decide and state, which is what keeps do
 
 ## 8. Generated README content
 
-Both the root `README.md` and each collection `README.md` are human entry points: free-form
+Each collection's `README.md` is its human entry point: front-matter (§2), a free-form
 introduction written by people, plus a **generated block** that tools keep current:
 
 ```markdown
@@ -394,16 +379,19 @@ Rules for the generated block:
 3. **Completed** table — `done` initiatives (#, linked title, `updated`); then a short
    **Closed** list for `abandoned`/`superseded` (with `superseded_by`).
 
-### 8.2 Root README
+### 8.2 Overview of all collections
 
-1. **Collections** table: collection (linked to its README), title, collection status, counts by
+Because nothing sits above a collection, the repo-wide overview is generated on demand by tools
+(the MCP server serves it as a resource) rather than written to a file:
+
+1. **Collections** table: name (linked to its README), title, collection status, counts by
    initiative status, number ready.
 2. **Cross-collection graph** (Mermaid): one node per collection with active work, an edge
    wherever an initiative in one depends on an initiative in another (labelled with the
    initiative numbers).
 3. **Themes**: one sub-section per tag in use (declared description first), listing every
-   initiative with that tag across all collections — `collection#n`, linked title, type,
-   status — active first, then done. This is the "show me everything about notifications" view.
+   initiative with that tag across all collections — `name#n`, linked title, type, status —
+   active first, then done. This is the "show me everything about notifications" view.
 
 ### 8.3 Mermaid dependency graph
 
@@ -452,8 +440,8 @@ Two layers:
 
    ```markdown
    ## Initiatives
-   Planned work lives under `docs/initiatives/`, grouped into collections (sub-directories),
-   one Markdown file per initiative. Format spec: <link>.
+   Planned work lives in collections: folders whose `README.md` front-matter contains
+   `brindley: 1`, one Markdown file per initiative. Format spec: <link>.
    - Never rename or move initiative files or their asset directories. Status is the
      `status` front-matter field.
    - Implement only an initiative that is `designed` and whose numbered `depends_on` are all
@@ -474,9 +462,8 @@ Two layers:
    ```
 
 2. **Repo workflow** — specific to the project: verification commands, docs to keep current,
-   worktree/branch conventions, commit rules. Lives in a repo agent file, referenced from the
-   root's `agent:` field (default for the repo) or a collection's (override, when a collection
-   needs its own verification or docs rules).
+   worktree/branch conventions, commit rules. Lives in a repo agent file, referenced from each
+   collection's `agent:` field (collections may share one file or each have their own).
 
 ## 10. Validation rules
 
@@ -486,9 +473,9 @@ Errors:
 2. `status` present and in the core set; dates ISO-8601.
 3. Every initiative reference (integer or `"<collection>#<n>"`) in `depends_on`/`related`/
    `superseded_by` refers to an existing initiative.
-4. The `depends_on` graph across the whole root is acyclic.
+4. The `depends_on` graph across all collections is acyclic.
 5. `status: superseded` has `superseded_by`.
-6. Exactly one root; no initiative files directly in the root.
+6. Collection names are unique in the repo.
 
 Warnings:
 
@@ -497,18 +484,18 @@ Warnings:
 9. Relative links that do not resolve.
 10. Asset directories whose number matches no initiative.
 11. Missing H1.
-12. Generated index (root or collection) out of date.
+12. A collection README's generated block is out of date.
 13. Collection `status: done` while any of its initiatives is still `draft`/`designed`/`in-progress`.
 14. `status: done` without `docs_impact`.
-15. A project doc (per `docs:` globs) that links into the initiatives root.
+15. A project doc (per `docs:` globs) that links into a collection folder.
 16. History phrasing in a project doc (heuristic — see §7.1 list).
-17. `type` not in the root's `types:` list, when one is declared.
-18. A tag not in the root's `tags:` map, when one is declared; or a tag that isn't kebab-case.
+17. `type` not in its collection's `types:` list, when one is declared.
+18. A tag not declared by any collection's `tags:`, when any are declared; or a tag that isn't kebab-case.
 
 ## 11. Migration from the numbered + `completed/` layout
 
-1. Create the root README with root front-matter (if the repo has none yet), and add collection
-   front-matter to the collection README.
+1. Mark the folder as a collection: add `brindley: 1` (and any details) to its README
+   front-matter.
 2. Move `completed/*` back into the collection with `status: done`.
 3. Convert status/owner/last-updated metadata into front-matter. Both styles seen in practice
    must be recognised:
@@ -525,10 +512,12 @@ Warnings:
 
 ## Open Questions
 
-- [x] **Name** — Brindley; root front-matter key `brindley:`.
+- [x] **Name** — Brindley; collection marker key `brindley:`.
 - [ ] Status mapping: what statuses do existing initiative collections use beyond "Proposed" and
       "draft"? Is anything like `in-review` or `blocked` needed in the core set?
-- [x] Cross-collection dependencies — `"<collection>#<n>"`, checkable because there is one root (§3).
+- [x] Cross-collection dependencies — `"<name>#<n>"`, checkable because tools find every collection (§3).
+- [x] Where do initiatives live? — in any folder marked as a collection by its README; there is no
+      repo-level root or config file (§2).
 - [x] **Name for a collection** — "collection": deliberately vague, so it fits themes, epics, tickets or changesets alike.
 - [x] Number scope — unique **per collection**. Each changeset counts from 1, existing numbering
       migrates unchanged, and `"<collection>#<n>"` disambiguates across collections.
@@ -557,7 +546,7 @@ spec:
 | Observation | Effect on this spec |
 |-------------|---------------------|
 | Moving finished initiatives into `completed/` breaks every link to them, forcing mass rewrites. | Nothing moves; status is front-matter (§1, §5). |
-| Initiatives live in nested, ticket- or theme-scoped directories, each with a hand-maintained README summary table and dependency graph. | Collections under one root (§2); generated README content (§8) replaces the hand-maintained tables/graph — the second mass-rewrite target. |
+| Initiatives live in nested, ticket- or theme-scoped directories, each with a hand-maintained README summary table and dependency graph. | Collections are marked folders, wherever they live (§2); generated README content (§8) replaces the hand-maintained tables/graph — the second mass-rewrite target. |
 | Numbers are used conversationally ("do 39", "completed `30`"), unpadded. Design happens on main. | Sequential numbers kept; random IDs rejected (§3). |
 | Initiatives link to their own asset directories (fixtures, samples). | Asset directory rule (§3). Moving files would also break these links. |
 | Dependencies mix initiatives, external modules, and soft "informed by but does not depend on" links, each with a reason. | `depends_on` with integer + string entries, `related`, and a kept narrative section (§4, §6). |
@@ -567,4 +556,4 @@ spec:
 | Relationships come in several kinds in prose: depends on, relates to, hands a case over to, is generalised by. | `related` covers all non-blocking kinds; the prose explains which. Typed relations deferred (Open Questions). |
 | Initiatives end with `## Acceptance criteria`, which the implementing agent treats as the definition of done. | Acceptance criteria are a defined section (§6). |
 | The agent rewrites a completed initiative into current-state wording, and must decide and state which project docs it updated. | Completion rules and `docs_impact` (§7). |
-| The agent file mixes generic lifecycle rules with repo-specific workflow (build tool, docs, worktrees). | Two-layer agent instructions (§9); root/collection `agent:` pointer. |
+| The agent file mixes generic lifecycle rules with repo-specific workflow (build tool, docs, worktrees). | Two-layer agent instructions (§9); collection `agent:` pointer. |
