@@ -1,7 +1,7 @@
 {
   "name": "brindley",
-  "version": "0.1.0",
-  "description": "Design fully before anyone digs — in-repo Markdown initiatives for AI-agent workflows, plus an MCP server",
+  "version": "0.0.0-development",
+  "description": "Design fully before anyone digs \u2014 in-repo Markdown initiatives for AI-agent workflows, plus an MCP server",
   "license": "MIT",
   "type": "module",
   "bin": {
@@ -14,9 +14,14 @@
     "node": ">=20"
   },
   "scripts": {
+    "prebuild": "node scripts/version.mjs --write",
     "build": "tsc -p tsconfig.json",
+    "pretest": "node scripts/version.mjs --write",
     "test": "vitest run",
-    "typecheck": "tsc -p tsconfig.json --noEmit"
+    "typecheck": "node scripts/version.mjs --write && tsc -p tsconfig.json --noEmit",
+    "version:explain": "node scripts/version.mjs --explain",
+    "version:sync": "node scripts/version.mjs --sync",
+    "prepack": "npm run version:sync && npm run build"
   },
   "repository": {
     "type": "git",

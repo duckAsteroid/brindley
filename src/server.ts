@@ -19,8 +19,9 @@ import { mergeInProgress } from "./git.js";
 import { validate } from "./validate.js";
 import { checkDocs } from "./docs.js";
 import * as ops from "./ops.js";
+import { COMMIT, VERSION } from "./version.js";
 
-export const VERSION = "0.1.0";
+export { VERSION };
 
 export interface ServerOptions {
   cwd: string;
@@ -154,6 +155,15 @@ export function createServer(opts: ServerOptions): McpServer {
     "Edit a collection README's details, including its status (active | done | abandoned).",
     { collection: z.string().describe("Collection name or folder path"), status: z.enum(["active", "done", "abandoned"]).optional(), ...collectionFields },
     (root, a) => ops.updateCollection(root, a.collection, a),
+  );
+
+  server.registerTool(
+    "version",
+    {
+      description: "The Brindley server's version (computed from git tags + Conventional Commits) and build commit.",
+      annotations: { readOnlyHint: true },
+    },
+    async () => reply({ name: "brindley", version: VERSION, commit: COMMIT, formatVersion: 1 }),
   );
 
   // --- Reading ----------------------------------------------------------------

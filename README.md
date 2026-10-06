@@ -13,7 +13,7 @@ completely before construction began.
 - [FORMAT.md](FORMAT.md) — the file format and conventions (usable with no tooling at all)
 - [MCP-SERVER.md](MCP-SERVER.md) — the MCP server's design
 
-**Status:** early (0.1). Not yet published to npm.
+**Status:** early. Not yet published to npm.
 
 ## What the server does
 
@@ -69,6 +69,20 @@ brindley readmes [--check]              Regenerate collection README blocks; --c
 ```
 
 `brindley validate` and `brindley readmes --check` are suitable as CI checks.
+
+## Versioning
+
+The version comes from git, never from a hand-edited number, using the same rules as
+[gradle-versioning](https://github.com/duckAsteroid/gradle-versioning): the last `vX.Y.Z` tag
+reachable from `HEAD`, bumped by the Conventional Commits since it (`feat` → minor, `fix`/`perf`
+→ patch, `!` or `BREAKING CHANGE:` → major, `docs`/`chore`/… → none), with `-SNAPSHOT` unless
+`HEAD` is exactly on the tag. The build stamps it into the server.
+
+```sh
+npm run version:explain      # how the current version is computed
+brindley --version           # the version a build reports (also the `version` tool and the MCP handshake)
+git tag v0.2.0 && git push origin v0.2.0   # release: tag the commit
+```
 
 ## Not built yet
 

@@ -63,6 +63,15 @@ describe("MCP server", () => {
     ]);
   });
 
+  it("reports its version", async () => {
+    fx = fixture({ files: lockExample });
+    const client = await connect(fx.repo);
+    const v = json(await client.callTool({ name: "version", arguments: {} }));
+    expect(v.name).toBe("brindley");
+    expect(v.version).toMatch(/^\d+\.\d+\.\d+(-SNAPSHOT)?$/);
+    expect(client.getServerVersion()?.version).toBe(v.version);
+  });
+
   it("returns tool errors rather than throwing", async () => {
     fx = fixture({ files: lockExample });
     const client = await connect(fx.repo);
