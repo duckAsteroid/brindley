@@ -1,6 +1,6 @@
 import { existsSync, readdirSync, statSync } from "node:fs";
 import { dirname, join, relative, resolve } from "node:path";
-import { ASSET_DIR, COLLECTION_STATUSES, STATUSES, type Initiative, type Root } from "./model.js";
+import { ASSET_DIR, COLLECTION_STATUSES, STATUSES, normaliseStatus, type Initiative, type Root } from "./model.js";
 import { cycles, target } from "./deps.js";
 import { allInitiatives, declaredTags, findCollection, initiativeKey, toPosix } from "./repo.js";
 import { stripCodeFences } from "./markdown.js";
@@ -84,8 +84,18 @@ function checkInitiative(
 ) {
   const f = rel(i.file);
   for (const p of i.problems) err("parse", f, p);
-  if (!i.status) err("status-missing", f, "Missing `status`.");
-  else if (!(STATUSES as readonly string[]).includes(i.status)) err("status-invalid", f, `Status "${i.status}" is not one of ${STATUSES.join(", ")}.`);
+  const custom = findCollection(root, i.collection)?.meta.statuses;
+  if (!i.status)
+    err("status-missing", f, i.folder
+      ? `No \`status\`, and folder "${i.folder}/" is not a known status (map it with \`statuses:\` in the collection README).`
+      : "Missing `status`.");
+  else if (!(STATUSES as readonly string[]).includes(i.status))
+    err("status-invalid", f, `Status "${i.statusRaw}" is not known: use one of ${STATUSES.join(", ")}, a common alias, or map it with \`statuses:\` in the collection README.`);
+  if (i.folder && i.statusSource === "front-matter") {
+    const byFolder = normaliseStatus(i.folder, custom);
+    if (byFolder && byFolder !== i.status)
+      warn("status-folder-mismatch", f, `In "${i.folder}/" (${byFolder}) but front-matter says ${i.status}; front-matter wins.`);
+  }
   for (const key of ["updated", "created"]) {
     const v = i.fm[key];
     if (v !== undefined && !ISO_DATE.test(String(v))) err("date", f, `\`${key}\` must be an ISO date (YYYY-MM-DD).`);
@@ -96,7 +106,8 @@ function checkInitiative(
     }
   }
   if (i.status === "superseded") {
-    if (!i.supersededBy) err("superseded-by", f, "`status: superseded` requires `superseded_by`.");
+    if (!i.supersededBy)
+      (i.statusSource === "folder" ? warn : err)("superseded-by", f, "Superseded, but no `superseded_by` says by what.");
     else if (i.supersededBy.kind !== "initiative" || !target(root, i.supersededBy))
       err("dangling-ref", f, `\`superseded_by\` refers to ${i.supersededBy.raw}, which does not exist.`);
   }
@@ -108,7 +119,9 @@ function checkInitiative(
     warn("designed-open-questions", f, `Designed, but ${blocking.length} blocking open question(s) remain.`);
   if ((i.status === "in-progress" || i.status === "done") && open.length > 0)
     warn("open-questions", f, `${i.status}, but ${open.length} open question(s) remain.`);
-  if (i.status === "done" && i.docsImpact === undefined) warn("docs-impact", f, "Done, but no `docs_impact` recorded.");
+  // Work completed before Brindley (status from a legacy folder) can't be held to docs_impact.
+  if (i.status === "done" && i.docsImpact === undefined && i.statusSource !== "folder")
+    warn("docs-impact", f, "Done, but no `docs_impact` recorded.");
 
   const types = findCollection(root, i.collection)?.meta.types;
   if (i.type && types && !types.includes(i.type))

@@ -3,6 +3,7 @@ import { dirname, join, relative, resolve, sep } from "node:path";
 import {
   ASSET_DIR,
   INITIATIVE_FILE,
+  normaliseStatus,
   type Collection,
   type CollectionMeta,
   type Initiative,
@@ -70,7 +71,12 @@ function strListOrNums(v: unknown): unknown[] {
   return Array.isArray(v) ? v : [v];
 }
 
-export function loadInitiative(file: string, repoRoot: string, collection: string): Initiative {
+export function loadInitiative(
+  file: string,
+  repoRoot: string,
+  collection: string,
+  opts: { folder?: string; statuses?: Record<string, string> } = {},
+): Initiative {
   const name = file.split(sep).pop()!;
   const m = INITIATIVE_FILE.exec(name)!;
   const text = readFileSync(file, "utf8");
@@ -78,7 +84,12 @@ export function loadInitiative(file: string, repoRoot: string, collection: strin
   const { data: fm, error } = parseFrontMatter(fmText);
   const problems: string[] = [];
   if (error) problems.push(`front-matter does not parse: ${error}`);
-  if (fmText === null) problems.push("no front-matter");
+  if (fmText === null && !opts.folder) problems.push("no front-matter");
+  // Status: front-matter wins; otherwise the status folder the file sits in.
+  const fmStatus = str(fm["status"]);
+  const statusRaw = fmStatus ?? opts.folder;
+  const statusSource = fmStatus !== undefined ? ("front-matter" as const) : opts.folder ? ("folder" as const) : undefined;
+  const status = normaliseStatus(statusRaw, opts.statuses) ?? (fmStatus !== undefined ? fmStatus : undefined);
   return {
     collection,
     number: Number(m[1]),
@@ -89,7 +100,10 @@ export function loadInitiative(file: string, repoRoot: string, collection: strin
     fmText,
     body,
     title: h1(body),
-    status: str(fm["status"]),
+    status,
+    statusRaw,
+    statusSource,
+    folder: opts.folder,
     statusNote: str(fm["status_note"]),
     type: str(fm["type"]),
     tags: strList(fm["tags"]),
@@ -124,6 +138,7 @@ function collectionMeta(data: Record<string, unknown>, folder: string): Collecti
     docs: data["docs"] !== undefined ? strList(data["docs"]) : undefined,
     types: data["types"] !== undefined ? strList(data["types"]) : undefined,
     tags: tagMap(data["tags"]),
+    statuses: tagMap(data["statuses"]),
   };
 }
 
@@ -154,6 +169,25 @@ export function findCollectionReadmes(repoRoot: string): string[] {
     .sort();
 }
 
+/** Numbered initiative files directly in `dir`. */
+function initiativeFiles(dir: string): string[] {
+  return readdirSync(dir)
+    .filter((e) => INITIATIVE_FILE.test(e) && statSync(join(dir, e)).isFile())
+    .sort();
+}
+
+/**
+ * Status folders: immediate sub-folders of a collection (e.g. completed/, deferred/) holding
+ * numbered initiatives. Asset folders ("21-…") and folders that are collections themselves
+ * are excluded.
+ */
+export function statusFolders(dir: string): string[] {
+  return readdirSync(dir)
+    .filter((e) => !e.startsWith(".") && !ASSET_DIR.test(e) && statSync(join(dir, e)).isDirectory())
+    .filter((e) => !isCollectionReadme(join(dir, e, "README.md")) && initiativeFiles(join(dir, e)).length > 0)
+    .sort();
+}
+
 export function loadCollection(repoRoot: string, readmeRel: string): Collection {
   const readme = join(repoRoot, readmeRel);
   const dir = dirname(readme);
@@ -161,11 +195,16 @@ export function loadCollection(repoRoot: string, readmeRel: string): Collection 
   const folder = path === "." ? (repoRoot.split(sep).pop() ?? "repo") : path.split("/").pop()!;
   const data = readFrontMatterOf(readme) ?? {};
   const name = str(data["name"]) ?? folder;
-  const files = readdirSync(dir)
-    .filter((e) => INITIATIVE_FILE.test(e) && statSync(join(dir, e)).isFile())
-    .sort();
-  const initiatives = files.map((f) => loadInitiative(join(dir, f), repoRoot, name)).sort((a, b) => a.number - b.number);
-  return { name, path, dir, readme, meta: collectionMeta(data, folder), initiatives };
+  const meta = collectionMeta(data, folder);
+  const initiatives = [
+    ...initiativeFiles(dir).map((f) => loadInitiative(join(dir, f), repoRoot, name, { statuses: meta.statuses })),
+    ...statusFolders(dir).flatMap((sub) =>
+      initiativeFiles(join(dir, sub)).map((f) =>
+        loadInitiative(join(dir, sub, f), repoRoot, name, { folder: sub, statuses: meta.statuses }),
+      ),
+    ),
+  ].sort((a, b) => a.number - b.number || a.rel.localeCompare(b.rel));
+  return { name, path, dir, readme, meta, initiatives };
 }
 
 export function loadRoot(repoRoot: string): Root {

@@ -242,3 +242,61 @@ describe("collections", () => {
     expect(fx.load().collections.map((c) => c.name)).toEqual(["slot-booking"]);
   });
 });
+
+describe("status folders and aliases", () => {
+  const legacy = {
+    "plans/README.md": "---\nbrindley: 1\nstatuses:\n  spiked: designed\n---\n# Plans\n",
+    "plans/01-batch.md": "---\nstatus: Proposed\n---\n# Batch\n",
+    "plans/2-spike.md": "---\nstatus: spiked\ndepends_on: [3]\n---\n# Spike\n",
+    "plans/completed/3-done-thing.md": "# Done thing\n",
+    "plans/completed/4-reopened.md": "---\nstatus: draft\n---\n# Reopened\n",
+    "plans/deferred/5-later.md": "# Later\n",
+    "plans/archive-of-misc/6-mystery.md": "# Mystery\n",
+    "plans/code-review/CR-01-note.md": "# Not an initiative\n",
+    "plans/7-assets/8-not-an-initiative.md": "# Asset\n",
+  };
+
+  it("reads statuses from front-matter, aliases, collection words and status folders", () => {
+    fx = fixture({ files: legacy });
+    const c = fx.load().collections[0]!;
+    const by = Object.fromEntries(c.initiatives.map((i) => [i.number, [i.status, i.statusRaw, i.statusSource]]));
+    expect(Object.keys(by)).toEqual(["1", "2", "3", "4", "5", "6"]);
+    expect(by[1]).toEqual(["draft", "Proposed", "front-matter"]);
+    expect(by[2]).toEqual(["designed", "spiked", "front-matter"]);
+    expect(by[3]).toEqual(["done", "completed", "folder"]);
+    expect(by[4]).toEqual(["draft", "draft", "front-matter"]);
+    expect(by[5]).toEqual(["deferred", "deferred", "folder"]);
+    expect(by[6]).toEqual([undefined, "archive-of-misc", "folder"]);
+  });
+
+  it("treats a dependency in completed/ as satisfied", () => {
+    fx = fixture({ files: legacy });
+    const root = fx.load();
+    expect(isReady(root, resolveRef(root, "plans#2"))).toBe(true);
+  });
+
+  it("flags unknown status folders and front-matter that contradicts its folder", () => {
+    fx = fixture({ files: legacy });
+    const found = validate(fx.load()).map((f) => `${f.rule}:${f.file.split("/").pop()}`);
+    expect(found).toContain("status-missing:6-mystery.md");
+    expect(found).toContain("status-folder-mismatch:4-reopened.md");
+  });
+
+  it("coins numbers past those in status folders and shows deferred work separately", () => {
+    fx = fixture({ files: legacy });
+    expect(ops.nextNumber(fx.load(), fx.load().collections[0]!).number).toBe(7);
+    regenerate(fx.load());
+    const readme = read("plans/README.md");
+    expect(readme).toContain("### Deferred\n\n- 5 [Later](deferred/5-later.md)");
+    expect(readme).toContain("| 1 | [Batch](01-batch.md) | — | draft (Proposed) |");
+    expect(readme).toContain("| 3 | [Done thing](completed/3-done-thing.md) |");
+  });
+
+  it("accepts aliases in set_status and never moves the file", () => {
+    fx = fixture({ files: legacy });
+    const root = fx.load();
+    const r = ops.setStatus(root, resolveRef(root, "plans#5"), "parked");
+    expect(r.warnings.join(" ")).toMatch(/stays in "deferred\/"/);
+    expect(read("plans/deferred/5-later.md")).toMatch(/^---\nstatus: deferred\n/);
+  });
+});

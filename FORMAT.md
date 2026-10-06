@@ -29,7 +29,9 @@ Typical lifecycle:
 - **Works with zero tooling.** A text editor and an agent that reads Markdown are sufficient.
   Tooling makes it easier, never required.
 - **Nothing moves.** A file's path never changes after creation, so links to it — and links from it
-  to its assets — never break. Status lives in front-matter, not folder location.
+  to its assets — never break. Status lives in front-matter. Existing layouts that file
+  initiatives into status folders (`completed/`, `deferred/`) are still read (§2), but tools never
+  move files themselves.
 - **Prose first.** Initiatives are design documents. The format standardises only the handful of
   facts tools need (number, status, dependencies); everything else is the author's.
 - **Readable on GitHub.** Rendered files and collection READMEs should be useful to a human
@@ -95,8 +97,15 @@ wherever a collection is expected.
 
 - Initiatives never declare their collection — it is always the folder they are in. There is no
   `collection:` field to drift out of sync.
-- A file in a collection folder is an initiative iff its name matches `<number>-<slug>.md`.
-- **No status sub-folders** (no `completed/`).
+- A file is an initiative iff its name matches `<number>-<slug>.md` and it sits in the collection
+  folder or one of its immediate sub-folders.
+- **Status folders** are read, not required. Sub-folders holding numbered initiatives —
+  `completed/`, `deferred/`, `superseded/`, or anything mapped with `statuses:` — are part of the
+  collection, and a file without a `status` in its front-matter takes its status from the folder
+  name. Front-matter always wins. New work should stay in the collection folder and use
+  front-matter, because moving a file breaks the links to it.
+- Asset folders (`<number>-…/`) and sub-folders that are collections themselves are not status
+  folders. Sub-folders with no numbered files (e.g. `code-review/`) are ignored.
 - Collection folders in gitignored paths (such as worktrees under an ignored directory) are not
   collections of this working tree.
 
@@ -206,12 +215,13 @@ in `LOCK-42/slot-booking` and another in `search-rework`.
 
 ## 5. Status lifecycle
 
-Core statuses (closed set in format v1):
+Core statuses (format v1; other words map onto these, see below):
 
 ```
 draft ──► designed ──► in-progress ──► done
   │           │              │
-  └───────────┴──────────────┴──► abandoned | superseded
+  ├───────────┴──────────────┴──► abandoned | superseded
+  └──► deferred (parked; from any open status, and back)
 ```
 
 | Status        | Meaning |
@@ -222,6 +232,21 @@ draft ──► designed ──► in-progress ──► done
 | `done`        | Implemented and merged; the body describes what is true now (§7). |
 | `abandoned`   | Will not be done. |
 | `superseded`  | Replaced by another initiative (`superseded_by`). |
+| `deferred`    | Parked: not abandoned, not being worked on. Never ready; shown separately. |
+
+**Status words.** Besides the core names, tools accept common aliases — `proposed`,
+`exploratory`, `unresolved` → `draft`; `ready` → `designed`; `in-review`, `wip` → `in-progress`;
+`parked`, `on-hold`, `backlog` → `deferred`; `complete`, `completed`, `implemented` → `done`;
+`cancelled`, `rejected`, `dropped` → `abandoned`; `replaced` → `superseded` — and a collection
+can map its own words in its README front-matter:
+
+```yaml
+statuses:
+  spiked: designed      # this collection's word → core status
+  archive: done         # also works as a status folder name
+```
+
+The word as written is kept for display ("draft (proposed)"); behaviour follows the core status.
 
 **Readiness is derived, never stored.** For an initiative with `status: designed`, each entry in
 `depends_on` is classified as:
@@ -513,8 +538,8 @@ Warnings:
 ## Open Questions
 
 - [x] **Name** — Brindley; collection marker key `brindley:`.
-- [ ] Status mapping: what statuses do existing initiative collections use beyond "Proposed" and
-      "draft"? Is anything like `in-review` or `blocked` needed in the core set?
+- [x] Status mapping — `deferred` joins the core set; common words are aliases; collections can
+      map their own words with `statuses:`; legacy status folders are read (§2, §5).
 - [x] Cross-collection dependencies — `"<name>#<n>"`, checkable because tools find every collection (§3).
 - [x] Where do initiatives live? — in any folder marked as a collection by its README; there is no
       repo-level root or config file (§2).

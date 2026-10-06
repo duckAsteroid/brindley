@@ -22,6 +22,13 @@ function link(i: Initiative, fromDir: string): string {
   return `[${esc(titleOf(i))}](${posix.relative(fromDir, i.rel)})`;
 }
 
+/** Core status, with the word as written when it differs (e.g. "draft (proposed)"). */
+export function statusLabel(i: Initiative): string {
+  if (!i.status) return "?";
+  const raw = i.statusRaw?.trim();
+  return raw && raw.toLowerCase() !== i.status ? `${i.status} (${raw})` : i.status;
+}
+
 function openQs(i: Initiative): string {
   const open = i.questions.filter((q) => !q.resolved);
   const blocking = open.filter((q) => !q.implementation).length;
@@ -106,6 +113,7 @@ export function collectionBlock(root: Root, c: Collection): string {
   const out: string[] = [];
   const active = c.initiatives.filter(isActive);
   const done = c.initiatives.filter((i) => i.status === "done");
+  const deferred = c.initiatives.filter((i) => i.status === "deferred");
   const closed = c.initiatives.filter((i) => i.status === "abandoned" || i.status === "superseded");
 
   out.push("### Active", "");
@@ -114,7 +122,7 @@ export function collectionBlock(root: Root, c: Collection): string {
     out.push("| # | Initiative | Type | Status | Ready / blocked by | Open Qs | Owner |");
     out.push("|---|------------|------|--------|--------------------|---------|-------|");
     for (const i of active) {
-      const status = i.statusNote ? `${i.status ?? "?"}<br><sub>${esc(i.statusNote)}</sub>` : (i.status ?? "?");
+      const status = i.statusNote ? `${esc(statusLabel(i))}<br><sub>${esc(i.statusNote)}</sub>` : esc(statusLabel(i));
       out.push(
         `| ${i.number} | ${link(i, c.path)} | ${esc(i.type ?? "—")} | ${status} | ${readiness(root, i)} | ${openQs(i)} | ${i.owner ? `\`${esc(i.owner)}\`` : "—"} |`,
       );
@@ -122,6 +130,10 @@ export function collectionBlock(root: Root, c: Collection): string {
   }
   const graph = mermaid(root, active, c.name);
   if (graph) out.push("", "### Dependencies", "", graph);
+  if (deferred.length > 0) {
+    out.push("", "### Deferred", "");
+    for (const i of deferred) out.push(`- ${i.number} ${link(i, c.path)}${i.statusNote ? ` — ${esc(i.statusNote)}` : ""}`);
+  }
   out.push("", "### Completed", "");
   if (done.length === 0) out.push("_None._");
   else {
@@ -144,14 +156,14 @@ export function rootBlock(root: Root, fromDir = "."): string {
   const out: string[] = ["### Collections", ""];
   if (root.collections.length === 0) out.push("_None yet._");
   else {
-    out.push("| Collection | Title | Status | Draft | Designed | In progress | Done | Ready |");
-    out.push("|------------|-------|--------|-------|----------|-------------|------|-------|");
+    out.push("| Collection | Title | Status | Draft | Designed | In progress | Deferred | Done | Ready |");
+    out.push("|------------|-------|--------|-------|----------|-------------|----------|------|-------|");
     for (const c of root.collections) {
       const n = (s: string) => c.initiatives.filter((i) => i.status === s).length;
       const ready = c.initiatives.filter((i) => isReady(root, i)).length;
       const href = posix.relative(fromDir, `${c.path}/README.md`);
       out.push(
-        `| [${c.name}](${href}) | ${esc(c.meta.title)} | ${c.meta.status} | ${n("draft")} | ${n("designed")} | ${n("in-progress")} | ${n("done")} | ${ready} |`,
+        `| [${c.name}](${href}) | ${esc(c.meta.title)} | ${c.meta.status} | ${n("draft")} | ${n("designed")} | ${n("in-progress")} | ${n("deferred")} | ${n("done")} | ${ready} |`,
       );
     }
   }

@@ -1,6 +1,6 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join, relative, resolve } from "node:path";
-import { COLLECTION_STATUSES, STATUSES, type Collection, type Initiative, type Root } from "./model.js";
+import { COLLECTION_STATUSES, STATUSES, normaliseStatus, type Collection, type Initiative, type Root } from "./model.js";
 import {
   OPEN_QUESTIONS,
   appendToSection,
@@ -295,8 +295,11 @@ export function setStatus(
   status: string,
   opts: { force?: boolean; superseded_by?: string | number } = {},
 ): OpResult<{ ref: string; status: string }> {
-  if (!(STATUSES as readonly string[]).includes(status)) throw new BrindleyError(`Status must be one of ${STATUSES.join(", ")}.`);
+  const core = normaliseStatus(status, findCollection(root, i.collection)?.meta.statuses);
+  if (!core) throw new BrindleyError(`Unknown status "${status}". Use one of ${STATUSES.join(", ")} or a known alias.`);
+  status = core;
   const warnings: string[] = [];
+  if (i.folder) warnings.push(`The file stays in "${i.folder}/" (Brindley never moves files); its front-matter status now takes precedence over the folder.`);
   const refuse = (why: string) => {
     if (!opts.force) throw new BrindleyError(`${why} (pass force to override).`);
     warnings.push(`Forced: ${why}`);

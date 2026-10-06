@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { McpServer, ResourceTemplate } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import type { Initiative, Root } from "./model.js";
+import { STATUSES, type Initiative, type Root } from "./model.js";
 import {
   BrindleyError,
   allInitiatives,
@@ -39,6 +39,8 @@ function summary(root: Root, i: Initiative) {
     title: i.title,
     type: i.type ?? null,
     status: i.status ?? null,
+    statusAsWritten: i.statusRaw ?? null,
+    statusFrom: i.statusSource ?? null,
     statusNote: i.statusNote ?? null,
     owner: i.owner ?? null,
     tags: i.tags,
@@ -165,7 +167,7 @@ export function createServer(opts: ServerOptions): McpServer {
           collection: c.name,
           path: c.path,
           ...c.meta,
-          counts: Object.fromEntries(["draft", "designed", "in-progress", "done", "abandoned", "superseded"].map((s) => [s, count(s)])),
+          counts: Object.fromEntries(STATUSES.map((s) => [s, count(s)])),
           ready: c.initiatives.filter((i) => isReady(root, i)).length,
         };
       }),
@@ -348,7 +350,7 @@ export function createServer(opts: ServerOptions): McpServer {
     {
       ref: refArg,
       collection: z.string().optional(),
-      status: z.enum(["draft", "designed", "in-progress", "abandoned", "superseded", "done"]),
+      status: z.string().describe(`One of ${STATUSES.join(", ")} (common aliases and the collection's own status words are accepted)`),
       superseded_by: z.union([z.string(), z.number()]).optional(),
       force: z.boolean().optional(),
     },

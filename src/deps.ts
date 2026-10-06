@@ -45,8 +45,9 @@ export function isReady(root: Root, i: Initiative): boolean {
   return i.status === "designed" && blockers(root, i).length === 0;
 }
 
+/** Still moving towards done (draft, designed, in-progress). Unknown statuses count as active. */
 export function isActive(i: Initiative): boolean {
-  return !CLOSED_STATUSES.includes(i.status ?? "");
+  return !CLOSED_STATUSES.includes(i.status ?? "") && i.status !== "deferred";
 }
 
 export function dependants(root: Root, i: Initiative): Initiative[] {

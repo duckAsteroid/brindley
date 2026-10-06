@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { existsSync, readdirSync } from "node:fs";
+import { existsSync, readdirSync, statSync } from "node:fs";
 import { isAbsolute, join, resolve } from "node:path";
 
 /** Run a read-only git command; returns null if git is unavailable or the command fails. */
@@ -55,7 +55,9 @@ export function highestNumberElsewhere(repoRoot: string, collectionRepoPath: str
   const consider = (name: string) => {
     if (!name.startsWith(prefix)) return;
     const rest = name.slice(prefix.length);
-    if (rest.includes("/")) return;
+    // Initiatives sit in the collection folder or one status folder down (e.g. completed/).
+    const parts = rest.split("/");
+    if (parts.length > 2 || (parts.length === 2 && /^\d+-/.test(parts[0]!))) return;
     const m = NUMBERED.exec(rest);
     if (m) max = Math.max(max, Number(m[1]));
   };
@@ -64,7 +66,11 @@ export function highestNumberElsewhere(repoRoot: string, collectionRepoPath: str
   for (const wt of otherWorktrees(repoRoot)) {
     const dir = join(wt, collectionRepoPath);
     if (!existsSync(dir)) continue;
-    for (const f of readdirSync(dir)) consider(prefix + f);
+    for (const f of readdirSync(dir)) {
+      consider(prefix + f);
+      const sub = join(dir, f);
+      if (!/^\d+-/.test(f) && statSync(sub).isDirectory()) for (const g of readdirSync(sub)) consider(`${prefix}${f}/${g}`);
+    }
   }
   return { max, usedGit: true };
 }
