@@ -1,5 +1,5 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { dirname, join, posix, relative, resolve, sep } from "node:path";
+import { dirname, isAbsolute, join, posix, relative, resolve, sep } from "node:path";
 import { COLLECTION_STATUSES, STATUSES, normaliseStatus, type Collection, type Initiative, type Root } from "./model.js";
 import {
   DEPENDENCIES,
@@ -34,9 +34,9 @@ import {
   toPosix,
 } from "./repo.js";
 import { blockers, dependants, dependencyReport, isReady, wouldCycle } from "./deps.js";
-import { changedSinceHead, highestNumberElsewhere } from "./git.js";
+import { changedSinceHead, highestNumberElsewhere, otherWorktrees } from "./git.js";
 import { regenerate } from "./readme.js";
-import { checkDocs, docsGlobs, isProjectDoc } from "./docs.js";
+import { checkDocs, docsGlobs, inCollection, isProjectDoc } from "./docs.js";
 
 export function today(): string {
   return process.env["BRINDLEY_TODAY"] ?? new Date().toISOString().slice(0, 10);
@@ -556,6 +556,22 @@ export function setDependencies(
   }, warnings);
 }
 
+/** A docs_impact entry as a repo-relative path; absolute paths inside the repo are accepted. */
+function docPath(root: Root, p: string): string {
+  const rel = isAbsolute(p) ? relative(root.repoRoot, p) : p;
+  return toPosix(rel).replace(/^\.\//, "");
+}
+
+/** Says where the path was looked for, and whether another worktree has it (the server works on one). */
+function missingDocMessage(root: Root, p: string): string {
+  if (p.startsWith("../")) return `docs_impact path ${p} is outside the repository at ${root.repoRoot}; give paths relative to its root.`;
+  const elsewhere = otherWorktrees(root.repoRoot).filter((wt) => existsSync(join(wt, p)));
+  const hint = elsewhere.length
+    ? ` It exists in the worktree ${elsewhere.join(", ")}: this server works on ${root.repoRoot}, so run it from the worktree you are changing.`
+    : " Give paths relative to the repository root.";
+  return `docs_impact path does not exist in ${root.repoRoot}: ${p}.${hint}`;
+}
+
 export function complete(
   root: Root,
   i: Initiative,
@@ -579,13 +595,15 @@ export function complete(
     if (docsImpact.trim().slice(5).trim().length === 0) throw new BrindleyError("`docs_impact: none:` needs a reason.");
     impact = docsImpact.trim();
   } else {
-    const paths = (Array.isArray(docsImpact) ? docsImpact : [docsImpact]).map((p) => toPosix(p).replace(/^\.\//, "")).filter(Boolean);
+    const paths = (Array.isArray(docsImpact) ? docsImpact : [docsImpact]).map((p) => docPath(root, p)).filter(Boolean);
     if (paths.length === 0) throw new BrindleyError('`docs_impact` must list the docs updated, or be "none: <reason>".');
     const globs = docsGlobs(root, collection.meta.docs);
     if (!globs.length) warnings.push("No `docs` globs declared in any collection README; doc paths were not checked against them.");
     let gitChecked = true;
     for (const p of paths) {
-      if (!existsSync(join(root.repoRoot, p))) throw new BrindleyError(`docs_impact path does not exist: ${p}`);
+      if (!existsSync(join(root.repoRoot, p))) throw new BrindleyError(missingDocMessage(root, p));
+      if (inCollection(root, p))
+        throw new BrindleyError(`${p} is part of a collection, not project documentation; list the project docs you updated, or "none: <reason>".`);
       if (globs.length && !isProjectDoc(root, p, globs)) throw new BrindleyError(`${p} is not project documentation (does not match the \`docs\` globs).`);
       const changed = changedSinceHead(root.repoRoot, p);
       if (changed === false) throw new BrindleyError(`${p} has not been changed in this change (no difference from HEAD).`);

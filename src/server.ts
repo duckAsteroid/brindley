@@ -483,8 +483,11 @@ export function createServer(opts: ServerOptions): McpServer {
       tags: z.array(z.string()).optional(),
       status_note: z.string().optional(),
       docs: z.array(z.string()).optional(),
-      section: z.string().optional(),
-      content: z.string().optional(),
+      section: z.string().optional().describe('Name of the "## " section to replace, or add if missing.'),
+      content: z
+        .string()
+        .optional()
+        .describe("The section's body, without its heading (a leading heading naming the section is dropped)."),
     },
     (root, a) => ops.update(root, resolveRef(root, a.ref, a.collection), a),
   );
@@ -548,7 +551,9 @@ export function createServer(opts: ServerOptions): McpServer {
       docs_impact: z
         .union([z.array(z.string()), z.string()])
         .optional()
-        .describe('Docs updated in this change, or "none: <reason>". Required, except for spikes (defaults to none).'),
+        .describe(
+          'Project doc paths updated in this change, relative to the repository root (bare paths, no notes) — not initiative files; or "none: <reason>". Required, except for spikes (defaults to none).',
+        ),
     },
     (root, a) => ops.complete(root, resolveRef(root, a.ref, a.collection), a.docs_impact),
   );

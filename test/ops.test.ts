@@ -143,12 +143,61 @@ describe("complete", () => {
     expect(r.result.docFindings).toEqual([]);
   });
 
+  it("accepts absolute doc paths, refuses initiative files, and says where it looked", () => {
+    fx = fixture({ files: { ...lockExample, "services/locks/docs/LOCKS.md": "# Locks\n" } });
+    write(fx.repo, "services/locks/docs/LOCKS.md", "# Locks\n\nPassages are recorded as events.\n");
+    let root = fx.load();
+    expect(() => ops.complete(root, resolveRef(root, 23), [`${C}/23-passage-recorded-event.md`])).toThrow(/part of a collection/);
+    expect(() => ops.complete(root, resolveRef(root, 23), ["docs/MISSING.md"])).toThrow(
+      new RegExp(`does not exist in ${root.repoRoot.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}: docs/MISSING.md`),
+    );
+    const r = ops.complete(root, resolveRef(root, 23), [join(fx.repo, "services/locks/docs/LOCKS.md")]);
+    expect(r.result.ref).toBeDefined();
+    root = fx.load();
+    expect(resolveRef(root, 23).docsImpact).toEqual(["services/locks/docs/LOCKS.md"]);
+  });
+
+  it("points at the worktree that has a doc path missing from this one", () => {
+    fx = fixture({ files: lockExample });
+    const wt = `${fx.repo}-wt`;
+    git(fx.repo, "worktree", "add", "-q", wt, "-b", "feature");
+    try {
+      write(wt, "services/locks/docs/NEW.md", "# New\n");
+      const root = fx.load();
+      expect(() => ops.complete(root, resolveRef(root, 23), ["services/locks/docs/NEW.md"])).toThrow(/exists in the worktree .*-wt/);
+    } finally {
+      rmSync(wt, { recursive: true, force: true });
+    }
+  });
+
   it("flags history phrasing in the docs it lists", () => {
     fx = fixture({ files: { ...lockExample, "services/locks/docs/LOCKS.md": "# Locks\n" } });
     write(fx.repo, "services/locks/docs/LOCKS.md", "# Locks\n\nPassages were previously logged to a file.\n");
     const root = fx.load();
     const r = ops.complete(root, resolveRef(root, 23), ["services/locks/docs/LOCKS.md"]);
     expect(JSON.stringify(r.result.docFindings)).toContain("previously");
+  });
+});
+
+describe("update", () => {
+  it("writes one heading when section content repeats it", () => {
+    fx = fixture({ files: lockExample });
+    let root = fx.load();
+    ops.update(root, resolveRef(root, 23), { section: "Measures", content: "## Measures\n\nHow long a passage takes." });
+    root = fx.load();
+    ops.update(root, resolveRef(root, 23), { section: "Goal", content: "### goal\n\nRecord every passage." });
+    const text = read(`${C}/23-passage-recorded-event.md`);
+    expect(text.match(/^## Measures$/gm)).toHaveLength(1);
+    expect(text).toContain("## Measures\n\nHow long a passage takes.");
+    expect(text.match(/goal$/gim)).toHaveLength(1);
+    expect(text).toContain("## Goal\n\nRecord every passage.");
+  });
+
+  it("keeps a leading heading that names something else", () => {
+    fx = fixture({ files: lockExample });
+    const root = fx.load();
+    ops.update(root, resolveRef(root, 23), { section: "Findings", content: "### Timings\n\n4 minutes." });
+    expect(read(`${C}/23-passage-recorded-event.md`)).toContain("## Findings\n\n### Timings\n\n4 minutes.");
   });
 });
 

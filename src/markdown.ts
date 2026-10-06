@@ -215,10 +215,18 @@ export function setH1(body: string, title: string): string {
 
 /** Replace a section's content, or add the section at the end (before any appendix). */
 export function setSection(body: string, name: string, content: string): string {
+  content = withoutLeadingHeading(content, name);
   const s = findSection(body, name);
   const contentLines = ["", ...content.replace(/\s+$/, "").split("\n"), ""];
   if (s) return replaceLines(body, s.start, s.end, contentLines);
   return insertSection(body, name, content);
+}
+
+/** Section content minus a leading heading naming that section (callers often include it). */
+function withoutLeadingHeading(content: string, name: string): string {
+  const m = /^\s*#{1,6}[ \t]+(.+?)[ \t]*#*[ \t]*(?:\r?\n|$)/.exec(content);
+  if (!m || m[1]!.trim().toLowerCase() !== name.trim().toLowerCase()) return content;
+  return content.slice(m[0].length).replace(/^(?:[ \t]*\r?\n)+/, "");
 }
 
 /** Insert a new level-2 section before any "Appendix" heading, else at the end. */
