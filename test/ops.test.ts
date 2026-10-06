@@ -179,6 +179,24 @@ describe("complete", () => {
   });
 });
 
+describe("section placeholders", () => {
+  it("create fills empty sections, and question changes keep a placeholder in place", () => {
+    fx = fixture({ files: lockExample });
+    let root = fx.load();
+    const r = ops.create(root, { collection: "sb", title: "Night passages" });
+    const text = () => read(r.result.path);
+    expect(text()).toContain("## Open questions\n\n_None._\n\n## Acceptance criteria\n\n_What must be true when this is done._\n");
+    root = fx.load();
+    expect(ops.preflight(root, resolveRef(root, r.result.ref)).checks.find((c) => c.check === "Acceptance criteria")?.result).toBe("fail");
+    ops.addQuestion(root, resolveRef(root, r.result.ref), "Who keeps the lock open after dark?");
+    expect(text()).toContain("## Open questions\n\n- Who keeps the lock open after dark?\n\n## Acceptance");
+    root = fx.load();
+    ops.resolveQuestion(root, resolveRef(root, r.result.ref), { index: 1 }, "The lock keeper on call.");
+    expect(text()).toContain("## Open questions\n\n_None._\n");
+    expect(text()).toContain("- The lock keeper on call.");
+  });
+});
+
 describe("update", () => {
   it("writes one heading when section content repeats it", () => {
     fx = fixture({ files: lockExample });

@@ -240,10 +240,22 @@ export function insertSection(body: string, name: string, content: string, befor
   return `${trimmed}\n\n${block.join("\n")}`;
 }
 
-/** Append list item(s) to a section, creating the section if needed. */
+/** Placeholder text for a section with nothing in it yet. */
+export const NONE = "_None._";
+
+/** Does the section hold only italic placeholder lines (`_None._`, `_What and why._`)? */
+export function holdsOnlyPlaceholder(body: string, name: string): boolean {
+  const s = findSection(body, name);
+  if (!s) return false;
+  const text = lines(body).slice(s.start, s.end).filter((l) => l.trim() !== "");
+  return text.length > 0 && text.every((l) => /^\s*_[^_]+_\s*$/.test(l));
+}
+
+/** Append list item(s) to a section, creating the section if needed and replacing a placeholder. */
 export function appendToSection(body: string, name: string, itemText: string, before?: string[]): string {
   const s = findSection(body, name);
   if (!s) return insertSection(body, name, itemText, before);
+  if (holdsOnlyPlaceholder(body, name)) return setSection(body, name, itemText);
   const ls = lines(body);
   let at = s.end;
   while (at > s.start && ls[at - 1]!.trim() === "") at--;

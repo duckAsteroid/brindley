@@ -3,6 +3,7 @@ import { dirname, isAbsolute, join, posix, relative, resolve, sep } from "node:p
 import { COLLECTION_STATUSES, STATUSES, normaliseStatus, type Collection, type Initiative, type Root } from "./model.js";
 import {
   DEPENDENCIES,
+  NONE,
   OPEN_QUESTIONS,
   RELATED,
   listItems,
@@ -300,13 +301,17 @@ export function create(root: Root, input: CreateInput): OpResult<{ ref: string; 
     "",
     "## Dependencies",
     "",
-    ...(deps.length ? deps : ["_None._"]),
+    ...(deps.length ? deps : [NONE]),
     "",
     ...(related.length ? ["## Related", "", ...related, ""] : []),
     ...(input.type === "spike" ? SPIKE_SECTIONS : []),
     "## Open questions",
     "",
+    NONE,
+    "",
     "## Acceptance criteria",
+    "",
+    CRITERIA_PROMPT,
     "",
   ].join("\n");
   const file = join(root.repoRoot, fileRel);
@@ -314,6 +319,9 @@ export function create(root: Root, input: CreateInput): OpResult<{ ref: string; 
   written.push(file);
   return finish(root, [c.name], written, { ref: `${c.name}#${number}`, number, path: rel(root, file) }, note ? [note] : []);
 }
+
+/** Skeleton prompt for acceptance criteria; italic, so `sectionIsBlank` still treats it as missing. */
+const CRITERIA_PROMPT = "_What must be true when this is done._";
 
 export const MEASURES = "Measures";
 export const FINDINGS = "Findings";
@@ -461,6 +469,8 @@ export function resolveQuestion(
     // Swallow one blank line so removing an item doesn't leave a gap.
     if (ls[end] !== undefined && ls[end]!.trim() === "" && (q.start === 0 || ls[q.start - 1]!.trim() === "")) end++;
     body = replaceLines(i.body, q.start, end, []);
+    const s = findSection(body, OPEN_QUESTIONS);
+    if (s && lines(body).slice(s.start, s.end).every((l) => l.trim() === "")) body = setSection(body, OPEN_QUESTIONS, NONE);
     recordedIn = opts.record_in ?? "Decisions";
     const decision = answer.trim().split("\n").map((l, k) => (k === 0 ? `- ${l}` : `  ${l}`)).join("\n");
     body = appendToSection(body, recordedIn, decision, [OPEN_QUESTIONS, "Acceptance criteria"]);
@@ -528,7 +538,7 @@ export function setDependencies(
       for (const item of [...hits].reverse()) body = replaceLines(body, item.start, item.end, []);
       const after = findSection(body, section);
       if (after && lines(body).slice(after.start, after.end).every((l) => l.trim() === "") && blocking)
-        body = setSection(body, section, "_None._");
+        body = setSection(body, section, NONE);
     }
     for (const x of add) {
       const url = /^https?:\/\//i.test(String(x));
