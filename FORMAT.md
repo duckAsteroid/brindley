@@ -103,8 +103,8 @@ one an explicit `name`.
 
 **Aliases** keep references short:
 
-- **Explicit:** `aliases:` in the README front-matter (`aliases: [ese]` → `ese#22`).
-- **Automatic:** the initials of a multi-word folder name — `entity-schema-enhancements` → `ese`,
+- **Explicit:** `aliases:` in the README front-matter (`aliases: [gates]` → `gates#22`).
+- **Automatic:** the initials of a multi-word folder name — `lock-gate-maintenance` → `lgm`,
   `slot-booking` → `sb` — but only when no other collection's name or alias (explicit or
   automatic) is the same. An ambiguous automatic alias is simply not available; give the
   collections explicit aliases instead.
@@ -112,7 +112,7 @@ one an explicit `name`.
   (`docs/initiatives/LOCK-42/slot-booking`). Matching ignores case.
 - Names and explicit aliases must be unique across the repo (validation error otherwise) and use
   only letters, digits, `.`, `_` and `-`.
-- Aliases are for people and tools (`ese#22` in chat or a tool call). Inside initiative files,
+- Aliases are for people and tools (`lgm#22` in chat or a tool call). Inside initiative files,
   dependencies are ordinary relative links (§6), which every Markdown renderer can follow.
 
 - Initiatives never declare their collection — it is always the folder they are in. There is no
@@ -338,7 +338,7 @@ as *what*:
 ## Dependencies
 
 - [19 Boat identity](19-boat-identity.md) — readings are keyed by boat.
-- Needs the [passage event](../../PAR-778/entity-schema-enhancements/23-passage-recorded-event.md)
+- Needs the [passage event](../../LOCK-43/lock-gate-maintenance/23-passage-recorded-event.md)
   to notify captains, and [LOCK-7](https://tracker.example.com/LOCK-7) upstream.
 ```
 

@@ -271,7 +271,7 @@ export function numberedFilesMatching(dir: string, match: (relPath: string) => b
   return out;
 }
 
-/** Automatic alias: initials of a multi-word folder name ("entity-schema-enhancements" → "ese"). */
+/** Automatic alias: initials of a multi-word folder name ("lock-gate-maintenance" → "lgm"). */
 export function initialsAlias(folder: string): string | undefined {
   const words = folder.split(/[-_\s.]+/).filter(Boolean);
   if (words.length < 2) return undefined;

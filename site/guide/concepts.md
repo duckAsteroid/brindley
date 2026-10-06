@@ -45,8 +45,8 @@ Collections can live anywhere in the repo, and there is no repo-level file above
 | `sb#22` | the same, via the automatic alias — the initials of `slot-booking` |
 | `locks#22` | the same, via an explicit alias |
 
-Automatic aliases are the initials of a multi-word folder name (`entity-schema-enhancements` →
-`ese`) and apply only when no other collection uses the same short name. Matching ignores case.
+Automatic aliases are the initials of a multi-word folder name (`lock-gate-maintenance` →
+`lgm`) and apply only when no other collection uses the same short name. Matching ignores case.
 
 Inside initiative files, references to other initiatives are ordinary relative Markdown links, so
 they work in any viewer.

@@ -2,7 +2,7 @@
 
 Already keeping numbered Markdown plans? Mark the folder and Brindley reads it as it is.
 
-> Make `docs/initiatives/PAR-778/entity-schema-enhancements` a collection.
+> Make `docs/plans/schema-enhancements` a collection.
 
 Only the README changes: `brindley: 1` is added to its front-matter, and a generated block is
 appended after your text.
@@ -42,7 +42,7 @@ ignore:
   - code-review/
 ```
 
-> Preview ignoring `*-rationale.md` in ese.
+> Preview ignoring `*-rationale.md` in lgm.
 
 The `ignore` tool shows what a pattern would match before writing it. Ignored numbers are still
 never reused.

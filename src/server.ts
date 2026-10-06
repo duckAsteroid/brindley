@@ -29,10 +29,10 @@ export { VERSION };
 /** Sent to clients on connect: how Brindley sees a repository. */
 export const INSTRUCTIONS = `Brindley manages planned work as Markdown files in git. Design fully before anyone digs.
 
-- The unit of work is an **initiative**. People also call them **tickets** or **issues** — all three mean the same thing here, so "create a ticket", "what issues are ready?" or "close ticket ese#22" all map onto these tools.
+- The unit of work is an **initiative**. People also call them **tickets** or **issues** — all three mean the same thing here, so "create a ticket", "what issues are ready?" or "close ticket lgm#22" all map onto these tools.
 
 - A collection is any folder whose README.md front-matter has \`brindley: 1\`. Mark one with create_collection (existing files are adopted; nothing moves). There is no repo-level file.
-- Initiatives are \`<number>-<slug>.md\` files in the collection folder or its immediate sub-folders. Refer to them as \`<collection>#<number>\`, where the collection is its name (front-matter \`name:\`, else the folder name), an alias (\`aliases:\` in front-matter, or the automatic initials of the folder name, e.g. entity-schema-enhancements → ese), or its path; or a bare number when unambiguous.
+- Initiatives are \`<number>-<slug>.md\` files in the collection folder or its immediate sub-folders. Refer to them as \`<collection>#<number>\`, where the collection is its name (front-matter \`name:\`, else the folder name), an alias (\`aliases:\` in front-matter, or the automatic initials of the folder name, e.g. lock-gate-maintenance → lgm), or its path; or a bare number when unambiguous.
 - Status comes from front-matter \`status:\`, else the sub-folder name (completed/ → done, deferred/ → deferred, superseded/ → superseded). Core statuses: draft, designed (design complete, ready to implement), in-progress, deferred, done, abandoned, superseded. Common words are aliases (proposed → draft, completed → done, future → deferred, …); a collection can map its own with \`statuses:\`.
 - A spike (\`type: spike\`) builds just enough to measure what its \`## Measures\` section asks, then records \`## Findings\`. Its code stays on its own branch and may become the basis of the real implementation. Use the \`spike\` prompt to run one.
 - A theme overview doc is a non-numbered .md in a collection folder with \`theme: <tag>\` in its front-matter; initiatives join the theme with \`tags: [<tag>]\`. Brindley keeps a generated list of the theme's initiatives in the doc, and points to it from \`get\`, \`tags\` and the prompts.
@@ -46,7 +46,7 @@ export interface ServerOptions {
   autoReadme?: boolean;
 }
 
-const refArg = z.union([z.string(), z.number()]).describe('Initiative (ticket/issue): "collection#n" (e.g. "ese#22"), a bare number, or a path.');
+const refArg = z.union([z.string(), z.number()]).describe('Initiative (ticket/issue): "collection#n" (e.g. "lgm#22"), a bare number, or a path.');
 const refList = z.array(z.union([z.string(), z.number()]));
 
 function summary(root: Root, i: Initiative) {
@@ -238,7 +238,7 @@ export function createServer(opts: ServerOptions): McpServer {
     {
       path: z.string().describe('Folder relative to the repo root, e.g. "docs/initiatives/LOCK-42/slot-booking"'),
       name: z.string().optional().describe("Name used in references (name#n); defaults to the folder name"),
-      aliases: z.array(z.string()).optional().describe('Short names for references, e.g. ["ese"] for "ese#22"'),
+      aliases: z.array(z.string()).optional().describe('Short names for references, e.g. ["lgm"] for "lgm#22"'),
       ...collectionFields,
     },
     (root, a) => ops.createCollection(root, a.path, a),
@@ -464,7 +464,7 @@ export function createServer(opts: ServerOptions): McpServer {
       type: z.string().optional().describe("feature, bug, refactor, perf, docs, chore, spike, …"),
       tags: z.array(z.string()).optional(),
       goal: z.string().optional(),
-      depends_on: refList.optional().describe('Initiatives (e.g. "ese#22", 23) or ticket URLs to link under ## Dependencies'),
+      depends_on: refList.optional().describe('Initiatives (e.g. "lgm#22", 23) or ticket URLs to link under ## Dependencies'),
       related: refList.optional().describe("Initiatives or URLs to link under ## Related (non-blocking)"),
       owner: z.string().optional(),
     },

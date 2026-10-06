@@ -376,41 +376,41 @@ describe("ignore", () => {
 describe("collection aliases", () => {
   const two = (extra = "") => ({
     ...lockExample,
-    "docs/initiatives/PAR-778/entity-schema-enhancements/README.md": `---\nbrindley: 1\n${extra}---\n# Schema\n`,
-    "docs/initiatives/PAR-778/entity-schema-enhancements/22-impact.md": "---\nstatus: designed\n---\n# Impact\n",
-    [`${C}/40-uses-schema.md`]: "---\nstatus: designed\n---\n# Uses schema\n\n## Dependencies\n\n- [impact](../../PAR-778/entity-schema-enhancements/22-impact.md)\n",
+    "docs/initiatives/LOCK-43/lock-gate-maintenance/README.md": `---\nbrindley: 1\n${extra}---\n# Gates\n`,
+    "docs/initiatives/LOCK-43/lock-gate-maintenance/22-leak-survey.md": "---\nstatus: designed\n---\n# Leak survey\n",
+    [`${C}/40-gate-alarms.md`]: "---\nstatus: designed\n---\n# Gate alarms\n\n## Dependencies\n\n- [leak survey](../../LOCK-43/lock-gate-maintenance/22-leak-survey.md)\n",
   });
 
   it("derives an initials alias and resolves references through it, ignoring case", () => {
     fx = fixture({ files: two() });
     const root = fx.load();
-    const ese = root.collections.find((c) => c.name === "entity-schema-enhancements")!;
-    expect(ese.aliases).toEqual(["ese"]);
-    expect(resolveRef(root, "ese#22").title).toBe("Impact");
+    const lgm = root.collections.find((c) => c.name === "lock-gate-maintenance")!;
+    expect(lgm.aliases).toEqual(["lgm"]);
+    expect(resolveRef(root, "lgm#22").title).toBe("Leak survey");
     const user = resolveRef(root, "slot-booking#40");
-    expect(user.dependsOn[0]).toMatchObject({ collection: "entity-schema-enhancements", number: 22 });
+    expect(user.dependsOn[0]).toMatchObject({ collection: "lock-gate-maintenance", number: 22 });
     expect(isReady(root, user)).toBe(false); // 22 is designed, not done
-    expect(dependants(root, resolveRef(root, "ese#22")).map((i) => i.number)).toEqual([40]);
+    expect(dependants(root, resolveRef(root, "lgm#22")).map((i) => i.number)).toEqual([40]);
   });
 
   it("uses explicit aliases from front-matter", () => {
-    fx = fixture({ files: two("aliases: [schema]\n") });
+    fx = fixture({ files: two("aliases: [gates]\n") });
     const root = fx.load();
-    expect(resolveRef(root, "schema#22").title).toBe("Impact");
-    expect(resolveRef(root, "ese#22").title).toBe("Impact"); // the automatic one still applies
+    expect(resolveRef(root, "gates#22").title).toBe("Leak survey");
+    expect(resolveRef(root, "lgm#22").title).toBe("Leak survey"); // the automatic one still applies
   });
 
   it("drops an automatic alias that would be ambiguous", () => {
-    fx = fixture({ files: { ...two(), "elsewhere/every-small-edit/README.md": "---\nbrindley: 1\n---\n# Other\n" } });
+    fx = fixture({ files: { ...two(), "elsewhere/left-gate-mechanisms/README.md": "---\nbrindley: 1\n---\n# Other\n" } });
     const root = fx.load();
-    expect(root.collections.find((c) => c.name === "entity-schema-enhancements")!.aliases).toEqual([]);
-    expect(() => resolveRef(root, "ese#22")).toThrow();
+    expect(root.collections.find((c) => c.name === "lock-gate-maintenance")!.aliases).toEqual([]);
+    expect(() => resolveRef(root, "lgm#22")).toThrow();
   });
 
   it("flags explicit aliases that clash", () => {
     fx = fixture({ files: { ...two("aliases: [slot-booking]\n") } });
     expect(validate(fx.load()).map((f) => f.rule)).toContain("alias-clash");
-    expect(() => ops.createCollection(fx.load(), "x/y", { aliases: ["ese"] })).toThrow(/already refers/);
+    expect(() => ops.createCollection(fx.load(), "x/y", { aliases: ["lgm"] })).toThrow(/already refers/);
   });
 });
 
@@ -448,20 +448,20 @@ describe("dependencies from the ## Dependencies section", () => {
     fx = fixture({
       files: {
         ...lockExample,
-        "docs/initiatives/PAR-778/entity-schema-enhancements/README.md": "---\nbrindley: 1\n---\n# Schema\n",
-        "docs/initiatives/PAR-778/entity-schema-enhancements/22-impact.md": "---\nstatus: done\n---\n# Impact\n",
+        "docs/initiatives/LOCK-43/lock-gate-maintenance/README.md": "---\nbrindley: 1\n---\n# Gates\n",
+        "docs/initiatives/LOCK-43/lock-gate-maintenance/22-leak-survey.md": "---\nstatus: done\n---\n# Leak survey\n",
       },
     });
     let root = fx.load();
-    ops.setDependencies(root, resolveRef(root, "sb#23"), { add: ["ESE#22", "https://jira.example.com/browse/LOCK-7"], why: "needed first" });
+    ops.setDependencies(root, resolveRef(root, "sb#23"), { add: ["LGM#22", "https://jira.example.com/browse/LOCK-7"], why: "needed first" });
     const text = () => read(`${C}/23-passage-recorded-event.md`);
     expect(text()).toContain(
-      "## Dependencies\n\n- [entity-schema-enhancements#22 Impact](../../PAR-778/entity-schema-enhancements/22-impact.md) — needed first\n- [https://jira.example.com/browse/LOCK-7](https://jira.example.com/browse/LOCK-7) — needed first",
+      "## Dependencies\n\n- [lock-gate-maintenance#22 Leak survey](../../LOCK-43/lock-gate-maintenance/22-leak-survey.md) — needed first\n- [https://jira.example.com/browse/LOCK-7](https://jira.example.com/browse/LOCK-7) — needed first",
     );
     root = fx.load();
     expect(dependencyReport(root, resolveRef(root, "sb#23")).map((d) => d.classification)).toEqual(["satisfied", "external"]);
-    ops.setDependencies(root, resolveRef(root, "sb#23"), { remove: ["ese#22"] });
-    expect(text()).not.toContain("22-impact.md");
+    ops.setDependencies(root, resolveRef(root, "sb#23"), { remove: ["lgm#22"] });
+    expect(text()).not.toContain("22-leak-survey.md");
     expect(text()).toContain("LOCK-7");
   });
 

@@ -123,7 +123,7 @@ export interface CollectionMeta {
   statuses?: Record<string, string>;
   /** Paths or globs, relative to the collection folder, that Brindley ignores. */
   ignore?: string[];
-  /** Explicit short names for references, e.g. [ese] for "ese#22". */
+  /** Explicit short names for references, e.g. [lgm] for "lgm#22". */
   aliases?: string[];
 }
 
