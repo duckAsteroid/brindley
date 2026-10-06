@@ -12,8 +12,8 @@
   <path d="M15 35h21v21H15z" fill="#2f8f9d"/>
   <path d="M36 43h13v13H36z" fill="#4fb3bf"/>
   <!-- The spade, waiting until the design is done -->
-  <path d="M32 12h8a1.5 1.5 0 0 1 1.5 1.5v4a1.5 1.5 0 0 1-1.5 1.5h-2.6v19h-2.8v-19H32a1.5 1.5 0 0 1-1.5-1.5v-4A1.5 1.5 0 0 1 32 12zm.5 2.5v2h7v-2z" fill="#12343b"/>
-  <path d="M31 37.5h10v8.5c0 3.4-2.4 6.6-5 8.5-2.6-1.9-5-5.1-5-8.5z" fill="#12343b"/>
+  <path d="M32 12h8a1.5 1.5 0 0 1 1.5 1.5v4a1.5 1.5 0 0 1-1.5 1.5h-2.6v13h-2.8v-13H32a1.5 1.5 0 0 1-1.5-1.5v-4A1.5 1.5 0 0 1 32 12zm.5 2.5v2h7v-2z" fill="#12343b"/>
+  <path d="M30.5 31.5h11v13c0 4-2.7 7.6-5.5 9.8-2.8-2.2-5.5-5.8-5.5-9.8z" fill="#12343b"/>
   <text x="78" y="37" fill="#f4efe6" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif" font-size="34" font-weight="700">Brindley</text>
   <text x="79" y="55" fill="#4fb3bf" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif" font-size="12" font-weight="500">Design fully before anyone digs</text>
 </svg>
