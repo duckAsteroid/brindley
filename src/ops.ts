@@ -117,9 +117,11 @@ export interface CollectionInput {
   docs?: string[];
   types?: string[];
   tags?: Record<string, string>;
+  statuses?: Record<string, string>;
+  ignore?: string[];
 }
 
-const COLLECTION_KEYS = ["name", "title", "summary", "status", "owner", "link", "agent", "docs", "types", "tags"] as const;
+const COLLECTION_KEYS = ["name", "title", "summary", "status", "owner", "link", "agent", "docs", "types", "tags", "statuses", "ignore"] as const;
 
 /** Keep only collection README fields, dropping undefined values and any other arguments. */
 function collectionFields(input: CollectionInput): Record<string, unknown> {

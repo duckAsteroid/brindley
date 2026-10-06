@@ -320,3 +320,34 @@ describe("status folders and aliases", () => {
     expect(read("plans/deferred/5-later.md")).toMatch(/^---\nstatus: deferred\n/);
   });
 });
+
+describe("ignore", () => {
+  const files = (ignore: string) => ({
+    "plans/README.md": `---\nbrindley: 1\nignore:\n${ignore}\n---\n# Plans\n`,
+    "plans/1-one.md": "---\nstatus: draft\n---\n# One\n",
+    "plans/2-scratch.md": "---\nstatus: draft\n---\n# Scratch\n",
+    "plans/completed/3-three.md": "# Three\n",
+    "plans/completed/3-three-rationale.md": "# Rationale\n",
+    "plans/code-review/4-review.md": "# Review\n",
+    "plans/code-review/5-keep.md": "# Keep\n",
+  });
+  const numbersOf = (fx: Fixture) => fx.load().collections[0]!.initiatives.map((i) => i.rel.replace("plans/", ""));
+
+  it("ignores files and folders with .gitignore-style patterns", () => {
+    fx = fixture({ files: files('  - "# comment"\n  - "*-rationale.md"\n  - /2-scratch.md\n  - code-review/\n') });
+    expect(numbersOf(fx)).toEqual(["1-one.md", "completed/3-three.md"]);
+    const rules = validate(fx.load()).map((f) => f.rule);
+    expect(rules).not.toContain("duplicate-number");
+  });
+
+  it("supports negation", () => {
+    fx = fixture({ files: files('  - "code-review/*"\n  - "!code-review/5-keep.md"\n') });
+    expect(numbersOf(fx)).toContain("code-review/5-keep.md");
+    expect(numbersOf(fx)).not.toContain("code-review/4-review.md");
+  });
+
+  it("still counts ignored numbers when coining", () => {
+    fx = fixture({ files: files("  - code-review/\n") });
+    expect(ops.nextNumber(fx.load(), fx.load().collections[0]!).number).toBe(6);
+  });
+});

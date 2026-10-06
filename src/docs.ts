@@ -3,23 +3,9 @@ import { dirname, join, relative, resolve } from "node:path";
 import type { Root } from "./model.js";
 import { stripCodeFences } from "./markdown.js";
 import { changedFiles, git } from "./git.js";
-import { toPosix } from "./repo.js";
+import { globToRegExp, toPosix } from "./repo.js";
 
-export function globToRegExp(glob: string): RegExp {
-  let re = "";
-  for (let i = 0; i < glob.length; i++) {
-    const c = glob[i]!;
-    if (c === "*") {
-      if (glob[i + 1] === "*") {
-        const slash = glob[i + 2] === "/";
-        re += slash ? "(?:.*/)?" : ".*";
-        i += slash ? 2 : 1;
-      } else re += "[^/]*";
-    } else if (c === "?") re += "[^/]";
-    else re += c.replace(/[.+^${}()|[\]\\]/g, "\\$&");
-  }
-  return new RegExp(`^${re}$`);
-}
+export { globToRegExp };
 
 /** Docs globs in effect: the given collection's, else every collection's combined. */
 export function docsGlobs(root: Root, collectionDocs?: string[]): string[] {

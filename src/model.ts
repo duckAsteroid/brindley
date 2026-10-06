@@ -108,6 +108,8 @@ export interface CollectionMeta {
   tags?: Record<string, string>;
   /** Collection-specific status words mapped to core statuses, e.g. { spiked: designed }. */
   statuses?: Record<string, string>;
+  /** Paths or globs, relative to the collection folder, that Brindley ignores. */
+  ignore?: string[];
 }
 
 export interface Collection {

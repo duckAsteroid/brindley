@@ -1,5 +1,6 @@
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { dirname, join, relative, resolve, sep } from "node:path";
+import ignore from "ignore";
 import {
   ASSET_DIR,
   INITIATIVE_FILE,
@@ -27,6 +28,34 @@ export function findRepoRoot(start: string): string {
     if (parent === dir) return resolve(start);
     dir = parent;
   }
+}
+
+export function globToRegExp(glob: string): RegExp {
+  let re = "";
+  for (let i = 0; i < glob.length; i++) {
+    const c = glob[i]!;
+    if (c === "*") {
+      if (glob[i + 1] === "*") {
+        const slash = glob[i + 2] === "/";
+        re += slash ? "(?:.*/)?" : ".*";
+        i += slash ? 2 : 1;
+      } else re += "[^/]*";
+    } else if (c === "?") re += "[^/]";
+    else re += c.replace(/[.+^${}()|[\]\\]/g, "\\$&");
+  }
+  return new RegExp(`^${re}$`);
+}
+
+/**
+ * Matcher for a collection's `ignore:` patterns, with .gitignore semantics (relative to the
+ * collection folder): `#` comments, `!` negation, a leading `/` anchors to the collection folder,
+ * a trailing `/` matches folders only, and a pattern without `/` matches at any depth. Pass
+ * folder paths with a trailing "/".
+ */
+export function ignoreMatcher(patterns: string[] = []): (relPath: string) => boolean {
+  if (patterns.length === 0) return () => false;
+  const ig = ignore().add(patterns);
+  return (relPath) => ig.ignores(toPosix(relPath).replace(/^\.?\//, ""));
 }
 
 function str(v: unknown): string | undefined {
@@ -140,6 +169,7 @@ function collectionMeta(data: Record<string, unknown>, folder: string): Collecti
     types: data["types"] !== undefined ? strList(data["types"]) : undefined,
     tags: tagMap(data["tags"]),
     statuses: tagMap(data["statuses"]),
+    ignore: data["ignore"] !== undefined ? strList(data["ignore"]) : undefined,
   };
 }
 
@@ -171,9 +201,9 @@ export function findCollectionReadmes(repoRoot: string): string[] {
 }
 
 /** Numbered initiative files directly in `dir`. */
-function initiativeFiles(dir: string): string[] {
+function initiativeFiles(dir: string, ignored: (name: string) => boolean = () => false): string[] {
   return readdirSync(dir)
-    .filter((e) => INITIATIVE_FILE.test(e) && statSync(join(dir, e)).isFile())
+    .filter((e) => INITIATIVE_FILE.test(e) && !ignored(e) && statSync(join(dir, e)).isFile())
     .sort();
 }
 
@@ -182,10 +212,14 @@ function initiativeFiles(dir: string): string[] {
  * numbered initiatives. Asset folders ("21-…") and folders that are collections themselves
  * are excluded.
  */
-export function statusFolders(dir: string): string[] {
+export function statusFolders(dir: string, ignored: (relPath: string) => boolean = () => false): string[] {
   return readdirSync(dir)
-    .filter((e) => !e.startsWith(".") && !ASSET_DIR.test(e) && statSync(join(dir, e)).isDirectory())
-    .filter((e) => !isCollectionReadme(join(dir, e, "README.md")) && initiativeFiles(join(dir, e)).length > 0)
+    .filter((e) => !e.startsWith(".") && !ASSET_DIR.test(e) && statSync(join(dir, e)).isDirectory() && !ignored(`${e}/`))
+    .filter(
+      (e) =>
+        !isCollectionReadme(join(dir, e, "README.md")) &&
+        initiativeFiles(join(dir, e), (f) => ignored(`${e}/${f}`)).length > 0,
+    )
     .sort();
 }
 
@@ -197,10 +231,11 @@ export function loadCollection(repoRoot: string, readmeRel: string): Collection 
   const data = readFrontMatterOf(readme) ?? {};
   const name = str(data["name"]) ?? folder;
   const meta = collectionMeta(data, folder);
+  const ignored = ignoreMatcher(meta.ignore);
   const initiatives = [
-    ...initiativeFiles(dir).map((f) => loadInitiative(join(dir, f), repoRoot, name, { statuses: meta.statuses })),
-    ...statusFolders(dir).flatMap((sub) =>
-      initiativeFiles(join(dir, sub)).map((f) =>
+    ...initiativeFiles(dir, ignored).map((f) => loadInitiative(join(dir, f), repoRoot, name, { statuses: meta.statuses })),
+    ...statusFolders(dir, ignored).flatMap((sub) =>
+      initiativeFiles(join(dir, sub), (f) => ignored(`${sub}/${f}`)).map((f) =>
         loadInitiative(join(dir, sub, f), repoRoot, name, { folder: sub, statuses: meta.statuses }),
       ),
     ),

@@ -129,6 +129,8 @@ export function createServer(opts: ServerOptions): McpServer {
     title: z.string().optional(),
     types: z.array(z.string()).optional().describe("Initiative types this collection uses; others are flagged"),
     tags: z.record(z.string(), z.string()).optional().describe("Tags (themes) with one-line descriptions"),
+    statuses: z.record(z.string(), z.string()).optional().describe("This collection's own status words mapped to core statuses"),
+    ignore: z.array(z.string()).optional().describe('Paths or globs relative to the collection folder to ignore, e.g. ["code-review/", "completed/24-*-rationale.md"]'),
     summary: z.string().optional(),
     owner: z.string().optional(),
     link: z.string().optional().describe("External ticket/epic URL"),

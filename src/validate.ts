@@ -2,7 +2,7 @@ import { existsSync, readdirSync, statSync } from "node:fs";
 import { dirname, join, relative, resolve } from "node:path";
 import { ASSET_DIR, COLLECTION_STATUSES, STATUSES, normaliseStatus, type Initiative, type Root } from "./model.js";
 import { cycles, target } from "./deps.js";
-import { allInitiatives, declaredTags, findCollection, initiativeKey, toPosix } from "./repo.js";
+import { allInitiatives, declaredTags, findCollection, ignoreMatcher, initiativeKey, toPosix } from "./repo.js";
 import { stripCodeFences } from "./markdown.js";
 import { regenerate } from "./readme.js";
 import { checkDocs } from "./docs.js";
@@ -49,7 +49,9 @@ export function validate(root: Root, opts: { collection?: string; docs?: boolean
     }
 
     const numbers = new Set(c.initiatives.map((i) => i.number));
+    const ignored = ignoreMatcher(c.meta.ignore);
     for (const e of readdirSync(c.dir)) {
+      if (ignored(statSync(join(c.dir, e)).isDirectory() ? `${e}/` : e)) continue;
       const m = /^(\d+)-/.exec(e);
       if (m && ASSET_DIR.test(e) && statSync(join(c.dir, e)).isDirectory() && !numbers.has(Number(m[1])))
         warn("orphan-assets", rel(join(c.dir, e)), `Asset directory matches no initiative numbered ${m[1]}.`);

@@ -81,6 +81,9 @@ docs: ["services/locks/docs/*.md"]          # what counts as project docs for th
 types: [feature, bug, refactor, perf, docs, chore, spike]   # initiative types in use (§4.1)
 tags:                                       # themes (§4.2)
   notifications: Telling captains about changes to their slots
+ignore:                                     # .gitignore-style, relative to this folder
+  - code-review/
+  - "*-rationale.md"
 ---
 # LOCK-42 lock slot booking
 
@@ -105,7 +108,12 @@ wherever a collection is expected.
   name. Front-matter always wins. New work should stay in the collection folder and use
   front-matter, because moving a file breaks the links to it.
 - Asset folders (`<number>-…/`) and sub-folders that are collections themselves are not status
-  folders. Sub-folders with no numbered files (e.g. `code-review/`) are ignored.
+  folders. Sub-folders with no numbered files are ignored.
+- **`ignore:`** lists paths Brindley should not treat as initiatives, with `.gitignore` semantics
+  relative to the collection folder: `#` comments, `!` to re-include, a leading `/` to anchor to
+  the collection folder, a trailing `/` for folders, and patterns without `/` matching at any
+  depth. Use it for numbered files that aren't initiatives (a companion rationale, review notes).
+  Ignored numbers are still never reused when a new initiative is numbered.
 - Collection folders in gitignored paths (such as worktrees under an ignored directory) are not
   collections of this working tree.
 
