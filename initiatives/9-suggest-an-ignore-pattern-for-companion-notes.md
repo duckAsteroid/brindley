@@ -4,11 +4,11 @@ status: draft
 updated: 2026-10-06
 tags: [adoption]
 ---
-# Suggest an ignore pattern for companion notes
+# Suggest a home for companion notes
 
 ## Goal
 
-When `duplicate-number` fires and one of the files looks like a companion note rather than an initiative (a `-rationale`, `-notes` or `-design` suffix, say), put the exact `ignore` pattern to add in the finding, instead of only pointing at the `ignore` tool.
+When `duplicate-number` fires and one of the files looks like a companion note rather than an initiative (a `-rationale`, `-notes` or `-design` suffix, say), the finding says what to do with it: move it into the initiative's asset folder (FORMAT §3), or add the exact `ignore` pattern — instead of only pointing at the `ignore` tool.
 
 ## Dependencies
 
@@ -18,8 +18,10 @@ _None._
 
 - [GitHub #5](https://github.com/duckAsteroid/brindley/issues/5) — the request this came from
 
-## Open questions
+## Decisions
 
-- What makes a file look like a companion note: only a filename suffix (`-rationale`, `-notes`, `-design`), or also its shape (no front-matter status, no `## Dependencies`)? Should the suffix list be configurable?
+- Name only: a file is a likely companion when it shares its number with another file and its name is the other's name plus a suffix (`24-booking-window.md` / `24-booking-window-rationale.md`). Not shape — mid-adoption, real initiatives also lack a front-matter status and `## Dependencies`. No configuration: it is only a suggestion, and `ignore:` already holds collection-specific patterns. The `duplicate-number` finding then offers two remedies in this order: (1) move the companion into the initiative's asset folder (FORMAT §3), e.g. `24-booking-window/rationale.md`, and link it from the initiative — the format's own home for companion material, never counted as an initiative; (2) to leave it in place, add an `ignore` pattern: `*-<suffix>.md` for common suffixes (`rationale`, `notes`, `design`), else the exact filename. Brindley does not move the file itself; the hint says links to it need updating. A lone companion with no same-numbered initiative (it does not trigger `duplicate-number`) is out of scope.
+
+## Open questions
 
 ## Acceptance criteria

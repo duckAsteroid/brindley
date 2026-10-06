@@ -18,8 +18,10 @@ _None._
 
 - [GitHub #4](https://github.com/duckAsteroid/brindley/issues/4) — the request this came from
 
-## Open questions
+## Decisions
 
-- Letting `update` write `status` makes `set_status`'s lifecycle checks easy to sidestep. Is that acceptable, or should the unchecked write be limited — e.g. only when no status is recorded yet, or a separate "backfill" tool — and editing a done initiative's body simply allowed by `update`?
+- Recording vs transitioning is decided by whether front-matter already has a `status:`. With none, writing one records a fact and is unchecked — including `done`, which is written with `docs_impact: "none: completed before Brindley"` so `validate`'s docs-impact check (src/validate.ts:161, which only exempts status taken from a folder) stays satisfied without a new exception. With one recorded, any change is a transition through `set_status` and its lifecycle checks, `force` remaining the escape hatch. Editing a done initiative's body needs no change: `update` has no status check (src/ops.ts:355); document that it is the way to refine settled work, so agents stop forcing status round-trips.
+
+## Open questions
 
 ## Acceptance criteria

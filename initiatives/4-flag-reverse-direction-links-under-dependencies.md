@@ -4,11 +4,11 @@ status: draft
 updated: 2026-10-06
 tags: [dependency-links, adoption]
 ---
-# Flag reverse-direction links under Dependencies
+# Cycle errors advise where back-references belong
 
 ## Goal
 
-Stop reverse or sideways cross-references ("depended on by 19", "precedes 57", "interacts with 24") written under `## Dependencies` from being read as blocking edges without comment. `validate` warns when a Dependencies link sits in such wording and suggests `## Related`; a `cycle` error names the edge in the loop most likely to be the mistake, e.g. "the B → A edge in B's ## Dependencies is phrased as 'depended on by'". The data model does not change. In one adopted collection all 17 reported cycles were this pattern.
+Authors naturally write back-references ("depended on by 19", "precedes 57") under `## Dependencies`, where Brindley reads every link as a blocking edge; in one adopted collection all 17 reported cycles were this. Make the `cycle` error say how to fix it: move a back-reference to `## Related` to keep the link and its non-blocking graph edge (cycles are fine there), or to a section such as `## See also` for an ordinary link with no Brindley meaning. Advice only — no attempt to detect reverse wording, and no file edits.
 
 ## Dependencies
 
@@ -18,8 +18,10 @@ _None._
 
 - [GitHub #3](https://github.com/duckAsteroid/brindley/issues/3) — the request this came from
 
-## Open questions
+## Decisions
 
-- Which wording counts as reverse or sideways ("depended on by", "prerequisite for", "precedes", "unblocks", "used by", "interacts with", "relates to")? A fixed English list, or configurable per collection — the same question `check_docs` has open in MCP-SERVER.md.
+- No wording detection: Brindley does not try to recognise reverse or sideways phrasing. Instead the `cycle` error advises the fix for any back-reference in the loop: move it to `## Related` to keep the link and its (non-blocking) graph edge — cycles there are fine — or to a section such as `## See also`, where it is an ordinary link with no Brindley meaning. Brindley does not edit the files; the author or agent moves the link.
+
+## Open questions
 
 ## Acceptance criteria

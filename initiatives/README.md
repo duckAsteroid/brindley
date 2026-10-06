@@ -19,16 +19,17 @@ Planned work on Brindley itself: tools specified in MCP-SERVER.md but not yet bu
 
 | # | Initiative | Type | Status | Ready / blocked by | Open Qs | Owner |
 |---|------------|------|--------|--------------------|---------|-------|
-| 1 | [migrate tool for numbered + completed/ collections](1-migrate-tool-for-numbered-completed-collections.md) | feature | draft | — | 1 | — |
+| 1 | [migrate tool for numbered + completed/ collections](1-migrate-tool-for-numbered-completed-collections.md) | feature | draft | — | 0 | — |
 | 2 | [renumber tool for post-merge number collisions](2-renumber-tool-for-post-merge-number-collisions.md) | feature | draft | — | 0 | — |
 | 3 | [rename_collection tool](3-rename-collection-tool.md) | feature | draft | — | 0 | — |
-| 4 | [Flag reverse-direction links under Dependencies](4-flag-reverse-direction-links-under-dependencies.md) | feature | draft | — | 1 | — |
-| 5 | [set_dependencies removes links inside prose](5-set-dependencies-removes-links-inside-prose.md) | feature | draft | — | 1 | — |
-| 6 | [Record status without lifecycle checks](6-record-status-without-lifecycle-checks.md) | feature | draft | — | 1 | — |
-| 7 | [Infer a missing status from the initiative's prose](7-infer-a-missing-status-from-the-initiative-s-prose.md) | feature | draft | — | 1 | — |
-| 8 | [Fix mode for mechanical validate findings](8-fix-mode-for-mechanical-validate-findings.md) | feature | draft | — | 1 | — |
-| 9 | [Suggest an ignore pattern for companion notes](9-suggest-an-ignore-pattern-for-companion-notes.md) | feature | draft | — | 1 | — |
+| 4 | [Cycle errors advise where back-references belong](4-flag-reverse-direction-links-under-dependencies.md) | feature | draft | — | 0 | — |
+| 5 | [set_dependencies explains links it cannot remove](5-set-dependencies-removes-links-inside-prose.md) | feature | draft | — | 0 | — |
+| 6 | [Record status without lifecycle checks](6-record-status-without-lifecycle-checks.md) | feature | draft | — | 0 | — |
+| 7 | [Infer a missing status from the initiative's prose](7-infer-a-missing-status-from-the-initiative-s-prose.md) | feature | draft | — | 0 | — |
+| 8 | [Fix mode for mechanical validate findings](8-fix-mode-for-mechanical-validate-findings.md) | feature | draft | — | 0 | — |
+| 9 | [Suggest a home for companion notes](9-suggest-an-ignore-pattern-for-companion-notes.md) | feature | draft | — | 0 | — |
 | 10 | [Name the base folder in path errors](10-name-the-base-folder-in-path-errors.md) | feature | draft | — | 0 (+1 impl.) | — |
+| 11 | [Batch status backfill tool](11-batch-status-backfill-tool.md) | feature | draft | — | 0 | — |
 
 ### Dependencies
 
@@ -37,18 +38,22 @@ flowchart LR
   n1["1 migrate tool for numbered + completed/ collections"]:::draft
   n2["2 renumber tool for post-merge number collisions"]:::draft
   n3["3 rename_collection tool"]:::draft
-  n4["4 Flag reverse-direction links under Dependencies"]:::draft
-  n5["5 set_dependencies removes links inside prose"]:::draft
+  n4["4 Cycle errors advise where back-references belong"]:::draft
+  n5["5 set_dependencies explains links it cannot remove"]:::draft
   n6["6 Record status without lifecycle checks"]:::draft
   n7["7 Infer a missing status from the initiative's prose"]:::draft
   n8["8 Fix mode for mechanical validate findings"]:::draft
-  n9["9 Suggest an ignore pattern for companion notes"]:::draft
+  n9["9 Suggest a home for companion notes"]:::draft
   n10["10 Name the base folder in path errors"]:::draft
+  n11["11 Batch status backfill tool"]:::draft
+  n8 -.-> n1
   n4 -.-> n5
   n1 -.-> n7
   n6 -.-> n7
   n7 -.-> n8
-  n2 -.-> n8
+  n1 -.-> n8
+  n6 -.-> n11
+  n7 -.-> n11
   classDef done fill:#e6e6e6,color:#777,stroke:#bbb
   classDef draft fill:#fff,stroke:#999,stroke-dasharray:4 3
   classDef designed fill:#e8f0fe,stroke:#4a7bd0

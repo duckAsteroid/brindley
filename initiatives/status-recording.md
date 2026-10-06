@@ -13,11 +13,12 @@ refining a `done` initiative's findings, which currently needs two forced status
 
 ### Initiatives in this theme
 
-Tagged `status-recording`: 2 open, 0 closed or deferred.
+Tagged `status-recording`: 3 open, 0 closed or deferred.
 
 | Ref | Initiative | Type | Status | Ready / blocked by |
 |-----|------------|------|--------|--------------------|
 | `initiatives#6` | [Record status without lifecycle checks](6-record-status-without-lifecycle-checks.md) | feature | draft | — |
 | `initiatives#7` | [Infer a missing status from the initiative's prose](7-infer-a-missing-status-from-the-initiative-s-prose.md) | feature | draft | — |
+| `initiatives#11` | [Batch status backfill tool](11-batch-status-backfill-tool.md) | feature | draft | — |
 
 <!-- brindley:generated:end -->
