@@ -399,7 +399,8 @@ Two layers:
    - On completion, in the same commit as the code: update the project docs to describe the code
      as it now is — present tense, no history, no rejected alternatives, no links to initiatives —
      and record `docs_impact` (files updated, or `none: <reason>`); settle the initiative's
-     wording; set `status: done` and `updated`.
+     wording, moving rejected alternatives into `## Appendix: Rejected alternatives`; set
+     `status: done` and `updated`.
    - New initiative: next number in the collection, filename `<number>-<slug>.md`,
      `status: draft`.
    ```
