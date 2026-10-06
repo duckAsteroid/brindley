@@ -24,3 +24,5 @@ _None._
 - (implementation) Base folder in every message, or only when it differs from the expected one (the collection folder, or another worktree has the file)? Repeating the repo root on every `broken-link` finding is noisy.
 
 ## Acceptance criteria
+
+_What must be true when this is done._

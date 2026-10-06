@@ -16,9 +16,9 @@ _None._
 
 ## Related
 
-- [6 Record status without lifecycle checks](6-record-status-without-lifecycle-checks.md) — _why this is needed_
-- [7 Infer a missing status from the initiative's prose](7-infer-a-missing-status-from-the-initiative-s-prose.md) — _why this is needed_
-- [https://github.com/duckAsteroid/brindley/issues/4](https://github.com/duckAsteroid/brindley/issues/4) — _why this is needed_
+- [6 Record status without lifecycle checks](6-record-status-without-lifecycle-checks.md) — decides when a status may be written without lifecycle checks
+- [7 Infer a missing status from the initiative's prose](7-infer-a-missing-status-from-the-initiative-s-prose.md) — how a status is taken from the text
+- [GitHub #4](https://github.com/duckAsteroid/brindley/issues/4) — the request this came from
 
 ## Decisions
 
@@ -26,4 +26,8 @@ _None._
 
 ## Open questions
 
+_None._
+
 ## Acceptance criteria
+
+_What must be true when this is done._

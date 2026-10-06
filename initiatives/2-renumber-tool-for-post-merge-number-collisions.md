@@ -15,4 +15,8 @@ _None._
 
 ## Open questions
 
+_None._
+
 ## Acceptance criteria
+
+_What must be true when this is done._
