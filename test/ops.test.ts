@@ -256,6 +256,26 @@ describe("status folders and aliases", () => {
     "plans/7-assets/8-not-an-initiative.md": "# Asset\n",
   };
 
+  const structure = {
+    ...legacy,
+    "plans/2-spike.md": "---\nstatus: spiked\ndepends_on: [3]\n---\n# Spike\n\nBuilds on [the done thing](3-done-thing.md).\n",
+    "plans/completed/3-done-thing.md": "# Done thing\n\n**Status:** Proposed -- still being discussed\n",
+    "plans/9-finished-but-here.md": "---\nstatus: done\ndocs_impact: \"none: test\"\n---\n# Finished\n",
+    "plans/10-no-front-matter.md": "# Prose only\n\n## Status\n\n`draft` — design proposal.\n",
+  };
+
+  it("flags structure problems: wrong folder, prose disagreement, moved links, padding", () => {
+    fx = fixture({ files: structure });
+    const found = validate(fx.load());
+    const msg = (rule: string, file: string) => found.find((f) => f.rule === rule && f.file.endsWith(file))?.message;
+    expect(msg("status-not-in-folder", "9-finished-but-here.md")).toMatch(/keeps done work in "completed\/" and this file is not in a status folder/);
+    expect(msg("status-not-in-folder", "4-reopened.md")).toBeUndefined(); // draft has no status folder
+    expect(msg("status-prose-mismatch", "3-done-thing.md")).toMatch(/body says "Proposed" \(draft\), but the status is done \(from "completed\/"\)/);
+    expect(msg("broken-link", "2-spike.md")).toMatch(/it is now at completed\/3-done-thing\.md/);
+    expect(msg("number-padding", "01-batch.md")).toMatch(/"1-…"/);
+    expect(msg("status-missing", "10-no-front-matter.md")).toMatch(/body says "draft" — add `status: draft`/);
+  });
+
   it("reads statuses from front-matter, aliases, collection words and status folders", () => {
     fx = fixture({ files: legacy });
     const c = fx.load().collections[0]!;

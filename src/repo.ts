@@ -10,7 +10,7 @@ import {
   type Ref,
   type Root,
 } from "./model.js";
-import { h1, humanise, parseAcceptance, parseFrontMatter, parseQuestions, splitFrontMatter } from "./markdown.js";
+import { h1, humanise, parseAcceptance, parseFrontMatter, parseQuestions, proseStatus, splitFrontMatter } from "./markdown.js";
 import { git } from "./git.js";
 
 const SKIP_DIRS = new Set(["node_modules", ".git"]);
@@ -103,6 +103,7 @@ export function loadInitiative(
     status,
     statusRaw,
     statusSource,
+    proseStatus: proseStatus(body),
     folder: opts.folder,
     statusNote: str(fm["status_note"]),
     type: str(fm["type"]),

@@ -84,11 +84,15 @@ function checkInitiative(
 ) {
   const f = rel(i.file);
   for (const p of i.problems) err("parse", f, p);
-  const custom = findCollection(root, i.collection)?.meta.statuses;
+  const collection = findCollection(root, i.collection);
+  const custom = collection?.meta.statuses;
+  const prose = normaliseStatus(i.proseStatus, custom);
   if (!i.status)
     err("status-missing", f, i.folder
       ? `No \`status\`, and folder "${i.folder}/" is not a known status (map it with \`statuses:\` in the collection README).`
-      : "Missing `status`.");
+      : i.proseStatus
+        ? `No \`status\` in front-matter; the body says "${i.proseStatus}"${prose ? ` — add \`status: ${prose}\`` : ""}.`
+        : "Missing `status`.");
   else if (!(STATUSES as readonly string[]).includes(i.status))
     err("status-invalid", f, `Status "${i.statusRaw}" is not known: use one of ${STATUSES.join(", ")}, a common alias, or map it with \`statuses:\` in the collection README.`);
   if (i.folder && i.statusSource === "front-matter") {
@@ -96,6 +100,15 @@ function checkInitiative(
     if (byFolder && byFolder !== i.status)
       warn("status-folder-mismatch", f, `In "${i.folder}/" (${byFolder}) but front-matter says ${i.status}; front-matter wins.`);
   }
+  // A collection that files work by status in folders: is this file where its status says?
+  if (collection && i.status) {
+    const home = statusFolderFor(collection, i.status);
+    if (home && i.folder !== home)
+      warn("status-not-in-folder", f, `Status ${i.status}, but this collection keeps ${i.status} work in "${home}/" and this file is ${i.folder ? `in "${i.folder}/"` : "not in a status folder"}.`);
+  }
+  if (i.status && prose && prose !== i.status)
+    warn("status-prose-mismatch", f, `The body says "${i.proseStatus}" (${prose}), but the status is ${i.status}${i.statusSource === "folder" ? ` (from "${i.folder}/")` : ""}.`);
+  if (/^0\d/.test(i.rel.split("/").pop()!)) warn("number-padding", f, `Zero-padded number; the format uses "${i.number}-…".`);
   for (const key of ["updated", "created"]) {
     const v = i.fm[key];
     if (v !== undefined && !ISO_DATE.test(String(v))) err("date", f, `\`${key}\` must be an ISO date (YYYY-MM-DD).`);
@@ -137,10 +150,20 @@ function checkInitiative(
       const href = decodeURIComponent(m[1]!.split("#")[0]!);
       if (!href || /^[a-z]+:/i.test(href)) continue;
       const fmLines = i.fmText === null ? 0 : i.fmText.split("\n").length + 1;
-      if (!existsSync(resolve(dirname(i.file), href)))
-        warn("broken-link", f, `Link target does not exist: ${m[1]}`, line + 1 + fmLines);
+      if (!existsSync(resolve(dirname(i.file), href))) {
+        const base = href.split("/").pop()!;
+        const moved = collection?.initiatives.find((o) => o.rel.split("/").pop() === base);
+        const hint = moved ? ` — it is now at ${relative(dirname(i.file), moved.file).split("\\").join("/")}` : "";
+        warn("broken-link", f, `Link target does not exist: ${m[1]}${hint}`, line + 1 + fmLines);
+      }
     }
   }
+}
+
+/** The status folder a collection uses for a status (e.g. done → "completed"), if it has one. */
+export function statusFolderFor(c: { dir: string; initiatives: Initiative[]; meta: { statuses?: Record<string, string> } }, status: string): string | undefined {
+  const folders = [...new Set(c.initiatives.map((i) => i.folder).filter((x): x is string => !!x))].sort();
+  return folders.find((sub) => normaliseStatus(sub, c.meta.statuses) === status);
 }
 
 export function summarise(findings: Finding[]): string {

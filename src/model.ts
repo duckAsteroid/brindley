@@ -69,6 +69,8 @@ export interface Initiative {
   /** The status word as written (front-matter value or folder name), before alias mapping. */
   statusRaw?: string;
   statusSource?: "front-matter" | "folder";
+  /** Status word found in the body prose ("**Status:** …" or "## Status"), if any. */
+  proseStatus?: string;
   /** Sub-folder of the collection the file lives in (e.g. "completed"), if any. */
   folder?: string;
   statusNote?: string;

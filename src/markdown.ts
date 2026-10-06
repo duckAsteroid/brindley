@@ -276,3 +276,21 @@ export function humanise(folderName: string): string {
   const words = folderName.replace(/[-_]+/g, " ").trim();
   return words.charAt(0).toUpperCase() + words.slice(1);
 }
+
+/**
+ * The status written in the body, as legacy initiatives do: a "**Status:** Proposed -- …" line,
+ * or the first line under a "## Status" heading. Returns the leading status word, if any.
+ */
+export function proseStatus(body: string): string | undefined {
+  const pick = (text: string) => /^[\s`*_"']*([A-Za-z][A-Za-z-]*(?:[ -](?:progress|hold|review))?)/.exec(text)?.[1];
+  for (const { text } of stripCodeFences(body)) {
+    const m = /^\s*\*\*Status:?\*\*:?\s*(.+)$/i.exec(text);
+    if (m) return pick(m[1]!);
+  }
+  const s = findSection(body, "Status");
+  if (s) {
+    const first = lines(body).slice(s.start, s.end).find((l) => l.trim() !== "");
+    if (first) return pick(first);
+  }
+  return undefined;
+}

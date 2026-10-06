@@ -294,9 +294,13 @@ export function createServer(opts: ServerOptions): McpServer {
 
   tool(
     "validate",
-    "Check the initiatives against the Brindley format rules. Returns errors and warnings with file and line.",
-    { collection: z.string().optional(), docs: z.boolean().optional().describe("Also lint project docs") },
-    (root, a) => validate(root, { collection: a.collection, docs: a.docs }),
+    "Check initiatives and collection structure: missing or unknown statuses, status vs folder vs body-prose disagreements, files not in their collection's status folder, duplicate numbers, dangling references, cycles, broken links (with where a moved file now lives), stale READMEs. Returns errors and warnings with file and line.",
+    {
+      collection: z.string().optional(),
+      rules: z.array(z.string()).optional().describe('Only these rules, e.g. ["status-not-in-folder", "status-prose-mismatch"]'),
+      docs: z.boolean().optional().describe("Also lint project docs"),
+    },
+    (root, a) => validate(root, { collection: a.collection, docs: a.docs }).filter((f) => !a.rules?.length || a.rules.includes(f.rule)),
     { readOnlyHint: true },
   );
 

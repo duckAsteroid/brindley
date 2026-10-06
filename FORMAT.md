@@ -516,6 +516,13 @@ Warnings:
 16. History phrasing in a project doc (heuristic — see §7.1 list).
 17. `type` not in its collection's `types:` list, when one is declared.
 18. A tag not declared by any collection's `tags:`, when any are declared; or a tag that isn't kebab-case.
+19. Front-matter status contradicts the status folder the file is in.
+20. The collection files a status in a status folder (e.g. done in `completed/`), but this file
+    with that status is elsewhere.
+21. A status written in the body (`**Status:** …` or `## Status`) disagrees with the file's status.
+22. A zero-padded number (`01-…`).
+
+Broken-link warnings name the new location when the linked file has moved within the collection.
 
 ## 11. Migration from the numbered + `completed/` layout
 
