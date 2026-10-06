@@ -110,6 +110,9 @@ thing: folders whose \`README.md\` front-matter contains
   and record \`docs_impact\` (files updated, or \`none: <reason>\`); settle the initiative's
   wording, moving rejected alternatives into \`## Appendix: Rejected alternatives\`; set
   \`status: done\` and \`updated\`.
+- A spike (\`type: spike\`) measures what its \`## Measures\` section asks and records
+  \`## Findings\`; its code stays on its own branch and may become the basis of the real
+  implementation, so write it to be built on.
 - New initiative: next number in the collection, filename \`<number>-<slug>.md\`,
   \`status: draft\`, and a \`type\` (e.g. \`feature\`, \`bug\`, \`refactor\`).
 `;
@@ -293,6 +296,7 @@ export function create(root: Root, input: CreateInput): OpResult<{ ref: string; 
     ...(deps.length ? deps : ["_None._"]),
     "",
     ...(related.length ? ["## Related", "", ...related, ""] : []),
+    ...(input.type === "spike" ? SPIKE_SECTIONS : []),
     "## Open questions",
     "",
     "## Acceptance criteria",
@@ -302,6 +306,39 @@ export function create(root: Root, input: CreateInput): OpResult<{ ref: string; 
   writeFileSync(file, joinFrontMatter(fm, body));
   written.push(file);
   return finish(root, [c.name], written, { ref: `${c.name}#${number}`, number, path: rel(root, file) }, note ? [note] : []);
+}
+
+export const MEASURES = "Measures";
+export const FINDINGS = "Findings";
+
+/** Extra skeleton for `type: spike`: what it measures, settled during design; and its findings. */
+const SPIKE_SECTIONS = [
+  "## Measures",
+  "",
+  "- **Question:** _what this spike must answer_",
+  "- **Hypothesis:** _what we expect, and why_",
+  "- **Measure:** _what is measured, and how_",
+  "- **Answer criteria:** _the threshold(s) that mean yes / no_",
+  "- **Time-box:** _e.g. 3 days_",
+  "",
+  "## Findings",
+  "",
+  "_Written when the spike completes: method, results against the criteria, conclusion, and whether the code should be adopted, adapted or abandoned (and where it lives)._",
+  "",
+];
+
+/** Is a section missing, empty, or still only the skeleton's placeholder text? */
+export function sectionIsBlank(body: string, name: string): boolean {
+  const s = findSection(body, name);
+  if (!s) return true;
+  // Drop placeholder italics (_…_) and bold labels (**Question:**), then list punctuation.
+  const text = lines(body)
+    .slice(s.start, s.end)
+    .join("\n")
+    .replace(/_[^_\n]*_/g, "")
+    .replace(/\*\*[^*\n]*\*\*/g, "")
+    .replace(/[-*:\s]/g, "");
+  return text.length === 0;
 }
 
 export interface UpdateInput {
@@ -522,10 +559,21 @@ export function setDependencies(
 export function complete(
   root: Root,
   i: Initiative,
-  docsImpact: string | string[],
-): OpResult<{ ref: string; becameReady: string[]; docFindings: unknown[] }> {
+  docsImpactIn: string | string[] | undefined,
+): OpResult<{
+  ref: string;
+  becameReady: string[];
+  docFindings: unknown[];
+  questionsToRevisit?: { ref: string; title: string | null; questions: { index: number; text: string }[] }[];
+}> {
   const warnings: string[] = [];
   const collection = requireCollection(root, i.collection);
+  const spike = i.type === "spike";
+  if (spike && sectionIsBlank(i.body, FINDINGS))
+    warnings.push('This spike has no "## Findings" yet: record the method, results against the answer criteria, conclusion, and adopt / adapt / abandon for the code.');
+  // A spike's output is knowledge recorded in the initiative, so docs are normally untouched.
+  const docsImpact = docsImpactIn ?? (spike ? "none: spike — findings recorded in the initiative" : undefined);
+  if (docsImpact === undefined) throw new BrindleyError('`docs_impact` is required: the docs updated, or "none: <reason>".');
   let impact: string | string[];
   if (typeof docsImpact === "string" && /^none:/i.test(docsImpact.trim())) {
     if (docsImpact.trim().slice(5).trim().length === 0) throw new BrindleyError("`docs_impact: none:` needs a reason.");
@@ -556,13 +604,41 @@ export function complete(
 
   const before = new Set(dependants(root, i).filter((d) => isReady(root, d)).map(initiativeKey));
   writeInitiative(i, { status: "done", docs_impact: impact });
-  const out = finish(root, [i.collection], [i.file], { ref: initiativeKey(i), becameReady: [] as string[], docFindings: [] as unknown[] }, warnings);
+  const out = finish(
+    root,
+    [i.collection],
+    [i.file],
+    {
+      ref: initiativeKey(i),
+      becameReady: [] as string[],
+      docFindings: [] as unknown[],
+    } as {
+      ref: string;
+      becameReady: string[];
+      docFindings: unknown[];
+      questionsToRevisit?: { ref: string; title: string | null; questions: { index: number; text: string }[] }[];
+    },
+    warnings,
+  );
   const fresh = loadRoot(root.repoRoot);
   const self = lookup(fresh, i.collection, i.number)!;
   out.result.becameReady = dependants(fresh, self)
     .filter((d) => isReady(fresh, d) && !before.has(initiativeKey(d)))
     .map(initiativeKey);
   if (Array.isArray(impact)) out.result.docFindings = checkDocs(fresh, impact).findings;
+  if (spike) {
+    // Questions the findings may now answer: open questions in initiatives that depend on, or relate to, this spike.
+    const linked = fresh.collections
+      .flatMap((c) => c.initiatives)
+      .filter((o) => [...o.dependsOn, ...o.related].some((r) => r.kind === "initiative" && r.collection === i.collection && r.number === i.number));
+    out.result.questionsToRevisit = linked
+      .map((o) => ({
+        ref: initiativeKey(o),
+        title: o.title,
+        questions: o.questions.filter((q) => !q.resolved).map((q) => ({ index: q.index, text: q.text })),
+      }))
+      .filter((x) => x.questions.length > 0);
+  }
   return out;
 }
 
@@ -573,3 +649,63 @@ export function regenerateReadmes(root: Root, collection?: string, check = false
 }
 
 export { dependencyReport, resolveRef };
+
+export interface Check {
+  check: string;
+  result: "pass" | "fail" | "note";
+  detail: string;
+}
+
+/**
+ * Is this initiative complete enough, and unblocked, to start work on? The first task of the
+ * implement and spike briefs. Failures mean: stop and report, don't start.
+ */
+export function preflight(root: Root, i: Initiative, problems: { level: string; rule: string; message: string }[] = []): {
+  ref: string;
+  kind: "spike" | "implementation";
+  ready: boolean;
+  checks: Check[];
+} {
+  const spike = i.type === "spike";
+  const checks: Check[] = [];
+  const add = (check: string, ok: boolean | "note", detail: string) =>
+    checks.push({ check, result: ok === "note" ? "note" : ok ? "pass" : "fail", detail });
+
+  const startable = i.status === "designed" || i.status === "in-progress";
+  add("Status", startable, startable
+    ? i.status === "in-progress" ? "in-progress — resuming work already started" : "designed (design complete)"
+    : `${i.status ?? "missing"} — only a designed initiative can be started`);
+
+  const report = dependencyReport(root, i);
+  const blocking = report.filter((d) => d.classification === "blocking" || d.classification === "missing");
+  add("Dependencies", blocking.length === 0, blocking.length
+    ? `blocked by ${blocking.map((d) => `${d.ref}${d.status ? ` (${d.status})` : " (missing)"}`).join(", ")}`
+    : report.filter((d) => d.classification === "satisfied").length
+      ? `all linked initiatives are done: ${report.filter((d) => d.classification === "satisfied").map((d) => d.ref).join(", ")}`
+      : "none linked");
+  const external = report.filter((d) => d.classification === "external");
+  if (external.length) add("External dependencies", "note", `confirm yourself before starting: ${external.map((d) => d.ref).join(", ")}`);
+
+  const open = i.questions.filter((q) => !q.resolved);
+  const blockingQs = open.filter((q) => !q.implementation);
+  add("Open questions", blockingQs.length === 0, blockingQs.length
+    ? `${blockingQs.length} unresolved: ${blockingQs.map((q) => `${q.index}. ${q.text.slice(0, 80)}${q.text.length > 80 ? "…" : ""}`).join(" | ")}`
+    : "none blocking");
+  const implQs = open.filter((q) => q.implementation);
+  if (implQs.length) add("Implementation questions", "note", `${implQs.length} left to you to settle and record: ${implQs.map((q) => q.index).join(", ")}`);
+
+  if (spike) {
+    add("Measures", !sectionIsBlank(i.body, MEASURES), sectionIsBlank(i.body, MEASURES)
+      ? 'no usable "## Measures" (question, hypothesis, measure, answer criteria, time-box)'
+      : '"## Measures" states what to measure');
+  } else {
+    add("Acceptance criteria", i.acceptance.length > 0, i.acceptance.length
+      ? `${i.acceptance.length} criteria`
+      : 'no "## Acceptance criteria" — the definition of done is missing');
+  }
+
+  const errors = problems.filter((p) => p.level === "error");
+  add("Validation", errors.length === 0, errors.length ? errors.map((e) => `[${e.rule}] ${e.message}`).join(" | ") : "no errors");
+
+  return { ref: initiativeKey(i), kind: spike ? "spike" : "implementation", ready: checks.every((c) => c.result !== "fail"), checks };
+}

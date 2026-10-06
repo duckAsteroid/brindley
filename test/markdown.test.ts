@@ -90,3 +90,13 @@ describe("prose status", () => {
     expect(proseStatus("# T\n\n**Status:** In progress\n")).toBe("In progress");
   });
 });
+
+describe("blank sections", () => {
+  it("treats skeleton placeholders as blank and real content as filled", async () => {
+    const { sectionIsBlank } = await import("../src/ops.js");
+    const skeleton = "## Measures\n\n- **Question:** _what this spike must answer_\n- **Time-box:** _e.g. 3 days_\n";
+    expect(sectionIsBlank(skeleton, "Measures")).toBe(true);
+    expect(sectionIsBlank(skeleton.replace("_what this spike must answer_", "Can pairing halve water use?"), "Measures")).toBe(false);
+    expect(sectionIsBlank("# T\n", "Measures")).toBe(true);
+  });
+});

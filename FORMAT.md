@@ -42,7 +42,7 @@ Typical lifecycle:
 - **Small core, versioned.** The format carries a version number so it can evolve.
 - **Docs say what is; initiatives say why.** Project documentation describes only the current
   code. History, rationale and rejected alternatives belong in initiatives, never in the docs
-  (§7.1).
+  (§7.2).
 
 ## 2. Collections and layout
 
@@ -81,7 +81,7 @@ status: active                        # active | done | abandoned — of the cha
 owner: locks team
 link: https://tracker.example.com/LOCK-42   # external ticket/epic, if any
 agent: .github/agents/slot-booking.agent.md # implementing-agent workflow for this collection (§9)
-docs: ["services/locks/docs/*.md"]          # what counts as project docs for this collection (§7.1)
+docs: ["services/locks/docs/*.md"]          # what counts as project docs for this collection (§7.2)
 types: [feature, bug, refactor, perf, docs, chore, spike]   # initiative types in use (§4.1)
 tags:                                       # themes (§4.2)
   notifications: Telling captains about changes to their slots
@@ -186,8 +186,8 @@ updated: 2026-09-24
 | `updated`    | no       | ISO date | Last meaningful change. Tools set it; humans may. |
 | `superseded_by` | conditional | integer | Required when `status: superseded`. |
 | `tags`       | no       | list of strings | Themes this initiative belongs to, across collections (§4.2). |
-| `docs`       | no       | list of paths | Project docs this initiative is expected to change (§7.1). Filled in during design, corrected during implementation. |
-| `docs_impact` | on `done` | list of paths, or `none: <reason>` | Project docs actually updated, or an explicit statement that none were affected and why (§7.1). |
+| `docs`       | no       | list of paths | Project docs this initiative is expected to change (§7.2). Filled in during design, corrected during implementation. |
+| `docs_impact` | on `done` | list of paths, or `none: <reason>` | Project docs actually updated, or an explicit statement that none were affected and why (§7.2). |
 
 - The **title is the document's H1**, not a front-matter field — it is what people edit and what
   GitHub shows.
@@ -206,7 +206,7 @@ updated: 2026-09-24
 | `perf` | Performance work. |
 | `docs` | Documentation-only change. |
 | `chore` | Build, dependencies, tooling, CI. |
-| `spike` | Time-boxed investigation whose output is knowledge (often new initiatives), not shipped code. |
+| `spike` | Builds just enough to measure something specific and answer a question (§7.1). The code may become the basis of the real implementation. |
 
 - A collection may declare its list with `types:` in its README front-matter. When declared, an
   unlisted `type` is a validation warning (typo protection); when not, any string is accepted.
@@ -377,7 +377,7 @@ case-insensitively):
 
 When an initiative becomes `done`, the implementer, in the same commit as the code:
 
-- updates the project docs (§7.1) and records `docs_impact`;
+- updates the project docs (§7.2) and records `docs_impact`;
 - rewrites the main body into a concise, settled account of what was decided and built (no
   "we will"), pointing at the current-state docs for the detail;
 - moves rejected alternatives and design debate into a final `## Appendix: Rejected alternatives`
@@ -387,7 +387,7 @@ When an initiative becomes `done`, the implementer, in the same commit as the co
 
 A completed initiative is therefore the permanent **why** record for its change: the main body
 says what was decided, the appendix says what was ruled out and why. The project docs say what
-is (§7.1) and never repeat either.
+is (§7.2) and never repeat either.
 
 ```markdown
 # Opening-hours change impact
@@ -405,7 +405,41 @@ is (§7.1) and never repeat either.
 The file stays where it is. Nothing else in the collection is edited, except the generated
 README content.
 
-### 7.1 Project documentation describes only what is
+### 7.1 Spikes
+
+A spike (`type: spike`) is an initiative whose purpose is to **measure something specific**. It
+builds as much implementation as the measurement needs; its main output is knowledge, written
+into the initiative. Two sections are defined for spikes:
+
+```markdown
+## Measures
+
+- **Question:** can ascending and descending slots be paired without missing the 20-minute cycle?
+- **Hypothesis:** pairing cuts water use by ~40% with no extra waiting.
+- **Measure:** simulate a week of real bookings at Castlefield, paired vs unpaired.
+- **Answer criteria:** yes if water use drops ≥ 30% and median wait rises < 2 minutes.
+- **Time-box:** 3 days.
+
+## Findings
+
+- **Method:** …
+- **Results:** water use −37%; median wait +1m10s.
+- **Conclusion:** yes, with moderate confidence (one lock, one week).
+- **Code:** adapt — branch `spike/slot-booking-24` @ 4f2a9c1; the simulator is reusable, the
+  booking changes need the validation layer before shipping.
+```
+
+- `## Measures` is settled during design: a spike is not `designed` until it says what will be
+  measured, how, and what result means yes or no.
+- The code lives on its own branch and is **not merged** as part of the spike. It is not
+  necessarily throwaway: if the spike proves useful, a follow-up implementation initiative links
+  the spike under `## Dependencies` and builds on that branch.
+- On completion, `## Findings` records the method, results against the answer criteria, the
+  conclusion, and adopt / adapt / abandon for the code (with where it lives). Questions the
+  findings answer are resolved in the initiatives that asked them. `docs_impact` is normally
+  `none` — the knowledge lives in the initiative.
+
+### 7.2 Project documentation describes only what is
 
 Two kinds of document, with a strict division of labour:
 
@@ -581,7 +615,7 @@ Warnings:
 13. Collection `status: done` while any of its initiatives is still `draft`/`designed`/`in-progress`.
 14. `status: done` without `docs_impact`.
 15. A project doc (per `docs:` globs) that links into a collection folder.
-16. History phrasing in a project doc (heuristic — see §7.1 list).
+16. History phrasing in a project doc (heuristic — see §7.2 list).
 17. `type` not in its collection's `types:` list, when one is declared.
 18. A tag not declared by any collection's `tags:`, when any are declared; or a tag that isn't kebab-case.
 19. Front-matter status contradicts the status folder the file is in.

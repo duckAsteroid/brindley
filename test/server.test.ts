@@ -106,6 +106,24 @@ describe("MCP server", () => {
     expect((p.messages[0]!.content as { text: string }).text).toContain(`read the overview \`${C}/NOTIFICATIONS.md\``);
   });
 
+  it("starts implement and spike briefs with a readiness check, and stops when it fails", async () => {
+    fx = fixture({ files: lockExample });
+    const client = await connect(fx.repo);
+    const text = async (name: string, ref: string) =>
+      ((await client.getPrompt({ name, arguments: { ref } })).messages[0]!.content as { text: string }).text;
+    const ok = await text("implement", "sb#21");
+    expect(ok).toMatch(/## Step 1 — verify it is ready \(do this first\)/);
+    expect(ok).toContain("All checks pass");
+    const blocked = await text("implement", "sb#22");
+    expect(blocked).toContain("❌ **Dependencies:** blocked by 23 (designed)");
+    expect(blocked).toContain("Stop here:** do not start work.");
+    const res = json(await client.callTool({ name: "check_ready", arguments: { ref: "sb#22" } }));
+    expect((res.result ?? res).ready).toBe(false);
+    const spike = await text("spike", "sb#21");
+    expect(spike).toContain("not necessarily throwaway");
+    expect(spike).toContain("not `spike`");
+  });
+
   it("reads an initiative resource", async () => {
     fx = fixture({ files: lockExample });
     const client = await connect(fx.repo);

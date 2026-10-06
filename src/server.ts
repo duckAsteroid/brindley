@@ -21,6 +21,7 @@ import { mergeInProgress } from "./git.js";
 import { validate } from "./validate.js";
 import { checkDocs } from "./docs.js";
 import * as ops from "./ops.js";
+import { MEASURES, sectionIsBlank } from "./ops.js";
 import { COMMIT, VERSION } from "./version.js";
 
 export { VERSION };
@@ -33,6 +34,7 @@ export const INSTRUCTIONS = `Brindley manages planned work as Markdown files in 
 - A collection is any folder whose README.md front-matter has \`brindley: 1\`. Mark one with create_collection (existing files are adopted; nothing moves). There is no repo-level file.
 - Initiatives are \`<number>-<slug>.md\` files in the collection folder or its immediate sub-folders. Refer to them as \`<collection>#<number>\`, where the collection is its name (front-matter \`name:\`, else the folder name), an alias (\`aliases:\` in front-matter, or the automatic initials of the folder name, e.g. entity-schema-enhancements → ese), or its path; or a bare number when unambiguous.
 - Status comes from front-matter \`status:\`, else the sub-folder name (completed/ → done, deferred/ → deferred, superseded/ → superseded). Core statuses: draft, designed (design complete, ready to implement), in-progress, deferred, done, abandoned, superseded. Common words are aliases (proposed → draft, completed → done, future → deferred, …); a collection can map its own with \`statuses:\`.
+- A spike (\`type: spike\`) builds just enough to measure what its \`## Measures\` section asks, then records \`## Findings\`. Its code stays on its own branch and may become the basis of the real implementation. Use the \`spike\` prompt to run one.
 - A theme overview doc is a non-numbered .md in a collection folder with \`theme: <tag>\` in its front-matter; initiatives join the theme with \`tags: [<tag>]\`. Brindley keeps a generated list of the theme's initiatives in the doc, and points to it from \`get\`, \`tags\` and the prompts.
 - \`ignore:\` in the collection README holds .gitignore-style patterns (relative to the collection folder) for numbered files that are not initiatives, e.g. companion rationale notes. Use the \`ignore\` tool to add/remove/preview patterns; \`collections\` lists what is ignored.
 - Dependencies are the links under an initiative's \`## Dependencies\` heading (links to initiative files, in any collection, block it; http links are external prerequisites). Links under \`## Related\` are non-blocking. Use set_dependencies to add or remove them.
@@ -94,6 +96,72 @@ function detail(root: Root, i: Initiative) {
     docsImpact: i.docsImpact ?? null,
     body: i.body,
   };
+}
+
+/** The brief for running a spike: implement enough to take the measurements, then report. */
+function spikeBrief(root: Root, i: Initiative): string {
+  const agent = agentFile(root, i);
+  const measures = !sectionIsBlank(i.body, MEASURES);
+  const askers = dependants(root, i)
+    .concat(allInitiatives(root).filter((o) => o.related.some((r) => r.kind === "initiative" && r.collection === i.collection && r.number === i.number)))
+    .filter((o, k, arr) => arr.indexOf(o) === k);
+  const notSpike = i.type !== "spike" ? `\n> Note: this initiative is \`type: ${i.type ?? "unset"}\`, not \`spike\`. If it really is a spike, set \`type: spike\` (\`update\`).\n` : "";
+  return `Run spike ${initiativeKey(i)} "${i.title}" — this one only.
+${notSpike}
+A spike builds just enough to **measure something specific** and answer a question. Its main output is knowledge, written into the initiative. Its code is **not necessarily throwaway**: if the spike proves useful it may become the basis of the real implementation, so write it to be built on, and keep it.
+
+${themesOf(root, i).map((t) => `**Theme "${t.tag}":** read the overview \`${t.doc}\` for context.\n`).join("")}${agent ? `**Repo workflow:** read and follow \`${agent}\` for worktrees, branches, verification and commits — except that spike code is **not merged into the main line** (see below).\n` : ""}
+${verifyStep(root, i)}
+## Step 2 — before writing code
+
+- ${measures ? "Re-read `## Measures` and keep to it: this spike answers that question, measured that way." : "Settle `## Measures` with me first (in open chat): the question, the hypothesis, what to measure and how, the answer criteria (thresholds for yes / no), and the time-box. Record it before writing code."}
+- Set \`status\` to in-progress (\`set_status\`) when you begin.
+
+## While running it
+
+- Build the **smallest implementation that makes the measurements meaningful** — realistic where it affects the numbers, simplified elsewhere. Note every shortcut you take.
+- Work on a **dedicated spike branch** (e.g. \`spike/${i.collection}-${i.number}\`); do not merge it into the main line. Commit it so it can be found and built on later.
+- Keep code tidy enough to build on: sensible structure and names, the measuring harness separate from the code under test, no secrets or hacks you would be embarrassed to inherit.
+- Stay within the time-box. If it runs out, stop and report what you have — an incomplete answer is still an answer.
+- Measure exactly what \`## Measures\` asks, the way it says. If that turns out to be impossible or misleading, stop and ask before changing the measure.
+
+## Finishing
+
+1. Write \`## Findings\` in the initiative (\`update\` with \`section: "Findings"\`):
+   - **Method** — what was built and how it was measured (environment, data size, runs).
+   - **Results** — the numbers, against each answer criterion.
+   - **Conclusion** — the answer to the question, and how confident it is.
+   - **Code** — adopt / adapt / abandon, where it lives (branch and commit), and what would have to change to ship it (the shortcuts above).
+2. Answer what you can elsewhere: these initiatives link to this spike and have open questions it may settle — resolve each one you can with \`resolve_question\`, linking to the findings:
+${askers.length ? askers.map((o) => `   - ${initiativeKey(o)} "${o.title}": ${o.questions.filter((q) => !q.resolved).length} open question(s)`).join("\n") : "   - (none link to this spike yet)"}
+3. Propose follow-ups with \`create\`: e.g. an implementation initiative that links this spike under \`## Dependencies\` and names the spike branch as its starting point; or new questions the spike raised.
+4. Call \`complete\`. Spike code does not change project docs, so \`docs_impact\` defaults to none; \`complete\` lists the linked open questions again so nothing is missed.
+
+<initiative path="${i.rel}">
+${readFileSync(i.file, "utf8")}
+</initiative>`;
+}
+
+/** Preflight for an initiative, including validation errors on its own file. */
+function preflightOf(root: Root, i: Initiative) {
+  const problems = validate(root, { collection: i.collection }).filter((f) => f.file === i.rel);
+  return ops.preflight(root, i, problems);
+}
+
+/** "Step 1" of the implement and spike briefs: verify before doing anything else. */
+function verifyStep(root: Root, i: Initiative): string {
+  const p = preflightOf(root, i);
+  const mark = { pass: "✅", fail: "❌", note: "ℹ️" } as const;
+  return `## Step 1 — verify it is ready (do this first)
+
+Before reading code or making any change, confirm this initiative is complete and ready to work on. Call \`check_ready\` with ref \`${p.ref}\` to re-run these checks against the current files (this brief is a snapshot), and read the initiative in full.
+
+${p.checks.map((c) => `- ${mark[c.result]} **${c.check}:** ${c.detail}`).join("\n")}
+
+${p.ready
+    ? "All checks pass. Also confirm for yourself that the design actually answers every product, data and API choice the work needs; if it doesn't, stop and ask."
+    : "**One or more checks fail. Stop here:** do not start work. Report what fails and what would fix it (e.g. resolve the questions with `design-review`, finish the dependencies first), and wait for me."}
+`;
 }
 
 function agentFile(root: Root, i: Initiative): string | undefined {
@@ -358,6 +426,14 @@ export function createServer(opts: ServerOptions): McpServer {
   );
 
   tool(
+    "check_ready",
+    "Is this initiative (ticket/issue) complete and ready to work on? Runs the preflight the implement and spike briefs start with: status, dependencies, blocking open questions, acceptance criteria (or ## Measures for a spike), validation errors. `ready: false` means stop and report, don't start.",
+    { ref: refArg, collection: z.string().optional() },
+    (root, a) => preflightOf(root, resolveRef(root, a.ref, a.collection)),
+    { readOnlyHint: true },
+  );
+
+  tool(
     "validate",
     "Check initiatives and collection structure: missing or unknown statuses, status vs folder vs body-prose disagreements, files not in their collection's status folder, duplicate numbers, dangling references, cycles, broken links (with where a moved file now lives), stale READMEs. Returns errors and warnings with file and line.",
     {
@@ -469,7 +545,10 @@ export function createServer(opts: ServerOptions): McpServer {
     {
       ref: refArg,
       collection: z.string().optional(),
-      docs_impact: z.union([z.array(z.string()), z.string()]),
+      docs_impact: z
+        .union([z.array(z.string()), z.string()])
+        .optional()
+        .describe('Docs updated in this change, or "none: <reason>". Required, except for spikes (defaults to none).'),
     },
     (root, a) => ops.complete(root, resolveRef(root, a.ref, a.collection), a.docs_impact),
   );
@@ -630,6 +709,7 @@ ${readFileSync(i.file, "utf8")}
     ({ ref }) => {
       const root = open().root;
       const i = resolveRef(root, ref);
+      if (i.type === "spike") return prompt(spikeBrief(root, i));
       const report = dependencyReport(root, i);
       const done = report.filter((x) => x.classification === "satisfied");
       const agent = agentFile(root, i);
@@ -637,11 +717,10 @@ ${readFileSync(i.file, "utf8")}
       return prompt(`Implement initiative ${initiativeKey(i)} "${i.title}" — this one only; do not pick up other initiatives.
 
 ${themesOf(root, i).map((t) => `**Theme "${t.tag}":** read the overview \`${t.doc}\` for how this fits the wider theme; if your change alters the theme's model, update that doc too.\n`).join("")}${agent ? `**Repo workflow:** read and follow \`${agent}\` (worktrees, verification, commits). Where it conflicts with the generic rules below on repo specifics, it wins.\n` : ""}
-## Before you start
+${verifyStep(root, i)}
+## Step 2 — before writing code
 
-- Readiness: ${isReady(root, i) ? "ready." : `NOT ready (status ${i.status}; blocked by ${blockers(root, i).map((x) => x.ref).join(", ") || "nothing"}). Stop and report.`}
-- Dependencies: ${report.length ? report.map((x) => `${x.ref} (${x.classification})`).join(", ") : "none"}.
-${report.some((x) => x.classification === "external") ? "- External dependencies cannot be checked by the tool: confirm each one yourself and report any you cannot confirm.\n" : ""}- Ask about any product, data or API choice the initiative doesn't settle before writing code. \`(implementation)\` questions are yours to settle — record each decision in the initiative (\`resolve_question\`).
+- Ask about any product, data or API choice the initiative doesn't settle before writing code. \`(implementation)\` questions are yours to settle — record each decision in the initiative (\`resolve_question\`).
 - Set \`status\` to in-progress (\`set_status\`) when you begin.
 
 ## Finishing (same commit as the code)
@@ -655,6 +734,19 @@ ${report.some((x) => x.classification === "external") ? "- External dependencies
 ${done.length ? `## Done dependencies (for context)\n\n${done.map((x) => `- ${x.ref} ${x.title} — ${x.path}`).join("\n")}\n\n` : ""}<initiative path="${i.rel}">
 ${readFileSync(i.file, "utf8")}
 </initiative>`);
+    },
+  );
+
+  server.registerPrompt(
+    "spike",
+    {
+      description:
+        "Hand-off brief for a spike (type: spike): build enough to measure what the initiative's ## Measures asks, record ## Findings, and keep the code on its own branch — it may become the basis of the real implementation.",
+      argsSchema: { ref: z.string().describe('Spike initiative: "collection#n" or a number') },
+    },
+    ({ ref }) => {
+      const root = open().root;
+      return prompt(spikeBrief(root, resolveRef(root, ref)));
     },
   );
 

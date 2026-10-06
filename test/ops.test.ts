@@ -512,3 +512,45 @@ describe("theme overview docs", () => {
     expect(validate(fx.load()).map((f) => f.rule)).toContain("duplicate-theme");
   });
 });
+
+describe("spikes", () => {
+  it("creates a spike with Measures and Findings sections", () => {
+    fx = fixture({ files: lockExample });
+    const r = ops.create(fx.load(), { collection: "sb", title: "Pairing viability", type: "spike" });
+    const text = read(r.result.path);
+    expect(text).toContain("## Measures\n\n- **Question:**");
+    expect(text).toContain("## Findings");
+    expect(text.indexOf("## Measures")).toBeLessThan(text.indexOf("## Open questions"));
+  });
+
+  it("checks readiness: measures for a spike, acceptance criteria otherwise", () => {
+    fx = fixture({ files: lockExample });
+    let root = fx.load();
+    const spike = ops.create(root, { collection: "sb", title: "Pairing viability", type: "spike" }).result.ref;
+    root = fx.load();
+    ops.setStatus(root, resolveRef(root, spike), "designed");
+    root = fx.load();
+    const p = ops.preflight(root, resolveRef(root, spike));
+    expect(p.ready).toBe(false);
+    expect(p.checks.find((c) => c.check === "Measures")?.result).toBe("fail");
+    expect(ops.preflight(root, resolveRef(root, "sb#21")).ready).toBe(true);
+    const blocked = ops.preflight(root, resolveRef(root, "sb#22"));
+    // 22 is a draft, blocked by 23, with open questions; it does have acceptance criteria.
+    expect(blocked.checks.filter((c) => c.result === "fail").map((c) => c.check)).toEqual(["Status", "Dependencies", "Open questions"]);
+    expect(validate(root).map((f) => f.rule)).toContain("spike-measures");
+  });
+
+  it("completes a spike without docs_impact, warns about missing findings, and lists questions to revisit", () => {
+    fx = fixture({ files: lockExample });
+    let root = fx.load();
+    const spike = ops.create(root, { collection: "sb", title: "Pairing viability", type: "spike" }).result.ref;
+    root = fx.load();
+    ops.setDependencies(root, resolveRef(root, "sb#22"), { related_add: [spike] });
+    root = fx.load();
+    const r = ops.complete(root, resolveRef(root, spike), undefined);
+    expect(r.warnings.join(" ")).toMatch(/no "## Findings"/);
+    expect(r.result.questionsToRevisit?.map((q) => q.ref)).toEqual(["slot-booking#22"]);
+    expect(read(`${C}/24-pairing-viability.md`)).toContain('docs_impact: "none: spike — findings recorded in the initiative"');
+    expect(() => ops.complete(fx.load(), resolveRef(fx.load(), "sb#21"), undefined)).toThrow(/docs_impact/);
+  });
+});

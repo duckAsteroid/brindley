@@ -4,6 +4,7 @@ import { ASSET_DIR, COLLECTION_STATUSES, STATUSES, normaliseStatus, type Initiat
 import { cycles, target } from "./deps.js";
 import { allInitiatives, declaredTags, findCollection, ignoreMatcher, initiativeKey, toPosix } from "./repo.js";
 import { stripCodeFences } from "./markdown.js";
+import { FINDINGS, MEASURES, sectionIsBlank } from "./ops.js";
 import { regenerate } from "./readme.js";
 import { checkDocs } from "./docs.js";
 
@@ -130,6 +131,10 @@ function checkInitiative(
   }
   if (i.status && prose && prose !== i.status)
     warn("status-prose-mismatch", f, `The body says "${i.proseStatus}" (${prose}), but the status is ${i.status}${i.statusSource === "folder" ? ` (from "${i.folder}/")` : ""}.`);
+  if (i.type === "spike" && ["designed", "in-progress"].includes(i.status ?? "") && sectionIsBlank(i.body, MEASURES))
+    warn("spike-measures", f, 'A spike needs a "## Measures" section (question, hypothesis, measure, answer criteria, time-box) before it starts.');
+  if (i.type === "spike" && i.status === "done" && sectionIsBlank(i.body, FINDINGS))
+    warn("spike-findings", f, 'A finished spike needs "## Findings" (method, results, conclusion, adopt / adapt / abandon for the code).');
   if (/^0\d/.test(i.rel.split("/").pop()!)) warn("number-padding", f, `Zero-padded number; the format uses "${i.number}-…".`);
   for (const key of ["updated", "created"]) {
     const v = i.fm[key];
