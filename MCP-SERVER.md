@@ -261,9 +261,6 @@ server only ever rewrites between them.
 - [ ] `check_docs` heuristics: a fixed English phrase list, or configurable per repo? Should it
       ever fail CI, or stay advisory?
 - [ ] A companion CLI over the same core library (for humans, and `validate` in CI)?
-- [ ] `migrate`'s dependency extraction will be heuristic (links to `completed/NN-…`, bare
-      "`30`" mentions, module names like `lib:geo-coords`). Is an
-      agent-assisted migration (tool proposes, agent confirms per file) acceptable?
 
 ## Appendix A — Effect on a typical implementing agent
 
