@@ -282,7 +282,9 @@ export function humanise(folderName: string): string {
  * or the first line under a "## Status" heading. Returns the leading status word, if any.
  */
 export function proseStatus(body: string): string | undefined {
-  const pick = (text: string) => /^[\s`*_"']*([A-Za-z][A-Za-z-]*(?:[ -](?:progress|hold|review))?)/.exec(text)?.[1];
+  // Leading status word, keeping a meaningful second word ("in progress", "design complete").
+  const pick = (text: string) =>
+    /^[\s`*_"']*([A-Za-z][A-Za-z-]*(?:[ -](?:progress|hold|review|complete|completed|settled))?)/i.exec(text)?.[1];
   for (const { text } of stripCodeFences(body)) {
     const m = /^\s*\*\*Status:?\*\*:?\s*(.+)$/i.exec(text);
     if (m) return pick(m[1]!);

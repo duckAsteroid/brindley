@@ -235,7 +235,8 @@ draft ──► designed ──► in-progress ──► done
 | `deferred`    | Parked: not abandoned, not being worked on. Never ready; shown separately. |
 
 **Status words.** Besides the core names, tools accept common aliases — `proposed`,
-`exploratory`, `unresolved` → `draft`; `ready` → `designed`; `in-review`, `wip` → `in-progress`;
+`exploratory`, `unresolved`, `design` (still designing) → `draft`; `ready`, `design complete`,
+`design settled` → `designed`; `in-review`, `wip` → `in-progress`;
 `parked`, `on-hold`, `backlog`, `future` → `deferred`; `complete`, `completed`, `implemented` → `done`;
 `cancelled`, `rejected`, `dropped` → `abandoned`; `replaced` → `superseded` — and a collection
 can map its own words in its README front-matter:

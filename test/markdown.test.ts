@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { normaliseStatus } from "../src/model.js";
+import { proseStatus } from "../src/markdown.js";
 import { editFrontMatter, findSection, listItems, parseQuestions, setH1, slugify, splitFrontMatter } from "../src/markdown.js";
 
 describe("front-matter", () => {
@@ -76,6 +77,16 @@ describe("status words", () => {
     expect(normaliseStatus("Future")).toBe("deferred");
     expect(normaliseStatus("Proposed")).toBe("draft");
     expect(normaliseStatus("spiked", { spiked: "designed" })).toBe("designed");
-    expect(normaliseStatus("Design")).toBeUndefined();
+    expect(normaliseStatus("Design")).toBe("draft");
+    expect(normaliseStatus("design complete")).toBe("designed");
+  });
+});
+
+describe("prose status", () => {
+  it("reads the leading status word, keeping meaningful two-word forms", () => {
+    expect(proseStatus("# T\n\n**Status:** Design -- open questions remain\n")).toBe("Design");
+    expect(proseStatus("# T\n\n**Status:** Design complete; ready to build\n")).toBe("Design complete");
+    expect(proseStatus("# T\n\n## Status\n\n`draft` — design proposal.\n")).toBe("draft");
+    expect(proseStatus("# T\n\n**Status:** In progress\n")).toBe("In progress");
   });
 });
