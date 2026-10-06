@@ -82,20 +82,38 @@ tags:                                                  # optional: the repo's th
 Tools look for the root at `initiatives/` then `docs/initiatives/`, or take an explicit path.
 There is exactly one root per repo.
 
-**Collections.** Any directory under the root that directly contains initiative files is a
-collection. Its identity is its path relative to the root (`LOCK-42/slot-booking`,
-`search-rework`) — so collections can be grouped one or more levels deep however suits the
-project, but initiatives are always directly inside their collection. Its `README.md` has optional
-front-matter:
+**Collections.** The folder *is* the collection. Any directory under the root that directly
+contains initiative files is a collection, and its identity is its path relative to the root
+(`LOCK-42/slot-booking`, `search-rework`). Collections can be grouped one or more levels deep
+however suits the project, but initiatives are always directly inside their collection.
+
+- Initiatives never declare their collection — it is always where the file is. There is no
+  `collection:` field to drift out of sync.
+- Nothing else is needed to create a collection: a new folder with one initiative in it is one.
+
+The collection's `README.md` is **optional** and only *adds* detail. Its front-matter (all
+optional) describes the changeset as a whole, and its body is a free-form introduction above the
+generated content (§8):
 
 ```yaml
 ---
-title: LOCK-42 lock slot booking
-status: active          # active | done | abandoned — of the changeset as a whole
-agent: .github/agents/slot-booking.agent.md   # overrides the root default
-docs: ["services/locks/docs/*.md"]              # docs this changeset usually affects
+title: LOCK-42 lock slot booking      # display name; default: derived from the folder name
+summary: Let captains book ascending and descending lock slots online
+status: active                        # active | done | abandoned — of the changeset as a whole
+owner: locks team
+link: https://tracker.example.com/LOCK-42   # external ticket/epic, if any
+agent: .github/agents/slot-booking.agent.md # overrides the root default (§9)
+docs: ["services/locks/docs/*.md"]          # docs this changeset usually affects (§7.1)
 ---
 ```
+
+When the README is absent, tools treat the title as the folder name (`slot-booking` →
+"Slot booking") and the status as `active`, and create the README the first time they generate
+content for the collection.
+
+**Renaming a collection** is renaming its folder — a move, so links into it from other
+collections break. Avoid it; when unavoidable, validation catches the dangling
+`"<collection>#<n>"` references and links, and a tool can rewrite them.
 
 - **No status sub-folders** (no `completed/`).
 - A file in a collection directory is an initiative iff its name matches `<number>-<slug>.md`.

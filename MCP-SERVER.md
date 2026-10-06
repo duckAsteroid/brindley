@@ -72,7 +72,9 @@ All tools return structured JSON plus a short text rendering.
 | Tool | Params | Behaviour |
 |------|--------|-----------|
 | `init` | `dir = "docs/initiatives"`, `agent?` | Creates the initiatives root: directory + README with root front-matter and an empty generated overview. Returns the format-rules agent snippet (FORMAT §9) for the caller to add to `AGENTS.md`/`CLAUDE.md`. Idempotent; refuses if a different root already exists. |
-| `create_collection` | `path`, `title`, `agent?` | Creates a collection under the root: directory + README with collection front-matter and an empty generated index; updates the root overview. |
+| `create_collection` | `path`, `title?`, `summary?`, `owner?`, `link?`, `agent?` | Creates a collection folder under the root, with a README holding any details given plus the generated block; updates the root overview. Optional convenience — `create` into a new path makes the collection implicitly. |
+| `update_collection` | `collection`, `title?`, `summary?`, `owner?`, `link?`, `agent?`, `docs?` | Edits the collection README's front-matter (creating the README if absent). |
+| `rename_collection` | `collection`, `to` | Moves the folder and rewrites `"<collection>#<n>"` references and relative links that point into it — the only other sanctioned multi-file rewrite besides `migrate`. |
 | `set_collection_status` | `collection`, `status` | `active` / `done` / `abandoned` for the changeset as a whole; warns if marking `done` with unfinished initiatives. |
 | `migrate` | `collection`, `dry_run = true` | Converts a numbered + `completed/` collection (FORMAT §11). Infers front-matter from status/owner/last-updated metadata (as `## Status` sections or `**Status:**` lead-in lines) and from `## Dependencies` / "Relationship to" prose; anything it can't map confidently is listed for a human/agent to decide rather than guessed. Dry run returns the full plan (moves, front-matter, link rewrites). The **one** sanctioned mass-rewrite. |
 
@@ -98,7 +100,7 @@ Every write preserves unknown front-matter fields and the author's Markdown form
 
 | Tool | Params | Behaviour |
 |------|--------|-----------|
-| `create` | `collection`, `title`, `type?`, `tags?`, `goal?`, `depends_on?`, `related?`, `owner?` | Coins the next number by repo scan (§6), writes `<n>-<slug>.md` with `status: draft`, H1, and a section skeleton (Goal, Dependencies, Open Questions, Acceptance criteria). |
+| `create` | `collection` (existing or new path), `title`, `type?`, `tags?`, `goal?`, `depends_on?`, `related?`, `owner?` | Coins the next number by repo scan (§6), writes `<n>-<slug>.md` with `status: draft`, H1, and a section skeleton (Goal, Dependencies, Open Questions, Acceptance criteria). |
 | `update` | `ref`, `title?`, `type?`, `owner?`, `tags?`, `section?`, `content?` | Edits front-matter / H1, or replaces a named body section. Cannot change the number or filename. |
 | `set_status` | `ref`, `status`, `force = false` | Enforces transition rules (refuses `→ designed` with blocking open questions; refuses `→ in-progress` when blocked), explaining why. `force` overrides with a warning. |
 | `add_question` | `ref`, `text`, `implementation = false` | Appends to `## Open Questions` (creating it if needed). A blocking question on a `designed` initiative moves it back to `draft`, and says so. |
