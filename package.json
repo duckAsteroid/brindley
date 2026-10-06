@@ -21,7 +21,8 @@
     "typecheck": "node scripts/version.mjs --write && tsc -p tsconfig.json --noEmit",
     "version:explain": "node scripts/version.mjs --explain",
     "version:sync": "node scripts/version.mjs --sync",
-    "prepack": "npm run version:sync && npm run build"
+    "prepack": "npm run version:sync && npm run build",
+    "prepare": "npm run build"
   },
   "repository": {
     "type": "git",
