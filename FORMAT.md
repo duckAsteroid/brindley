@@ -440,9 +440,8 @@ Warnings:
       "draft"? Is anything like `in-review` or `blocked` needed in the core set?
 - [x] Cross-collection dependencies — `"<collection>#<n>"`, checkable because there is one root (§3).
 - [x] **Name for a collection** — "collection": deliberately vague, so it fits themes, epics, tickets or changesets alike.
-- [ ] Should initiative numbers be unique per collection (current) or across the whole root, so
-      a bare number is unambiguous repo-wide? Per-collection keeps today's numbering; root-wide
-      would make `"<collection>#<n>"` unnecessary.
+- [x] Number scope — unique **per collection**. Each changeset counts from 1, existing numbering
+      migrates unchanged, and `"<collection>#<n>"` disambiguates across collections.
 - [ ] Is a front-matter-free mode worth supporting (status as a `## Status` section, as today), or
       is front-matter acceptable to adopters?
 - [ ] Should `done` record the implementing merge commit or PR? (A commit can't contain its own
