@@ -73,6 +73,9 @@ brindley: 1            # marks the initiatives root; value = format version
 agent: .github/agents/implement-initiative.agent.md   # optional default repo workflow, see §9
 docs: ["docs/**/*.md", "*/docs/**/*.md"]              # optional: what counts as project docs, see §7.1
 types: [feature, bug, refactor, perf, docs, chore, spike]   # optional: the repo's initiative types, see §4.1
+tags:                                                  # optional: the repo's themes, see §4.2
+  accessibility: Booking usable with screen readers and keyboard only
+  notifications: Telling captains about changes to their slots
 ---
 ```
 
@@ -132,6 +135,7 @@ type: feature
 status: draft
 depends_on: [19, 20, "lib:geo-coords"]
 related: [30]
+tags: [notifications]
 owner: locks/core
 updated: 2026-09-24
 ---
@@ -148,7 +152,7 @@ updated: 2026-09-24
 | `owner`      | no       | string | Owning team/module/person. |
 | `updated`    | no       | ISO date | Last meaningful change. Tools set it; humans may. |
 | `superseded_by` | conditional | integer | Required when `status: superseded`. |
-| `tags`       | no       | list of strings | Free-form. |
+| `tags`       | no       | list of strings | Themes this initiative belongs to, across collections (§4.2). |
 | `docs`       | no       | list of paths | Project docs this initiative is expected to change (§7.1). Filled in during design, corrected during implementation. |
 | `docs_impact` | on `done` | list of paths, or `none: <reason>` | Project docs actually updated, or an explicit statement that none were affected and why (§7.1). |
 
@@ -176,6 +180,25 @@ updated: 2026-09-24
 - Type is descriptive only: it never affects readiness or lifecycle rules.
 - Tools may use it for grouping and filtering, and an implementing agent may use it to choose a
   commit type (e.g. `feature` → `feat`, `bug` → `fix` in Conventional Commits).
+
+### 4.2 Tags: themes across collections
+
+Three ways initiatives relate, each for a different job:
+
+| Mechanism | Cardinality | Answers |
+|-----------|-------------|---------|
+| Collection (§2) | exactly one per initiative | *Which changeset is this part of?* |
+| `depends_on` / `related` (§4) | specific pairs | *What must come first? What informs this?* |
+| `tags` | any number per initiative | *What else, anywhere in the repo, is about the same theme?* |
+
+A tag is a theme that cuts across collections — e.g. `notifications` might cover an initiative
+in `LOCK-42/slot-booking` and another in `search-rework`.
+
+- Tags are lowercase kebab-case strings (`slot-pairing`, `accessibility`).
+- A repo may declare its themes with `tags:` in the root front-matter, as a map of tag →
+  one-line description. When declared, an unlisted tag is a validation warning (typo protection)
+  and the description is shown in the generated README; when not, any tag is accepted.
+- Tags are descriptive only: they never affect readiness or lifecycle rules.
 
 ## 5. Status lifecycle
 
@@ -359,6 +382,9 @@ Rules for the generated block:
 2. **Cross-collection graph** (Mermaid): one node per collection with active work, an edge
    wherever an initiative in one depends on an initiative in another (labelled with the
    initiative numbers).
+3. **Themes**: one sub-section per tag in use (declared description first), listing every
+   initiative with that tag across all collections — `collection#n`, linked title, type,
+   status — active first, then done. This is the "show me everything about notifications" view.
 
 ### 8.3 Mermaid dependency graph
 
@@ -458,6 +484,7 @@ Warnings:
 15. A project doc (per `docs:` globs) that links into the initiatives root.
 16. History phrasing in a project doc (heuristic — see §7.1 list).
 17. `type` not in the root's `types:` list, when one is declared.
+18. A tag not in the root's `tags:` map, when one is declared; or a tag that isn't kebab-case.
 
 ## 11. Migration from the numbered + `completed/` layout
 

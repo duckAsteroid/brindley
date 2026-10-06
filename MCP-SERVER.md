@@ -84,7 +84,8 @@ All tools return structured JSON plus a short text rendering.
 | `list` | `collection?`, `type?`, `status?`, `tag?`, `owner?`, `ready?` | Across the whole root unless `collection` is given. Summaries: number, title, type, status, owner, `ready`, blocking deps, open question counts. |
 | `get` | `ref` | Front-matter, title, body, parsed open questions and acceptance criteria, plus a **dependency report**: each `depends_on` entry classified `satisfied` / `blocking` / `external` (FORMAT §5), with the dependency's title and path; `related` items; dependants. This is the implementing agent's "select and validate" step in one call. |
 | `ready` | `collection?`, `type?` | Across the root unless `collection` is given. Initiatives that are `designed` with nothing blocking (including cross-collection deps), in suggested order (topological, then number), each with its external deps listed. |
-| `graph` | `collection?`, `ref?`, `include_done = false` | Dependency graph as adjacency list + Mermaid. |
+| `graph` | `collection?`, `ref?`, `tag?`, `include_done = false` | Dependency graph as adjacency list + Mermaid. With `tag`, the graph of that theme across all collections. |
+| `tags` | — | Every tag in use (plus declared-but-unused ones), with description and initiative counts by status. |
 | `questions` | `collection?`, `ref?`, `include_implementation = true` | Unresolved open questions, grouped by initiative. |
 | `check_docs` | `paths?` | Lints project docs (default: those changed vs `HEAD`, else all matching `docs:`) against FORMAT §7.1: history phrasing, rejected-alternative/debate wording, links into the initiatives root. Returns findings with file/line and the offending phrase. Heuristic; warnings only. |
 | `next_question` | `ref`, `after?` | The next unresolved question in one initiative, with its index, related body sections and count remaining. Drives `design-review` (§5.1). |
@@ -97,7 +98,7 @@ Every write preserves unknown front-matter fields and the author's Markdown form
 
 | Tool | Params | Behaviour |
 |------|--------|-----------|
-| `create` | `collection`, `title`, `type?`, `goal?`, `depends_on?`, `related?`, `owner?` | Coins the next number by repo scan (§6), writes `<n>-<slug>.md` with `status: draft`, H1, and a section skeleton (Goal, Dependencies, Open Questions, Acceptance criteria). |
+| `create` | `collection`, `title`, `type?`, `tags?`, `goal?`, `depends_on?`, `related?`, `owner?` | Coins the next number by repo scan (§6), writes `<n>-<slug>.md` with `status: draft`, H1, and a section skeleton (Goal, Dependencies, Open Questions, Acceptance criteria). |
 | `update` | `ref`, `title?`, `type?`, `owner?`, `tags?`, `section?`, `content?` | Edits front-matter / H1, or replaces a named body section. Cannot change the number or filename. |
 | `set_status` | `ref`, `status`, `force = false` | Enforces transition rules (refuses `→ designed` with blocking open questions; refuses `→ in-progress` when blocked), explaining why. `force` overrides with a warning. |
 | `add_question` | `ref`, `text`, `implementation = false` | Appends to `## Open Questions` (creating it if needed). A blocking question on a `designed` initiative moves it back to `draft`, and says so. |
@@ -114,6 +115,8 @@ Every write preserves unknown front-matter fields and the author's Markdown form
 - `brindley://<collection>/index` — the same overview the README index contains, generated on the
   fly.
 - `brindley://index` — the root overview: all collections and cross-collection edges.
+- `brindley://tag/<tag>` — every initiative with that tag, across collections, as one document
+  (useful context for a design session on a cross-cutting theme).
 - The resource list enumerates all initiatives for clients with resource pickers.
 
 ## 5. Prompts
