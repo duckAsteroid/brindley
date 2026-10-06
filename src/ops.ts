@@ -121,9 +121,10 @@ export interface CollectionInput {
   tags?: Record<string, string>;
   statuses?: Record<string, string>;
   ignore?: string[];
+  aliases?: string[];
 }
 
-const COLLECTION_KEYS = ["name", "title", "summary", "status", "owner", "link", "agent", "docs", "types", "tags", "statuses", "ignore"] as const;
+const COLLECTION_KEYS = ["name", "aliases", "title", "summary", "status", "owner", "link", "agent", "docs", "types", "tags", "statuses", "ignore"] as const;
 
 /** Keep only collection README fields, dropping undefined values and any other arguments. */
 function collectionFields(input: CollectionInput): Record<string, unknown> {
@@ -140,8 +141,12 @@ function markCollection(root: Root, path: string, meta: CollectionInput): { path
   const existing = root.collections.find((c) => c.path === p);
   if (existing) throw new BrindleyError(`${p} is already a collection ("${existing.name}").`);
   const name = meta.name ?? p.split("/").pop()!;
-  const clash = root.collections.find((c) => c.name === name);
+  const clash = root.collections.find((c) => c.name.toLowerCase() === name.toLowerCase());
   if (clash) throw new BrindleyError(`A collection named "${name}" already exists at ${clash.path}; pass a distinct \`name\`.`);
+  for (const a of meta.aliases ?? []) {
+    const owner = findCollection(root, a);
+    if (owner) throw new BrindleyError(`Alias "${a}" already refers to collection "${owner.name}".`);
+  }
   const dir = join(root.repoRoot, p);
   mkdirSync(dir, { recursive: true });
   const readme = join(dir, "README.md");

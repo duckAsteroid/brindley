@@ -70,7 +70,8 @@ services/search/plans/                             # another collection, somewhe
 ```yaml
 ---
 brindley: 1                           # marks this folder as a collection (format version 1)
-name: slot-booking                    # short name used in references; default: the folder name
+name: slot-booking                    # name used in references; default: the folder name
+aliases: [sb, slots]                  # extra short names for references (sb#21)
 title: LOCK-42 lock slot booking      # display name; default: derived from the folder name
 summary: Let captains book ascending and descending lock slots online
 status: active                        # active | done | abandoned — of the changeset as a whole
@@ -95,8 +96,21 @@ full of numbered initiative files — only adds front-matter to its README; noth
 
 **Identity.** A collection is referred to by its **name**: the `name` field, else the folder name
 (`slot-booking`, `plans`). Names must be unique in the repo; when two folders share a name, give
-one an explicit `name`. Tools also accept the folder path (`docs/initiatives/LOCK-42/slot-booking`)
-wherever a collection is expected.
+one an explicit `name`.
+
+**Aliases** keep references short:
+
+- **Explicit:** `aliases:` in the README front-matter (`aliases: [ese]` → `ese#22`).
+- **Automatic:** the initials of a multi-word folder name — `entity-schema-enhancements` → `ese`,
+  `slot-booking` → `sb` — but only when no other collection's name or alias (explicit or
+  automatic) is the same. An ambiguous automatic alias is simply not available; give the
+  collections explicit aliases instead.
+- **Lookup order:** name, explicit alias, automatic alias, then the folder path
+  (`docs/initiatives/LOCK-42/slot-booking`). Matching ignores case.
+- Names and explicit aliases must be unique across the repo (validation error otherwise) and use
+  only letters, digits, `.`, `_` and `-`.
+- References keep exactly what was written (`depends_on: ["ese#22"]`); tools resolve them to the
+  collection when reading.
 
 - Initiatives never declare their collection — it is always the folder they are in. There is no
   `collection:` field to drift out of sync.

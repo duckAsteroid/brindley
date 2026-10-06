@@ -156,14 +156,14 @@ export function rootBlock(root: Root, fromDir = "."): string {
   const out: string[] = ["### Collections", ""];
   if (root.collections.length === 0) out.push("_None yet._");
   else {
-    out.push("| Collection | Title | Status | Draft | Designed | In progress | Deferred | Done | Ready |");
-    out.push("|------------|-------|--------|-------|----------|-------------|----------|------|-------|");
+    out.push("| Collection | Aliases | Title | Status | Draft | Designed | In progress | Deferred | Done | Ready |");
+    out.push("|------------|---------|-------|--------|-------|----------|-------------|----------|------|-------|");
     for (const c of root.collections) {
       const n = (s: string) => c.initiatives.filter((i) => i.status === s).length;
       const ready = c.initiatives.filter((i) => isReady(root, i)).length;
       const href = posix.relative(fromDir, `${c.path}/README.md`);
       out.push(
-        `| [${c.name}](${href}) | ${esc(c.meta.title)} | ${c.meta.status} | ${n("draft")} | ${n("designed")} | ${n("in-progress")} | ${n("deferred")} | ${n("done")} | ${ready} |`,
+        `| [${c.name}](${href}) | ${c.aliases.map((a) => `\`${a}\``).join(", ") || "—"} | ${esc(c.meta.title)} | ${c.meta.status} | ${n("draft")} | ${n("designed")} | ${n("in-progress")} | ${n("deferred")} | ${n("done")} | ${ready} |`,
       );
     }
   }

@@ -27,10 +27,21 @@ export function validate(root: Root, opts: { collection?: string; docs?: boolean
     out.push({ level: "warning", rule, file, message, line });
 
   const names = new Map<string, string>();
+  const claimed = new Map<string, { path: string; alias: boolean }>(); // lower-cased name/explicit alias → owner
   for (const c of root.collections) {
-    const prev = names.get(c.name);
+    for (const key of [c.name, ...(c.meta.aliases ?? [])]) {
+      const k = key.toLowerCase();
+      if (!/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(key))
+        err("alias-format", rel(c.readme), `"${key}" can't be used in references; use letters, digits, ".", "_" or "-".`);
+      const other = claimed.get(k);
+      // Two collections with the same name are reported once, as duplicate-collection.
+      if (other && other.path !== c.path && (key !== c.name || other.alias))
+        err("alias-clash", rel(c.readme), `"${key}" is used by more than one collection (also ${other.path}); references to it are ambiguous.`);
+      claimed.set(k, { path: c.path, alias: key !== c.name });
+    }
+    const prev = names.get(c.name.toLowerCase());
     if (prev) err("duplicate-collection", rel(c.readme), `Collection name "${c.name}" is also used by ${prev}; set a distinct \`name\` in one README.`);
-    else names.set(c.name, c.path);
+    else names.set(c.name.toLowerCase(), c.path);
     if (root.collections.some((o) => o !== c && o.path !== "." && c.path.startsWith(o.path + "/") && c.initiatives.length && o.initiatives.length))
       warn("nested-collection", rel(c.readme), "Collection is nested inside another collection's folder.");
   }

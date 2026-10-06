@@ -170,6 +170,10 @@ function collectionMeta(data: Record<string, unknown>, folder: string): Collecti
     tags: tagMap(data["tags"]),
     statuses: tagMap(data["statuses"]),
     ignore: data["ignore"] !== undefined ? strList(data["ignore"]) : undefined,
+    aliases:
+      data["aliases"] !== undefined || data["alias"] !== undefined
+        ? [...strList(data["aliases"]), ...strList(data["alias"])]
+        : undefined,
   };
 }
 
@@ -240,7 +244,7 @@ export function loadCollection(repoRoot: string, readmeRel: string): Collection 
       ),
     ),
   ].sort((a, b) => a.number - b.number || a.rel.localeCompare(b.rel));
-  return { name, path, dir, readme, meta, initiatives, ignored: numberedFilesMatching(dir, ignored) };
+  return { name, path, dir, readme, meta, initiatives, aliases: [...(meta.aliases ?? [])], ignored: numberedFilesMatching(dir, ignored) };
 }
 
 /** Numbered .md files in a collection folder and its immediate sub-folders that `match` selects. */
@@ -258,10 +262,49 @@ export function numberedFilesMatching(dir: string, match: (relPath: string) => b
   return out;
 }
 
+/** Automatic alias: initials of a multi-word folder name ("entity-schema-enhancements" → "ese"). */
+export function initialsAlias(folder: string): string | undefined {
+  const words = folder.split(/[-_\s.]+/).filter(Boolean);
+  if (words.length < 2) return undefined;
+  return words.map((w) => w[0]!.toLowerCase()).join("");
+}
+
+const fold = (s: string) => s.toLowerCase();
+
 export function loadRoot(repoRoot: string): Root {
   const collections = findCollectionReadmes(repoRoot).map((r) => loadCollection(repoRoot, r));
   collections.sort((a, b) => a.name.localeCompare(b.name) || a.path.localeCompare(b.path));
-  return { repoRoot, collections };
+
+  // Automatic aliases apply only when unambiguous: not equal to any name, explicit alias, or
+  // another collection's automatic alias.
+  const taken = new Map<string, number>();
+  const count = (k: string) => taken.set(fold(k), (taken.get(fold(k)) ?? 0) + 1);
+  for (const c of collections) [c.name, ...c.aliases].forEach(count);
+  const autos = collections.map((c) => initialsAlias(c.path.split("/").pop() ?? c.name));
+  autos.forEach((a) => a && count(a));
+  collections.forEach((c, k) => {
+    const a = autos[k];
+    if (a && taken.get(fold(a)) === 1 && !c.aliases.some((x) => fold(x) === fold(a))) {
+      c.autoAlias = a;
+      c.aliases.push(a);
+    }
+  });
+
+  const root: Root = { repoRoot, collections };
+  // Resolve references written with aliases or paths to canonical collection names.
+  for (const c of collections) {
+    for (const i of c.initiatives) {
+      const canon = (r: Ref): Ref => {
+        if (r.kind !== "initiative") return r;
+        const target = findCollection(root, r.collection);
+        return target ? { ...r, collection: target.name } : r;
+      };
+      i.dependsOn = i.dependsOn.map(canon);
+      i.related = i.related.map(canon);
+      if (i.supersededBy) i.supersededBy = canon(i.supersededBy);
+    }
+  }
+  return root;
 }
 
 /** Tags declared by any collection, merged (first description wins); undefined if none declare tags. */
@@ -288,15 +331,32 @@ export function allInitiatives(root: Root): Initiative[] {
 }
 
 /** Find a collection by name or by repo-relative folder path. */
+/**
+ * Find a collection by name, explicit alias, automatic alias, or repo-relative folder path —
+ * in that order, ignoring case.
+ */
 export function findCollection(root: Root, nameOrPath: string): Collection | undefined {
-  const p = toPosix(nameOrPath).replace(/^\.\//, "").replace(/\/+$/, "");
-  return root.collections.find((c) => c.name === p) ?? root.collections.find((c) => c.path === p);
+  const p = fold(toPosix(nameOrPath).replace(/^\.\//, "").replace(/\/+$/, ""));
+  return (
+    root.collections.find((c) => fold(c.name) === p) ??
+    root.collections.find((c) => (c.meta.aliases ?? []).some((a) => fold(a) === p)) ??
+    root.collections.find((c) => c.autoAlias !== undefined && fold(c.autoAlias) === p) ??
+    root.collections.find((c) => fold(c.path) === p)
+  );
+}
+
+/** Canonical collection name for a filter argument (name, alias or path); unknown → as given. */
+export function canonicalCollection(root: Root, nameOrPath: string | undefined): string | undefined {
+  if (nameOrPath === undefined) return undefined;
+  return findCollection(root, nameOrPath)?.name ?? nameOrPath;
 }
 
 export function requireCollection(root: Root, nameOrPath: string): Collection {
   const c = findCollection(root, nameOrPath);
   if (!c) {
-    const known = root.collections.map((x) => x.name).join(", ") || "none — mark a folder with create_collection";
+    const known =
+      root.collections.map((x) => (x.aliases.length ? `${x.name} (${x.aliases.join(", ")})` : x.name)).join(", ") ||
+      "none — mark a folder with create_collection";
     throw new BrindleyError(`No collection "${nameOrPath}". Known collections: ${known}.`);
   }
   return c;

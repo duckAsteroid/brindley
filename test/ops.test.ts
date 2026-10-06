@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { C, fixture, git, lockExample, write, type Fixture } from "./helpers.js";
 import * as ops from "../src/ops.js";
 import { resolveRef } from "../src/repo.js";
-import { isReady } from "../src/deps.js";
+import { dependants, isReady } from "../src/deps.js";
 import { validate } from "../src/validate.js";
 import { regenerate, rootBlock } from "../src/readme.js";
 
@@ -370,5 +370,46 @@ describe("ignore", () => {
   it("still counts ignored numbers when coining", () => {
     fx = fixture({ files: files("  - code-review/\n") });
     expect(ops.nextNumber(fx.load(), fx.load().collections[0]!).number).toBe(6);
+  });
+});
+
+describe("collection aliases", () => {
+  const two = (extra = "") => ({
+    ...lockExample,
+    "docs/initiatives/PAR-778/entity-schema-enhancements/README.md": `---\nbrindley: 1\n${extra}---\n# Schema\n`,
+    "docs/initiatives/PAR-778/entity-schema-enhancements/22-impact.md": "---\nstatus: designed\n---\n# Impact\n",
+    [`${C}/40-uses-schema.md`]: '---\nstatus: designed\ndepends_on: ["ESE#22"]\n---\n# Uses schema\n',
+  });
+
+  it("derives an initials alias and resolves references through it, ignoring case", () => {
+    fx = fixture({ files: two() });
+    const root = fx.load();
+    const ese = root.collections.find((c) => c.name === "entity-schema-enhancements")!;
+    expect(ese.aliases).toEqual(["ese"]);
+    expect(resolveRef(root, "ese#22").title).toBe("Impact");
+    const user = resolveRef(root, "slot-booking#40");
+    expect(user.dependsOn[0]).toMatchObject({ collection: "entity-schema-enhancements", number: 22, raw: "ESE#22" });
+    expect(isReady(root, user)).toBe(false); // 22 is designed, not done
+    expect(dependants(root, resolveRef(root, "ese#22")).map((i) => i.number)).toEqual([40]);
+  });
+
+  it("uses explicit aliases from front-matter", () => {
+    fx = fixture({ files: two("aliases: [schema]\n") });
+    const root = fx.load();
+    expect(resolveRef(root, "schema#22").title).toBe("Impact");
+    expect(resolveRef(root, "ese#22").title).toBe("Impact"); // the automatic one still applies
+  });
+
+  it("drops an automatic alias that would be ambiguous", () => {
+    fx = fixture({ files: { ...two(), "elsewhere/every-small-edit/README.md": "---\nbrindley: 1\n---\n# Other\n" } });
+    const root = fx.load();
+    expect(root.collections.find((c) => c.name === "entity-schema-enhancements")!.aliases).toEqual([]);
+    expect(() => resolveRef(root, "ese#22")).toThrow();
+  });
+
+  it("flags explicit aliases that clash", () => {
+    fx = fixture({ files: { ...two("aliases: [slot-booking]\n") } });
+    expect(validate(fx.load()).map((f) => f.rule)).toContain("alias-clash");
+    expect(() => ops.createCollection(fx.load(), "x/y", { aliases: ["ese"] })).toThrow(/already refers/);
   });
 });

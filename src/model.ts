@@ -110,6 +110,8 @@ export interface CollectionMeta {
   statuses?: Record<string, string>;
   /** Paths or globs, relative to the collection folder, that Brindley ignores. */
   ignore?: string[];
+  /** Explicit short names for references, e.g. [ese] for "ese#22". */
+  aliases?: string[];
 }
 
 export interface Collection {
@@ -121,6 +123,10 @@ export interface Collection {
   readme: string;
   meta: CollectionMeta;
   initiatives: Initiative[];
+  /** Explicit aliases, plus the automatic initials alias when it is unambiguous. */
+  aliases: string[];
+  /** The automatic alias (initials of the folder name), if it was usable. */
+  autoAlias?: string;
   /** Numbered files (relative to the collection folder) excluded by `ignore:` patterns. */
   ignored: string[];
 }

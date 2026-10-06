@@ -7,6 +7,7 @@ import {
   allInitiatives,
   findCollection,
   initiativeKey,
+  canonicalCollection,
   declaredTags,
   loadRoot,
   lookup,
@@ -27,7 +28,7 @@ export { VERSION };
 export const INSTRUCTIONS = `Brindley manages planned work ("initiatives") as Markdown files in git. Design fully before anyone digs.
 
 - A collection is any folder whose README.md front-matter has \`brindley: 1\`. Mark one with create_collection (existing files are adopted; nothing moves). There is no repo-level file.
-- Initiatives are \`<number>-<slug>.md\` files in the collection folder or its immediate sub-folders. Refer to them as \`<collection-name>#<number>\`, or a bare number when unambiguous.
+- Initiatives are \`<number>-<slug>.md\` files in the collection folder or its immediate sub-folders. Refer to them as \`<collection>#<number>\`, where the collection is its name (front-matter \`name:\`, else the folder name), an alias (\`aliases:\` in front-matter, or the automatic initials of the folder name, e.g. entity-schema-enhancements → ese), or its path; or a bare number when unambiguous.
 - Status comes from front-matter \`status:\`, else the sub-folder name (completed/ → done, deferred/ → deferred, superseded/ → superseded). Core statuses: draft, designed (design complete, ready to implement), in-progress, deferred, done, abandoned, superseded. Common words are aliases (proposed → draft, completed → done, future → deferred, …); a collection can map its own with \`statuses:\`.
 - \`ignore:\` in the collection README holds .gitignore-style patterns (relative to the collection folder) for numbered files that are not initiatives, e.g. companion rationale notes. Use the \`ignore\` tool to add/remove/preview patterns; \`collections\` lists what is ignored.
 - Brindley never moves files. Every write regenerates the collection README's generated block. \`validate\` reports structural problems (missing or conflicting statuses, files outside their status folder, duplicate numbers, broken links, …).
@@ -154,7 +155,8 @@ export function createServer(opts: ServerOptions): McpServer {
     "Mark a folder as a collection: adds `brindley: 1` and the given details to its README.md front-matter, creating the folder and README if needed. Works on a folder that already holds numbered initiative files. The first collection in a repo also returns the agent-instructions snippet for AGENTS.md / CLAUDE.md.",
     {
       path: z.string().describe('Folder relative to the repo root, e.g. "docs/initiatives/LOCK-42/slot-booking"'),
-      name: z.string().optional().describe("Short name used in references (name#n); defaults to the folder name"),
+      name: z.string().optional().describe("Name used in references (name#n); defaults to the folder name"),
+      aliases: z.array(z.string()).optional().describe('Short names for references, e.g. ["ese"] for "ese#22"'),
       ...collectionFields,
     },
     (root, a) => ops.createCollection(root, a.path, a),
@@ -163,7 +165,12 @@ export function createServer(opts: ServerOptions): McpServer {
   tool(
     "update_collection",
     "Edit a collection README's details, including its status (active | done | abandoned).",
-    { collection: z.string().describe("Collection name or folder path"), status: z.enum(["active", "done", "abandoned"]).optional(), ...collectionFields },
+    {
+      collection: z.string().describe("Collection name, alias or folder path"),
+      aliases: z.array(z.string()).optional().describe("Replace the explicit aliases"),
+      status: z.enum(["active", "done", "abandoned"]).optional(),
+      ...collectionFields,
+    },
     (root, a) => ops.updateCollection(root, a.collection, a),
   );
 
@@ -200,6 +207,7 @@ export function createServer(opts: ServerOptions): McpServer {
         return {
           collection: c.name,
           path: c.path,
+          aliases: c.aliases,
           ...c.meta,
           counts: Object.fromEntries(STATUSES.map((s) => [s, count(s)])),
           ready: c.initiatives.filter((i) => isReady(root, i)).length,
@@ -222,7 +230,7 @@ export function createServer(opts: ServerOptions): McpServer {
     },
     (root, a) =>
       allInitiatives(root)
-        .filter((i) => !a.collection || i.collection === a.collection)
+        .filter((i) => !a.collection || i.collection === canonicalCollection(root, a.collection))
         .filter((i) => !a.type || i.type === a.type)
         .filter((i) => !a.status || i.status === a.status)
         .filter((i) => !a.tag || i.tags.includes(a.tag))
@@ -248,7 +256,7 @@ export function createServer(opts: ServerOptions): McpServer {
       topoSort(
         root,
         allInitiatives(root).filter(
-          (i) => isReady(root, i) && (!a.collection || i.collection === a.collection) && (!a.type || i.type === a.type),
+          (i) => isReady(root, i) && (!a.collection || i.collection === canonicalCollection(root, a.collection)) && (!a.type || i.type === a.type),
         ),
       ).map((i) => ({ ...summary(root, i), external: dependencyReport(root, i).filter((d) => d.classification === "external").map((d) => d.ref) })),
     { readOnlyHint: true },
@@ -287,7 +295,7 @@ export function createServer(opts: ServerOptions): McpServer {
     "Unresolved open questions, grouped by initiative.",
     { collection: z.string().optional(), ref: refArg.optional(), include_implementation: z.boolean().optional() },
     (root, a) => {
-      const items = a.ref !== undefined ? [resolveRef(root, a.ref, a.collection)] : allInitiatives(root).filter((i) => !a.collection || i.collection === a.collection);
+      const items = a.ref !== undefined ? [resolveRef(root, a.ref, a.collection)] : allInitiatives(root).filter((i) => !a.collection || i.collection === canonicalCollection(root, a.collection));
       return items
         .map((i) => ({
           ref: initiativeKey(i),
@@ -632,7 +640,7 @@ ${readFileSync(i.file, "utf8")}
     },
     ({ collection }) => {
       const root = open().root;
-      const items = allInitiatives(root).filter((i) => !collection || i.collection === collection);
+      const items = allInitiatives(root).filter((i) => !collection || i.collection === canonicalCollection(root, collection));
       const lines = items.filter(isActive).map((i) => {
         const s = summary(root, i);
         return `- ${s.ref} "${s.title}" — ${s.type ?? "untyped"}, ${s.status}${s.ready ? ", READY" : ""}${s.blockedBy.length ? `, blocked by ${s.blockedBy.join(", ")}` : ""}, ${s.openQuestions} open question(s), updated ${i.updated ?? "unknown"}`;
