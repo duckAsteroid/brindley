@@ -8,13 +8,13 @@ brindley readmes [--check]              Regenerate collection README blocks; --c
 brindley --version
 ```
 
-Run from anywhere inside the repository. Without `npm link`, use `node /path/to/brindley/dist/cli.js`.
+Run from anywhere inside the repository, via `npx brindley …` or after `npm install -g brindley`.
 
 ## In CI
 
 ```yaml
-- run: node path/to/brindley/dist/cli.js validate
-- run: node path/to/brindley/dist/cli.js readmes --check
+- run: npx -y brindley@latest validate
+- run: npx -y brindley@latest readmes --check
 ```
 
 `validate` fails the build on errors (warnings are printed but pass); `readmes --check` fails if

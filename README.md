@@ -12,16 +12,13 @@ it over to build — with an MCP server that keeps it all straight.
 [the workflow](https://duckasteroid.github.io/brindley/guide/workflow),
 [why "Brindley"?](https://duckasteroid.github.io/brindley/story)
 
-**Status:** early, not yet on npm.
-
 ## Quick start
 
-```sh
-git clone https://github.com/duckAsteroid/brindley && cd brindley
-npm install && npm run build
+Brindley is [on npm](https://www.npmjs.com/package/brindley); `npx` fetches and runs it (Node 20+).
 
+```sh
 # in the repo you want to plan in:
-claude mcp add brindley -- node /path/to/brindley/dist/cli.js
+claude mcp add brindley -- npx -y brindley@latest
 ```
 
 Then ask your agent to *"make `docs/plans` a collection"*. Other MCP clients (opencode, …) are
