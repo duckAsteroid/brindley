@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { dirname, join, relative, resolve } from "node:path";
 import type { Root } from "./model.js";
-import { stripCodeFences } from "./markdown.js";
+import { stripCodeFences, withoutInlineCode } from "./markdown.js";
 import { changedFiles, git } from "./git.js";
 import { globToRegExp, toPosix } from "./repo.js";
 
@@ -73,7 +73,7 @@ export function checkDoc(root: Root, repoPath: string): DocFinding[] {
       const m = r.re.exec(text);
       if (m) findings.push({ file: repoPath, line: line + 1, kind: r.kind, text: m[0] });
     }
-    for (const m of text.matchAll(/\]\(([^)\s]+)\)/g)) {
+    for (const m of withoutInlineCode(text).matchAll(/\]\(([^)\s]+)\)/g)) {
       const href = m[1]!.split("#")[0]!;
       if (!href || /^[a-z]+:/i.test(href)) continue;
       const target = toPosix(relative(root.repoRoot, resolve(dirname(abs), href)));

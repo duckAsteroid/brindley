@@ -3,7 +3,7 @@ import { dirname, join, relative, resolve } from "node:path";
 import { ASSET_DIR, COLLECTION_STATUSES, STATUSES, normaliseStatus, type Initiative, type Root } from "./model.js";
 import { cycles, target } from "./deps.js";
 import { allInitiatives, declaredTags, findCollection, ignoreMatcher, initiativeKey, toPosix } from "./repo.js";
-import { stripCodeFences } from "./markdown.js";
+import { stripCodeFences, withoutInlineCode } from "./markdown.js";
 import { FINDINGS, MEASURES, sectionIsBlank } from "./ops.js";
 import { regenerate } from "./readme.js";
 import { checkDocs } from "./docs.js";
@@ -171,7 +171,7 @@ function checkInitiative(
   }
 
   for (const { line, text } of stripCodeFences(i.body)) {
-    for (const m of text.matchAll(/\]\(([^)\s]+)\)/g)) {
+    for (const m of withoutInlineCode(text).matchAll(/\]\(([^)\s]+)\)/g)) {
       const href = decodeURIComponent(m[1]!.split("#")[0]!);
       if (!href || /^[a-z]+:/i.test(href)) continue;
       const fmLines = i.fmText === null ? 0 : i.fmText.split("\n").length + 1;

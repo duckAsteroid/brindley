@@ -252,6 +252,11 @@ export function appendToSection(body: string, name: string, itemText: string, be
   return ls.join("\n");
 }
 
+/** The line with inline code spans blanked out, so links shown as code aren't read as links. */
+export function withoutInlineCode(line: string): string {
+  return line.replace(/`[^`]*`/g, (m) => " ".repeat(m.length));
+}
+
 export function stripCodeFences(text: string): { line: number; text: string }[] {
   const out: { line: number; text: string }[] = [];
   let fence: string | null = null;
@@ -330,8 +335,7 @@ export function sectionLinks(body: string, name: string): SectionLink[] {
       return;
     }
     if (fence !== null) return;
-    const withoutCode = line.replace(/`[^`]*`/g, (m) => " ".repeat(m.length));
-    for (const m of withoutCode.matchAll(/\[([^\]]*)\]\(\s*<?([^)\s>]+)>?(?:\s+"[^"]*")?\s*\)/g)) {
+    for (const m of withoutInlineCode(line).matchAll(/\[([^\]]*)\]\(\s*<?([^)\s>]+)>?(?:\s+"[^"]*")?\s*\)/g)) {
       out.push({ text: m[1]!, href: m[2]!, line: i });
     }
   });

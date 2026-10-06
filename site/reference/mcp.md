@@ -36,7 +36,7 @@ README blocks — and reports every file it touched, ready to commit.
 
 | Tool | Parameters | Does |
 |------|------------|------|
-| `create` | `collection`, `title`, `type?`, `tags?`, `goal?`, `depends_on?`, `related?`, `owner?` | Coins the next number and writes the skeleton; dependencies become links. A folder path that isn't a collection yet is marked as one. |
+| `create` | `collection`, `title`, `type?`, `tags?`, `goal?`, `depends_on?`, `related?`, `why?`, `owner?` | Coins the next number and writes the skeleton; dependencies become links. A folder path that isn't a collection yet is marked as one. |
 | `update` | `ref`, `title?`, `type?`, `owner?`, `tags?`, `status_note?`, `docs?`, `section?`, `content?` | Edits front-matter or the H1, or replaces a body section. `content` is the section's body; a leading heading naming the section is dropped. |
 | `set_status` | `ref`, `status`, `superseded_by?`, `force?` | Changes status within the lifecycle rules. Aliases like *parked* are accepted. |
 | `add_question` | `ref`, `text`, `implementation?` | Adds an open question; a blocking one sends a designed initiative back to draft. |
