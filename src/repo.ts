@@ -11,7 +11,18 @@ import {
   type Ref,
   type Root,
 } from "./model.js";
-import { h1, humanise, parseAcceptance, parseFrontMatter, parseQuestions, proseStatus, splitFrontMatter } from "./markdown.js";
+import {
+  DEPENDENCIES,
+  RELATED,
+  h1,
+  humanise,
+  parseAcceptance,
+  parseFrontMatter,
+  parseQuestions,
+  proseStatus,
+  sectionLinks,
+  splitFrontMatter,
+} from "./markdown.js";
 import { git } from "./git.js";
 
 const SKIP_DIRS = new Set(["node_modules", ".git"]);
@@ -95,11 +106,6 @@ export function refKey(collection: string, number: number): string {
   return `${collection}#${number}`;
 }
 
-function strListOrNums(v: unknown): unknown[] {
-  if (v === undefined || v === null) return [];
-  return Array.isArray(v) ? v : [v];
-}
-
 export function loadInitiative(
   file: string,
   repoRoot: string,
@@ -139,8 +145,9 @@ export function loadInitiative(
     tags: strList(fm["tags"]),
     owner: str(fm["owner"]),
     updated: str(fm["updated"]),
-    dependsOn: strListOrNums(fm["depends_on"]).map((r) => parseRef(r, collection)),
-    related: strListOrNums(fm["related"]).map((r) => parseRef(r, collection)),
+    dependsOn: [],
+    related: [],
+    links: { dependencies: sectionLinks(body, DEPENDENCIES), related: sectionLinks(body, RELATED) },
     supersededBy: fm["superseded_by"] !== undefined ? parseRef(fm["superseded_by"], collection) : undefined,
     docs: strList(fm["docs"]),
     docsImpact: fm["docs_impact"],
@@ -291,20 +298,67 @@ export function loadRoot(repoRoot: string): Root {
   });
 
   const root: Root = { repoRoot, collections };
-  // Resolve references written with aliases or paths to canonical collection names.
-  for (const c of collections) {
-    for (const i of c.initiatives) {
-      const canon = (r: Ref): Ref => {
-        if (r.kind !== "initiative") return r;
-        const target = findCollection(root, r.collection);
-        return target ? { ...r, collection: target.name } : r;
-      };
-      i.dependsOn = i.dependsOn.map(canon);
-      i.related = i.related.map(canon);
-      if (i.supersededBy) i.supersededBy = canon(i.supersededBy);
+  const all = collections.flatMap((c) => c.initiatives);
+  const byFile = new Map(all.map((i) => [i.file, i]));
+  const byName = new Map<string, Initiative[]>();
+  for (const i of all) {
+    const base = i.file.split(sep).pop()!;
+    byName.set(base, [...(byName.get(base) ?? []), i]);
+  }
+  for (const i of all) {
+    // Links in "## Dependencies" / "## Related" become references.
+    const resolveLinks = (links: { href: string }[]) => {
+      const out: Ref[] = [];
+      const seen = new Set<string>();
+      for (const { href } of links) {
+        const r = resolveLink(i, href, byFile, byName);
+        if (!r) continue;
+        const key = r.kind === "initiative" ? refKey(r.collection, r.number) : r.raw;
+        if (seen.has(key) || (r.kind === "initiative" && r.collection === i.collection && r.number === i.number)) continue;
+        seen.add(key);
+        out.push(r);
+      }
+      return out;
+    };
+    i.dependsOn = resolveLinks(i.links.dependencies);
+    i.related = resolveLinks(i.links.related);
+    // superseded_by (front-matter) may use an alias or path: resolve to the canonical name.
+    if (i.supersededBy?.kind === "initiative") {
+      const target = findCollection(root, i.supersededBy.collection);
+      if (target) i.supersededBy = { ...i.supersededBy, collection: target.name };
     }
   }
   return root;
+}
+
+/**
+ * What a link in a Dependencies/Related section refers to: an initiative file (also when it has
+ * since moved, matched by filename), an external ticket (http/https), or nothing Brindley tracks.
+ */
+function resolveLink(
+  from: Initiative,
+  href: string,
+  byFile: Map<string, Initiative>,
+  byName: Map<string, Initiative[]>,
+): Ref | undefined {
+  if (/^https?:\/\//i.test(href)) return { kind: "external", raw: href };
+  if (/^[a-z][a-z0-9+.-]*:/i.test(href) || href.startsWith("#")) return undefined;
+  let path = href.split("#")[0]!;
+  try {
+    path = decodeURIComponent(path);
+  } catch {
+    /* keep as written */
+  }
+  const abs = resolve(dirname(from.file), path);
+  const hit = byFile.get(abs);
+  if (hit) return { kind: "initiative", raw: href, collection: hit.collection, number: hit.number };
+  if (existsSync(abs)) return undefined; // a real file, but not an initiative (e.g. a design doc)
+  const candidates = byName.get(path.split("/").pop()!) ?? [];
+  if (candidates.length === 1) {
+    const t = candidates[0]!;
+    return { kind: "initiative", raw: href, collection: t.collection, number: t.number, movedTo: t.rel };
+  }
+  return undefined;
 }
 
 /** Tags declared by any collection, merged (first description wins); undefined if none declare tags. */

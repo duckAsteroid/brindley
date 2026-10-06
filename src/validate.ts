@@ -127,11 +127,9 @@ function checkInitiative(
     const v = i.fm[key];
     if (v !== undefined && !ISO_DATE.test(String(v))) err("date", f, `\`${key}\` must be an ISO date (YYYY-MM-DD).`);
   }
-  for (const [field, refs] of [["depends_on", i.dependsOn], ["related", i.related]] as const) {
-    for (const r of refs) {
-      if (r.kind === "initiative" && !target(root, r)) err("dangling-ref", f, `\`${field}\` refers to ${r.raw}, which does not exist.`);
-    }
-  }
+  for (const key of ["depends_on", "related"])
+    if (i.fm[key] !== undefined)
+      warn("front-matter-dependencies", f, `\`${key}\` in front-matter is ignored; link the initiatives under "## ${key === "depends_on" ? "Dependencies" : "Related"}" instead.`);
   if (i.status === "superseded") {
     if (!i.supersededBy)
       (i.statusSource === "folder" ? warn : err)("superseded-by", f, "Superseded, but no `superseded_by` says by what.");

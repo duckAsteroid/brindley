@@ -79,14 +79,19 @@ updated: 2026-09-10
   [`${C}/21-lock-sensor-import.md`]: `---
 type: feature
 status: designed
-depends_on: [19, 20, "lib:geo-coords"]
 updated: 2026-09-24
 ---
 # Lock sensor CSV import
 
 ## Goal
 
-Import lock sensor readings.
+Import lock sensor readings. See the [design notes](21-sensor-readings/notes.md).
+
+## Dependencies
+
+- [19 Boat identity](19-boat-identity.md) — readings are keyed by boat.
+- [20 Slot calendar](20-slot-calendar-and-read-model.md) and the [sensor spec](21-sensor-readings/notes.md).
+- [geo-coords library](https://example.com/libs/geo-coords) for lock positions.
 
 ## Acceptance criteria
 
@@ -95,10 +100,17 @@ Import lock sensor readings.
   [`${C}/22-opening-hours-change-impact.md`]: `---
 type: feature
 status: draft
-depends_on: [23]
 tags: [notifications]
 ---
 # Opening-hours change impact
+
+## Dependencies
+
+Needs [the passage event](23-passage-recorded-event.md) to notify captains.
+
+## Related
+
+- [19 Boat identity](19-boat-identity.md)
 
 ## Agreed direction
 
@@ -116,6 +128,7 @@ Validate synchronously.
 
 - Affected captains are identified.
 `,
+  [`${C}/21-sensor-readings/notes.md`]: "# Sensor notes\n",
   [`${C}/23-passage-recorded-event.md`]: `---
 type: feature
 status: designed

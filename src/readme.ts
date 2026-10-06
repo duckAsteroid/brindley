@@ -36,13 +36,20 @@ function openQs(i: Initiative): string {
   return impl > 0 ? `${blocking} (+${impl} impl.)` : String(blocking);
 }
 
+/** Short Markdown link for an external dependency URL ("host/…/last-segment"). */
+function externalLink(url: string): string {
+  const m = /^https?:\/\/([^/]+)(?:\/.*?([^/]+))?\/?$/.exec(url);
+  const label = m ? (m[2] ? `${m[1]}/…/${m[2]}` : m[1]!) : url;
+  return `[${esc(label)}](${url})`;
+}
+
 function readiness(root: Root, i: Initiative): string {
   const parts: string[] = [];
   const b = blockers(root, i);
   if (isReady(root, i)) parts.push("✅ ready");
   else if (b.length > 0) parts.push(`⛔ ${b.map((d) => d.ref).join(", ")}`);
   const ext = dependencyReport(root, i).filter((d) => d.classification === "external");
-  if (ext.length > 0) parts.push(`ext: ${ext.map((d) => `\`${esc(d.ref)}\``).join(", ")}`);
+  if (ext.length > 0) parts.push(`ext: ${ext.map((d) => externalLink(d.ref)).join(", ")}`);
   return parts.length ? parts.join(" · ") : "—";
 }
 

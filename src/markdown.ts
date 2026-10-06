@@ -296,3 +296,36 @@ export function proseStatus(body: string): string | undefined {
   }
   return undefined;
 }
+
+export interface SectionLink {
+  text: string;
+  href: string;
+  /** 0-based body line. */
+  line: number;
+}
+
+export const DEPENDENCIES = "Dependencies";
+export const RELATED = "Related";
+
+/** Markdown links (`[text](href)`) in a named section, outside code. */
+export function sectionLinks(body: string, name: string): SectionLink[] {
+  const s = findSection(body, name);
+  if (!s) return [];
+  const out: SectionLink[] = [];
+  let fence: string | null = null;
+  lines(body).forEach((line, i) => {
+    if (i < s.start || i >= s.end) return;
+    const f = /^\s*(```|~~~)/.exec(line);
+    if (f) {
+      if (fence === null) fence = f[1]!;
+      else if (fence === f[1]) fence = null;
+      return;
+    }
+    if (fence !== null) return;
+    const withoutCode = line.replace(/`[^`]*`/g, (m) => " ".repeat(m.length));
+    for (const m of withoutCode.matchAll(/\[([^\]]*)\]\(\s*<?([^)\s>]+)>?(?:\s+"[^"]*")?\s*\)/g)) {
+      out.push({ text: m[1]!, href: m[2]!, line: i });
+    }
+  });
+  return out;
+}

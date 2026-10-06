@@ -1,3 +1,5 @@
+import type { SectionLink } from "./markdown.js";
+
 export const STATUSES = ["draft", "designed", "in-progress", "deferred", "done", "abandoned", "superseded"] as const;
 export type Status = (typeof STATUSES)[number];
 
@@ -42,7 +44,14 @@ export const ASSET_DIR = /^\d+-/;
 
 /** A reference to another initiative, or to something outside Brindley. */
 export type Ref =
-  | { kind: "initiative"; raw: string; collection: string; number: number }
+  | {
+      kind: "initiative";
+      raw: string;
+      collection: string;
+      number: number;
+      /** Set when the link's path no longer exists and the target was found by filename instead. */
+      movedTo?: string;
+    }
   | { kind: "external"; raw: string };
 
 export interface Question {
@@ -84,8 +93,12 @@ export interface Initiative {
   tags: string[];
   owner?: string;
   updated?: string;
+  /** From links under "## Dependencies" (resolved when the repo is loaded). */
   dependsOn: Ref[];
+  /** From links under "## Related". */
   related: Ref[];
+  /** Raw links found in those sections, before resolution. */
+  links: { dependencies: SectionLink[]; related: SectionLink[] };
   supersededBy?: Ref;
   docs: string[];
   docsImpact?: unknown;

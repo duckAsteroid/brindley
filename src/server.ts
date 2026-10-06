@@ -25,12 +25,15 @@ import { COMMIT, VERSION } from "./version.js";
 export { VERSION };
 
 /** Sent to clients on connect: how Brindley sees a repository. */
-export const INSTRUCTIONS = `Brindley manages planned work ("initiatives") as Markdown files in git. Design fully before anyone digs.
+export const INSTRUCTIONS = `Brindley manages planned work as Markdown files in git. Design fully before anyone digs.
+
+- The unit of work is an **initiative**. People also call them **tickets** or **issues** — all three mean the same thing here, so "create a ticket", "what issues are ready?" or "close ticket ese#22" all map onto these tools.
 
 - A collection is any folder whose README.md front-matter has \`brindley: 1\`. Mark one with create_collection (existing files are adopted; nothing moves). There is no repo-level file.
 - Initiatives are \`<number>-<slug>.md\` files in the collection folder or its immediate sub-folders. Refer to them as \`<collection>#<number>\`, where the collection is its name (front-matter \`name:\`, else the folder name), an alias (\`aliases:\` in front-matter, or the automatic initials of the folder name, e.g. entity-schema-enhancements → ese), or its path; or a bare number when unambiguous.
 - Status comes from front-matter \`status:\`, else the sub-folder name (completed/ → done, deferred/ → deferred, superseded/ → superseded). Core statuses: draft, designed (design complete, ready to implement), in-progress, deferred, done, abandoned, superseded. Common words are aliases (proposed → draft, completed → done, future → deferred, …); a collection can map its own with \`statuses:\`.
 - \`ignore:\` in the collection README holds .gitignore-style patterns (relative to the collection folder) for numbered files that are not initiatives, e.g. companion rationale notes. Use the \`ignore\` tool to add/remove/preview patterns; \`collections\` lists what is ignored.
+- Dependencies are the links under an initiative's \`## Dependencies\` heading (links to initiative files, in any collection, block it; http links are external prerequisites). Links under \`## Related\` are non-blocking. Use set_dependencies to add or remove them.
 - Brindley never moves files. Every write regenerates the collection README's generated block. \`validate\` reports structural problems (missing or conflicting statuses, files outside their status folder, duplicate numbers, broken links, …).
 - When discussing open questions with the user: one at a time, in open chat (no form or multiple-choice prompts), grounded in the actual code, with concrete examples.`;
 
@@ -39,7 +42,7 @@ export interface ServerOptions {
   autoReadme?: boolean;
 }
 
-const refArg = z.union([z.string(), z.number()]).describe('Initiative: "collection#n", a bare number, or a path.');
+const refArg = z.union([z.string(), z.number()]).describe('Initiative (ticket/issue): "collection#n" (e.g. "ese#22"), a bare number, or a path.');
 const refList = z.array(z.union([z.string(), z.number()]));
 
 function summary(root: Root, i: Initiative) {
@@ -219,7 +222,7 @@ export function createServer(opts: ServerOptions): McpServer {
 
   tool(
     "list",
-    "List initiatives (whole root unless `collection` is given), optionally filtered.",
+    "List initiatives (a.k.a. tickets or issues) across the repo, or in one `collection`, optionally filtered.",
     {
       collection: z.string().optional(),
       type: z.string().optional(),
@@ -242,7 +245,7 @@ export function createServer(opts: ServerOptions): McpServer {
 
   tool(
     "get",
-    "Full detail of one initiative, including its dependency report (each dependency classified satisfied / blocking / external / missing), dependants, open questions and acceptance criteria.",
+    "Full detail of one initiative (ticket/issue), including its dependency report (each dependency classified satisfied / blocking / external / missing), dependants, open questions and acceptance criteria.",
     { ref: refArg, collection: z.string().optional() },
     (root, a) => detail(root, resolveRef(root, a.ref, a.collection)),
     { readOnlyHint: true },
@@ -250,7 +253,7 @@ export function createServer(opts: ServerOptions): McpServer {
 
   tool(
     "ready",
-    "Initiatives that are designed with nothing blocking — what an agent can pick up now — in suggested order (prerequisites first).",
+    "Initiatives (tickets/issues) that are designed with nothing blocking — what an agent can pick up now — in suggested order (prerequisites first).",
     { collection: z.string().optional(), type: z.string().optional() },
     (root, a) =>
       topoSort(
@@ -359,15 +362,15 @@ export function createServer(opts: ServerOptions): McpServer {
 
   tool(
     "create",
-    "Create a new initiative. The number is coined automatically by scanning the working tree, other worktrees, branches and history. A folder path that isn't a collection yet is marked as one.",
+    "Create a new initiative (ticket/issue). The number is coined automatically by scanning the working tree, other worktrees, branches and history. A folder path that isn't a collection yet is marked as one.",
     {
       collection: z.string().describe("Collection name, or a folder path"),
       title: z.string(),
       type: z.string().optional().describe("feature, bug, refactor, perf, docs, chore, spike, …"),
       tags: z.array(z.string()).optional(),
       goal: z.string().optional(),
-      depends_on: refList.optional(),
-      related: refList.optional(),
+      depends_on: refList.optional().describe('Initiatives (e.g. "ese#22", 23) or ticket URLs to link under ## Dependencies'),
+      related: refList.optional().describe("Initiatives or URLs to link under ## Related (non-blocking)"),
       owner: z.string().optional(),
     },
     (root, a) => ops.create(root, a),
@@ -375,7 +378,7 @@ export function createServer(opts: ServerOptions): McpServer {
 
   tool(
     "update",
-    "Edit an initiative's front-matter fields or H1, or replace a named body section. Cannot change its number or filename.",
+    "Edit an initiative's (ticket's/issue's) front-matter fields or H1, or replace a named body section. Cannot change its number or filename.",
     {
       ref: refArg,
       collection: z.string().optional(),
@@ -393,7 +396,7 @@ export function createServer(opts: ServerOptions): McpServer {
 
   tool(
     "set_status",
-    "Change status, enforcing the lifecycle: designed needs no blocking open questions; in-progress needs ready; done goes through `complete`.",
+    "Change an initiative's (ticket's/issue's) status, enforcing the lifecycle: designed needs no blocking open questions; in-progress needs ready; done goes through `complete`.",
     {
       ref: refArg,
       collection: z.string().optional(),
@@ -428,7 +431,7 @@ export function createServer(opts: ServerOptions): McpServer {
 
   tool(
     "set_dependencies",
-    "Add or remove `depends_on` (blocking) and `related` (non-blocking) entries. Refuses unknown initiatives and cycles.",
+    "Add or remove dependency links. Dependencies are the links under an initiative's `## Dependencies` heading (blocking); `## Related` links are non-blocking. Adds a bullet with a relative link (and optional `why`); removes the bullet(s) linking to the target. Refuses unknown initiatives and cycles.",
     {
       ref: refArg,
       collection: z.string().optional(),
@@ -436,13 +439,14 @@ export function createServer(opts: ServerOptions): McpServer {
       remove: refList.optional(),
       related_add: refList.optional(),
       related_remove: refList.optional(),
+      why: z.string().optional().describe("Why the added dependency is needed (appended to each new bullet)"),
     },
     (root, a) => ops.setDependencies(root, resolveRef(root, a.ref, a.collection), a),
   );
 
   tool(
     "complete",
-    'Mark an initiative done. `docs_impact` is required: the project doc paths updated in this change, or "none: <reason>". Reports which initiatives became ready.',
+    'Mark an initiative (ticket/issue) done — "close" it. `docs_impact` is required: the project doc paths updated in this change, or "none: <reason>". Reports which initiatives became ready.',
     {
       ref: refArg,
       collection: z.string().optional(),
@@ -550,7 +554,7 @@ export function createServer(opts: ServerOptions): McpServer {
   server.registerPrompt(
     "design-review",
     {
-      description: "Work through an initiative's open questions with the user, one at a time, grounded in the code.",
+      description: "Work through an initiative's (ticket's/issue's) open questions with the user, one at a time, grounded in the code.",
       argsSchema: { ref: z.string().describe('Initiative: "collection#n" or a number') },
     },
     ({ ref }) => {
@@ -598,7 +602,7 @@ ${readFileSync(i.file, "utf8")}
   server.registerPrompt(
     "implement",
     {
-      description: "Hand-off brief for an agent implementing one initiative.",
+      description: "Hand-off brief for an agent implementing one initiative (ticket/issue).",
       argsSchema: { ref: z.string().describe('Initiative: "collection#n" or a number') },
     },
     ({ ref }) => {
@@ -635,7 +639,7 @@ ${readFileSync(i.file, "utf8")}
   server.registerPrompt(
     "triage",
     {
-      description: "Review the initiatives: stale drafts, unresolved questions, blocked chains, unconfirmed external dependencies, and what to pick next.",
+      description: "Review the initiatives (tickets/issues): stale drafts, unresolved questions, blocked chains, unconfirmed external dependencies, and what to pick next.",
       argsSchema: { collection: z.string().optional() },
     },
     ({ collection }) => {

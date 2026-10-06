@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { C, fixture, git, lockExample, write, type Fixture } from "./helpers.js";
 import * as ops from "../src/ops.js";
 import { resolveRef } from "../src/repo.js";
-import { dependants, isReady } from "../src/deps.js";
+import { dependants, dependencyReport, isReady } from "../src/deps.js";
 import { validate } from "../src/validate.js";
 import { regenerate, rootBlock } from "../src/readme.js";
 
@@ -159,7 +159,7 @@ describe("READMEs", () => {
     expect(changes.map((c) => c.reason)).toEqual(["updated"]);
     const readme = read(`${C}/README.md`);
     expect(readme).toContain("Captains book slots to take boats up or down through the lock.");
-    expect(readme).toContain("| 21 | [Lock sensor CSV import](21-lock-sensor-import.md) | feature | designed | ✅ ready · ext: `lib:geo-coords` |");
+    expect(readme).toContain("| 21 | [Lock sensor CSV import](21-lock-sensor-import.md) | feature | designed | ✅ ready · ext: [example.com/…/geo-coords](https://example.com/libs/geo-coords) |");
     expect(readme).toContain("```mermaid");
     expect(readme).toContain('n23["23 Passage recorded event"]:::ready');
     expect(readme).toContain("n23 --> n22");
@@ -192,7 +192,7 @@ describe("validate", () => {
     });
     const rules = validate(fx.load()).map((f) => f.rule);
     expect(rules).toContain("duplicate-number");
-    expect(rules).toContain("dangling-ref");
+    expect(rules).toContain("front-matter-dependencies");
     expect(rules).toContain("tag-format");
     expect(rules).toContain("tag-unknown");
   });
@@ -247,7 +247,7 @@ describe("status folders and aliases", () => {
   const legacy = {
     "plans/README.md": "---\nbrindley: 1\nstatuses:\n  spiked: designed\n---\n# Plans\n",
     "plans/01-batch.md": "---\nstatus: Proposed\n---\n# Batch\n",
-    "plans/2-spike.md": "---\nstatus: spiked\ndepends_on: [3]\n---\n# Spike\n",
+    "plans/2-spike.md": "---\nstatus: spiked\n---\n# Spike\n\n## Dependencies\n\n- [3](completed/3-done-thing.md)\n",
     "plans/completed/3-done-thing.md": "# Done thing\n",
     "plans/completed/4-reopened.md": "---\nstatus: draft\n---\n# Reopened\n",
     "plans/deferred/5-later.md": "# Later\n",
@@ -258,7 +258,7 @@ describe("status folders and aliases", () => {
 
   const structure = {
     ...legacy,
-    "plans/2-spike.md": "---\nstatus: spiked\ndepends_on: [3]\n---\n# Spike\n\nBuilds on [the done thing](3-done-thing.md).\n",
+    "plans/2-spike.md": "---\nstatus: spiked\n---\n# Spike\n\n## Dependencies\n\n- Builds on [the done thing](3-done-thing.md).\n",
     "plans/completed/3-done-thing.md": "# Done thing\n\n**Status:** Proposed -- still being discussed\n",
     "plans/9-finished-but-here.md": "---\nstatus: done\ndocs_impact: \"none: test\"\n---\n# Finished\n",
     "plans/10-no-front-matter.md": "# Prose only\n\n## Status\n\n`draft` — design proposal.\n",
@@ -378,7 +378,7 @@ describe("collection aliases", () => {
     ...lockExample,
     "docs/initiatives/PAR-778/entity-schema-enhancements/README.md": `---\nbrindley: 1\n${extra}---\n# Schema\n`,
     "docs/initiatives/PAR-778/entity-schema-enhancements/22-impact.md": "---\nstatus: designed\n---\n# Impact\n",
-    [`${C}/40-uses-schema.md`]: '---\nstatus: designed\ndepends_on: ["ESE#22"]\n---\n# Uses schema\n',
+    [`${C}/40-uses-schema.md`]: "---\nstatus: designed\n---\n# Uses schema\n\n## Dependencies\n\n- [impact](../../PAR-778/entity-schema-enhancements/22-impact.md)\n",
   });
 
   it("derives an initials alias and resolves references through it, ignoring case", () => {
@@ -388,7 +388,7 @@ describe("collection aliases", () => {
     expect(ese.aliases).toEqual(["ese"]);
     expect(resolveRef(root, "ese#22").title).toBe("Impact");
     const user = resolveRef(root, "slot-booking#40");
-    expect(user.dependsOn[0]).toMatchObject({ collection: "entity-schema-enhancements", number: 22, raw: "ESE#22" });
+    expect(user.dependsOn[0]).toMatchObject({ collection: "entity-schema-enhancements", number: 22 });
     expect(isReady(root, user)).toBe(false); // 22 is designed, not done
     expect(dependants(root, resolveRef(root, "ese#22")).map((i) => i.number)).toEqual([40]);
   });
@@ -411,5 +411,66 @@ describe("collection aliases", () => {
     fx = fixture({ files: { ...two("aliases: [slot-booking]\n") } });
     expect(validate(fx.load()).map((f) => f.rule)).toContain("alias-clash");
     expect(() => ops.createCollection(fx.load(), "x/y", { aliases: ["ese"] })).toThrow(/already refers/);
+  });
+});
+
+describe("dependencies from the ## Dependencies section", () => {
+  it("treats links to initiatives as dependencies, URLs as external, other links as nothing", () => {
+    fx = fixture({ files: lockExample });
+    const root = fx.load();
+    const report = dependencyReport(root, resolveRef(root, "sb#21"));
+    expect(report.map((d) => [d.ref, d.classification])).toEqual([
+      ["19", "satisfied"],
+      ["20", "satisfied"],
+      ["https://example.com/libs/geo-coords", "external"],
+    ]);
+    const i22 = resolveRef(root, "sb#22");
+    expect(i22.dependsOn.map((r) => (r.kind === "initiative" ? r.number : r.raw))).toEqual([23]); // prose link counts
+    expect(i22.related.map((r) => (r.kind === "initiative" ? r.number : r.raw))).toEqual([19]); // non-blocking
+  });
+
+  it("still counts a link to a file that has moved, and says where it went", () => {
+    fx = fixture({
+      files: {
+        "plans/README.md": "---\nbrindley: 1\n---\n# Plans\n",
+        "plans/1-uses.md": "---\nstatus: designed\n---\n# Uses\n\n## Dependencies\n\n- [2](2-base.md)\n",
+        "plans/completed/2-base.md": "# Base\n",
+      },
+    });
+    const root = fx.load();
+    const i = resolveRef(root, "plans#1");
+    expect(i.dependsOn[0]).toMatchObject({ number: 2, movedTo: "plans/completed/2-base.md" });
+    expect(isReady(root, i)).toBe(true);
+    expect(validate(root).find((f) => f.rule === "broken-link")?.message).toMatch(/now at completed\/2-base\.md/);
+  });
+
+  it("set_dependencies adds and removes bullet links, using aliases", () => {
+    fx = fixture({
+      files: {
+        ...lockExample,
+        "docs/initiatives/PAR-778/entity-schema-enhancements/README.md": "---\nbrindley: 1\n---\n# Schema\n",
+        "docs/initiatives/PAR-778/entity-schema-enhancements/22-impact.md": "---\nstatus: done\n---\n# Impact\n",
+      },
+    });
+    let root = fx.load();
+    ops.setDependencies(root, resolveRef(root, "sb#23"), { add: ["ESE#22", "https://jira.example.com/browse/LOCK-7"], why: "needed first" });
+    const text = () => read(`${C}/23-passage-recorded-event.md`);
+    expect(text()).toContain(
+      "## Dependencies\n\n- [entity-schema-enhancements#22 Impact](../../PAR-778/entity-schema-enhancements/22-impact.md) — needed first\n- [https://jira.example.com/browse/LOCK-7](https://jira.example.com/browse/LOCK-7) — needed first",
+    );
+    root = fx.load();
+    expect(dependencyReport(root, resolveRef(root, "sb#23")).map((d) => d.classification)).toEqual(["satisfied", "external"]);
+    ops.setDependencies(root, resolveRef(root, "sb#23"), { remove: ["ese#22"] });
+    expect(text()).not.toContain("22-impact.md");
+    expect(text()).toContain("LOCK-7");
+  });
+
+  it("create links dependencies and related initiatives in their sections", () => {
+    fx = fixture({ files: lockExample });
+    const r = ops.create(fx.load(), { collection: "sb", title: "Pairing", depends_on: [20], related: [22] });
+    const text = read(r.result.path);
+    expect(text).toContain("## Dependencies\n\n- [20 Slot calendar and read model](20-slot-calendar-and-read-model.md) — _why this is needed_");
+    expect(text).toContain("## Related\n\n- [22 Opening-hours change impact](22-opening-hours-change-impact.md)");
+    expect(text).not.toMatch(/depends_on:/);
   });
 });

@@ -1,8 +1,11 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { join, relative, resolve } from "node:path";
+import { dirname, join, posix, relative, resolve, sep } from "node:path";
 import { COLLECTION_STATUSES, STATUSES, normaliseStatus, type Collection, type Initiative, type Root } from "./model.js";
 import {
+  DEPENDENCIES,
   OPEN_QUESTIONS,
+  RELATED,
+  listItems,
   appendToSection,
   editFrontMatter,
   findSection,
@@ -85,14 +88,17 @@ function refValue(raw: string | number): string | number {
 // ---------------------------------------------------------------------------
 // Setup
 
-export const AGENT_SNIPPET = `## Initiatives
-Planned work lives in Brindley collections: folders whose \`README.md\` front-matter contains
+export const AGENT_SNIPPET = `## Initiatives (tickets / issues)
+Planned work lives in Brindley collections — "initiative", "ticket" and "issue" all mean the same
+thing: folders whose \`README.md\` front-matter contains
 \`brindley: 1\`, holding one Markdown file per initiative, named \`<number>-<slug>.md\`
 (format: https://github.com/duckAsteroid/brindley/blob/main/FORMAT.md).
 - Never rename or move initiative files or their asset directories. Status is the \`status\`
   front-matter field.
-- Implement only an initiative that is \`designed\` and whose numbered \`depends_on\` are all
-  \`done\`. Confirm string (external) dependencies yourself; report any you cannot confirm.
+- Dependencies are the links under an initiative's \`## Dependencies\` heading (non-blocking
+  links go under \`## Related\`). Implement only an initiative that is \`designed\` and whose
+  linked initiatives are all \`done\`. Confirm external (http) dependencies yourself; report any
+  you cannot confirm.
 - Ask about open questions before implementing; \`(implementation)\` questions are yours to
   settle — record the decision in the initiative.
 - When discussing open questions with the user: one at a time, in open chat (no form or
@@ -263,23 +269,18 @@ export function create(root: Root, input: CreateInput): OpResult<{ ref: string; 
     c = requireCollection(root, m.path);
   }
   const { number, note } = nextNumber(root, c);
-  const deps = (input.depends_on ?? []).map(refValue);
-  const related = (input.related ?? []).map(refValue);
-  for (const r of [...deps, ...related]) {
-    const ref = parseRef(r, c.name);
-    if (ref.kind === "initiative" && !lookup(root, ref.collection, ref.number))
-      throw new BrindleyError(`Dependency ${ref.raw} does not exist.`);
-  }
+  const fileRel = `${c.path}/${number}-${slugify(input.title)}.md`;
+  const bullets = (refs: (string | number)[] | undefined) =>
+    (refs ?? []).map((r) => `- ${linkTo(root, fileRel, c!.name, r)} — _why this is needed_`);
+  const deps = bullets(input.depends_on);
+  const related = bullets(input.related);
   const fm = editFrontMatter(null, {
     ...(input.type ? { type: input.type } : {}),
     status: "draft",
-    ...(deps.length ? { depends_on: deps } : {}),
-    ...(related.length ? { related } : {}),
     ...(input.tags?.length ? { tags: input.tags } : {}),
     ...(input.owner ? { owner: input.owner } : {}),
     updated: today(),
   });
-  const depLines = deps.length ? deps.map((d) => `- ${d}: _why this is needed_`).join("\n") : "_None._";
   const body = [
     `# ${input.title}`,
     "",
@@ -289,14 +290,15 @@ export function create(root: Root, input: CreateInput): OpResult<{ ref: string; 
     "",
     "## Dependencies",
     "",
-    depLines,
+    ...(deps.length ? deps : ["_None._"]),
     "",
+    ...(related.length ? ["## Related", "", ...related, ""] : []),
     "## Open questions",
     "",
     "## Acceptance criteria",
     "",
   ].join("\n");
-  const file = join(c.dir, `${number}-${slugify(input.title)}.md`);
+  const file = join(root.repoRoot, fileRel);
   writeFileSync(file, joinFrontMatter(fm, body));
   written.push(file);
   return finish(root, [c.name], written, { ref: `${c.name}#${number}`, number, path: rel(root, file) }, note ? [note] : []);
@@ -439,43 +441,82 @@ export function nextQuestion(i: Initiative, after?: number) {
   };
 }
 
+/** A Markdown link from the file at repo-relative `fromRel` to an initiative ref or a URL. */
+function linkTo(root: Root, fromRel: string, fromCollection: string, ref: string | number): string {
+  const r = String(ref).trim();
+  if (/^https?:\/\//i.test(r)) return `[${r}](${r})`;
+  const t = resolveRef(root, r, fromCollection);
+  const label = t.collection === fromCollection ? `${t.number}` : initiativeKey(t);
+  return `[${label} ${t.title ?? t.slug}](${posix.relative(posix.dirname(fromRel), t.rel)})`;
+}
+
+/** Does a link (as written in `i`) point at initiative `t` (or, for URLs, equal `url`)? */
+function linkHits(i: Initiative, href: string, t: Initiative | null, url: string | null): boolean {
+  if (url) return href === url;
+  if (!t) return false;
+  const path = href.split("#")[0]!;
+  return resolve(dirname(i.file), path) === t.file || path.split("/").pop() === t.file.split(sep).pop();
+}
+
 export function setDependencies(
   root: Root,
   i: Initiative,
-  input: { add?: (string | number)[]; remove?: (string | number)[]; related_add?: (string | number)[]; related_remove?: (string | number)[] },
-): OpResult<{ ref: string; depends_on: unknown[]; related: unknown[] }> {
+  input: {
+    add?: (string | number)[];
+    remove?: (string | number)[];
+    related_add?: (string | number)[];
+    related_remove?: (string | number)[];
+    why?: string;
+  },
+): OpResult<{ ref: string; dependencies: string; related: string }> {
   const warnings: string[] = [];
-  const same = (a: string | number, b: string | number) => String(refValue(a)) === String(refValue(b));
-  const current = (key: string) => {
-    const v = i.fm[key];
-    return (Array.isArray(v) ? v : v === undefined ? [] : [v]) as (string | number)[];
-  };
-  const apply = (list: (string | number)[], add: (string | number)[] = [], remove: (string | number)[] = [], blocking: boolean) => {
-    let out = list.filter((x) => !remove.some((r) => same(x, r)));
-    for (const a of add.map(refValue)) {
-      if (out.some((x) => same(x, a))) continue;
-      const r = parseRef(a, i.collection);
-      if (r.kind === "initiative") {
-        const t = lookup(root, r.collection, r.number);
-        if (!t) throw new BrindleyError(`No initiative ${r.raw}.`);
-        if (t === i) throw new BrindleyError("An initiative cannot depend on itself.");
-        if (blocking && wouldCycle(root, i, t)) throw new BrindleyError(`Adding ${r.raw} would create a dependency cycle.`);
-      }
-      out = [...out, a];
+  let body = i.body;
+  const edit = (section: string, add: (string | number)[] = [], remove: (string | number)[] = [], blocking: boolean) => {
+    for (const x of remove) {
+      const url = /^https?:\/\//i.test(String(x)) ? String(x) : null;
+      const t = url ? null : resolveRef(root, x, i.collection);
+      const s = findSection(body, section);
+      const items = s ? listItems(body, s.start, s.end) : [];
+      const hits = items.filter((item) =>
+        [...lines(body).slice(item.start, item.end).join("\n").matchAll(/\]\(\s*<?([^)\s>]+)/g)].some((m) => linkHits(i, m[1]!, t, url)),
+      );
+      if (hits.length === 0) warnings.push(`${x} is not linked under "## ${section}".`);
+      for (const item of [...hits].reverse()) body = replaceLines(body, item.start, item.end, []);
+      const after = findSection(body, section);
+      if (after && lines(body).slice(after.start, after.end).every((l) => l.trim() === "") && blocking)
+        body = setSection(body, section, "_None._");
     }
-    return out;
+    for (const x of add) {
+      const url = /^https?:\/\//i.test(String(x));
+      if (!url) {
+        const t = resolveRef(root, x, i.collection);
+        if (t === i) throw new BrindleyError("An initiative cannot depend on itself.");
+        if (blocking && wouldCycle(root, i, t)) throw new BrindleyError(`Adding ${initiativeKey(t)} would create a dependency cycle.`);
+        const existing = blocking ? i.dependsOn : i.related;
+        if (existing.some((r) => r.kind === "initiative" && r.collection === t.collection && r.number === t.number)) {
+          warnings.push(`${initiativeKey(t)} is already linked under "## ${section}".`);
+          continue;
+        }
+      }
+      const item = `- ${linkTo(root, i.rel, i.collection, x)}${input.why ? ` — ${input.why}` : ""}`;
+      const s = findSection(body, section);
+      const content = s ? lines(body).slice(s.start, s.end).filter((l) => l.trim() !== "") : [];
+      if (s && content.length === 1 && /^_?none\.?_?$/i.test(content[0]!.trim())) body = setSection(body, section, item);
+      else body = appendToSection(body, section, item, [...(blocking ? [RELATED] : []), OPEN_QUESTIONS, "Acceptance criteria"]);
+    }
   };
-  const deps = apply(current("depends_on"), input.add, input.remove, true);
-  const related = apply(current("related"), input.related_add, input.related_remove, false);
-  const narrative = findSection(i.body, "Dependencies");
-  const narrativeText = narrative ? lines(i.body).slice(narrative.start, narrative.end).join("\n") : "";
-  for (const a of input.add ?? []) {
-    const v = String(refValue(a));
-    if (!new RegExp(`(^|[^0-9])${v.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}([^0-9]|$)`).test(narrativeText))
-      warnings.push(`The "## Dependencies" section doesn't mention ${v}; add a line saying why it is needed.`);
-  }
-  writeInitiative(i, { depends_on: deps.length ? deps : undefined, related: related.length ? related : undefined });
-  return finish(root, [i.collection], [i.file], { ref: initiativeKey(i), depends_on: deps, related }, warnings);
+  edit(DEPENDENCIES, input.add, input.remove, true);
+  edit(RELATED, input.related_add, input.related_remove, false);
+  writeInitiative(i, {}, body);
+  const sectionText = (name: string) => {
+    const s = findSection(body, name);
+    return s ? lines(body).slice(s.heading.line, s.end).join("\n").trim() : "";
+  };
+  return finish(root, [i.collection], [i.file], {
+    ref: initiativeKey(i),
+    dependencies: sectionText(DEPENDENCIES),
+    related: sectionText(RELATED),
+  }, warnings);
 }
 
 export function complete(

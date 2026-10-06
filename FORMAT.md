@@ -10,6 +10,9 @@
 
 ## 1. Purpose
 
+> **Terminology.** The unit of work is an **initiative**. People and agents may call them
+> **tickets** or **issues**; tools treat the three words as the same thing.
+
 A plain-Markdown, in-repo convention for planning work that AI agents (and humans) can read,
 reason over, and act on. Each unit of work is an **initiative**: one Markdown file with a small
 block of structured front-matter and a free-form, prose-first body. Initiatives live in git
@@ -109,8 +112,8 @@ one an explicit `name`.
   (`docs/initiatives/LOCK-42/slot-booking`). Matching ignores case.
 - Names and explicit aliases must be unique across the repo (validation error otherwise) and use
   only letters, digits, `.`, `_` and `-`.
-- References keep exactly what was written (`depends_on: ["ese#22"]`); tools resolve them to the
-  collection when reading.
+- Aliases are for people and tools (`ese#22` in chat or a tool call). Inside initiative files,
+  dependencies are ordinary relative links (§6), which every Markdown renderer can follow.
 
 - Initiatives never declare their collection — it is always the folder they are in. There is no
   `collection:` field to drift out of sync.
@@ -167,8 +170,6 @@ YAML front-matter, delimited by `---`. Deliberately small:
 ---
 type: feature
 status: draft
-depends_on: [19, 20, "lib:geo-coords"]
-related: [30]
 tags: [notifications]
 owner: locks/core
 updated: 2026-09-24
@@ -181,8 +182,6 @@ updated: 2026-09-24
 | `status`     | yes      | enum | See §5. |
 | `type`       | no       | string | Kind of work: `feature`, `bug`, `refactor`, … (§4.1). |
 | `status_note` | no      | string | One-line qualifier shown next to the status, e.g. "synchronous impact validation on publish" or "design proposal, no implementation yet". |
-| `depends_on` | no       | list | **Hard prerequisites.** An integer is an initiative in this collection; `"<collection>#<n>"` is an initiative in another collection; any other string is an **external** prerequisite (module, other repo) that tools record but cannot check. Default `[]`. |
-| `related`    | no       | list | Soft links: "informed by, but does not depend on". Integers or `"<collection>#<n>"`. Never blocks. |
 | `owner`      | no       | string | Owning team/module/person. |
 | `updated`    | no       | ISO date | Last meaningful change. Tools set it; humans may. |
 | `superseded_by` | conditional | integer | Required when `status: superseded`. |
@@ -222,7 +221,7 @@ Three ways initiatives relate, each for a different job:
 | Mechanism | Cardinality | Answers |
 |-----------|-------------|---------|
 | Collection (§2) | exactly one per initiative | *Which changeset is this part of?* |
-| `depends_on` / `related` (§4) | specific pairs | *What must come first? What informs this?* |
+| Links under `## Dependencies` / `## Related` (§6) | specific pairs | *What must come first? What informs this?* |
 | `tags` | any number per initiative | *What else, anywhere in the repo, is about the same theme?* |
 
 A tag is a theme that cuts across collections — e.g. `notifications` might cover an initiative
@@ -271,14 +270,14 @@ statuses:
 
 The word as written is kept for display ("draft (proposed)"); behaviour follows the core status.
 
-**Readiness is derived, never stored.** For an initiative with `status: designed`, each entry in
-`depends_on` is classified as:
+**Readiness is derived, never stored.** For an initiative with `status: designed`, each
+dependency (§6) is classified as:
 
 | Classification | Meaning |
 |----------------|---------|
-| satisfied      | initiative dependency (same or other collection) with `status: done` |
-| blocking       | initiative dependency not yet `done` |
-| external       | other string dependency — cannot be checked; must be confirmed by the implementer |
+| satisfied      | linked initiative (same or other collection) with `status: done` |
+| blocking       | linked initiative not yet `done` |
+| external       | linked ticket URL (http/https) — cannot be checked; must be confirmed by the implementer |
 
 The initiative is **ready** when nothing is blocking. External dependencies don't block readiness
 but are always surfaced to the implementing agent. Storing readiness would mean rewriting dependants
@@ -298,10 +297,36 @@ requirements, except where marked):
 | Section | Purpose |
 |---------|---------|
 | `## Goal` or `## Context` | What and why. |
-| `## Dependencies` | **Narrative** for `depends_on`/`related`: *why* each is needed (e.g. "for the slot schema, booking lifecycle, and boat read model"). Front-matter is authoritative for *what*; this section explains it. |
+| `## Dependencies` *(defined)* | **The** list of prerequisites, as links (below), each with why it is needed. |
+| `## Related` *(defined)* | Non-blocking links: "informed by", "relates to", "generalised by". |
 | design sections | Whatever the initiative needs: proposed direction, mappings, compatibility, failure behaviour, testing… |
 | `## Open Questions` *(defined)* | Task list of undecided points (below). |
 | `## Acceptance criteria` *(defined)* | Bullet list of verifiable outcomes. The implementing agent's definition of done. |
+
+**Dependencies are links.** Under the `## Dependencies` heading (matched case-insensitively), every
+Markdown link is read:
+
+- a link to an **initiative file** — in this collection or any other, including files in status
+  folders — is a **dependency**: it blocks readiness until that initiative is done;
+- an **http(s) link** (an issue in another tracker, say) is an **external** dependency: shown,
+  never checked;
+- any other link (a design doc, a code file) is just a link.
+
+Links may sit in bullets or in prose, and the section stays free-form, so it says *why* as well
+as *what*:
+
+```markdown
+## Dependencies
+
+- [19 Boat identity](19-boat-identity.md) — readings are keyed by boat.
+- Needs the [passage event](../../PAR-778/entity-schema-enhancements/23-passage-recorded-event.md)
+  to notify captains, and [LOCK-7](https://tracker.example.com/LOCK-7) upstream.
+```
+
+Links under `## Related` are read the same way but never block. Because the links are ordinary
+relative paths, they work in every Markdown renderer; and since nothing moves, they never break.
+A link to an initiative that *was* moved (in a legacy layout) still counts — tools match it by
+filename and report where the file now is.
 
 **Open questions** are list items under a heading named `Open questions` (matched
 case-insensitively):
@@ -469,8 +494,8 @@ flowchart LR
 ```
 ````
 
-- Edges point **from prerequisite to dependant** (arrow = "unblocks"). `related` links are
-  dotted; `depends_on` links are solid.
+- Edges point **from prerequisite to dependant** (arrow = "unblocks"). Dependencies are solid;
+  related links are dotted.
 - Node class reflects derived state: `ready` (designed with nothing blocking) is shown distinctly
   from merely `designed`.
 - **Scope:** all active initiatives, plus any `done` initiative that an active one depends on
@@ -492,8 +517,9 @@ Two layers:
    `brindley: 1`, one Markdown file per initiative. Format spec: <link>.
    - Never rename or move initiative files or their asset directories. Status is the
      `status` front-matter field.
-   - Implement only an initiative that is `designed` and whose numbered `depends_on` are all
-     `done`. Confirm string (external) dependencies yourself; report any you cannot confirm.
+   - Dependencies are the links under `## Dependencies` (non-blocking ones go under
+     `## Related`). Implement only an initiative that is `designed` and whose linked initiatives
+     are all `done`. Confirm external (http) dependencies yourself; report any you cannot confirm.
    - Ask about open questions before implementing; `(implementation)` questions are yours to
      settle — record the decision in the initiative.
    - When discussing open questions with the user: one at a time, in open chat (no form or
@@ -519,9 +545,8 @@ Errors:
 
 1. Initiative numbers unique within a collection (catches post-merge collisions).
 2. `status` present and in the core set; dates ISO-8601.
-3. Every initiative reference (integer or `"<collection>#<n>"`) in `depends_on`/`related`/
-   `superseded_by` refers to an existing initiative.
-4. The `depends_on` graph across all collections is acyclic.
+3. `superseded_by` refers to an existing initiative.
+4. The dependency graph across all collections is acyclic.
 5. `status: superseded` has `superseded_by`.
 6. Collection names are unique in the repo.
 
@@ -560,8 +585,9 @@ Broken-link warnings name the new location when the linked file has moved within
    Map status wording to the enum (e.g. "Proposed." / "`draft`" → `draft`); any trailing
    qualifier ("-- synchronous impact validation on publish", "— design proposal, no
    implementation yet") becomes `status_note`.
-4. Extract numbered dependencies from `## Dependencies` into `depends_on`/`related`, and
-   non-initiative prerequisites into string entries. Keep the narrative section.
+4. Make sure every prerequisite under `## Dependencies` is a link to its initiative (bare
+   mentions like "`30`" become links), and move non-blocking mentions ("relates to", "informed
+   by") under `## Related`.
 5. Rewrite every `completed/…` link **once**, and replace the hand-written README tables/graph with
    the generated index — all in a single migration commit.
 
@@ -585,8 +611,8 @@ Broken-link warnings name the new location when the linked file has moved within
 - [x] What happens to rejected alternatives on completion? — they move into a final
       `## Appendix: Rejected alternatives` in the completed initiative (§7).
 - [ ] Typed relations? One initiative may be "generalised by" another, or "hand over" a case to
-      another. A plain `related` list loses the direction and kind; e.g.
-      `related: [{to: 44, as: generalised-by}]`
+      another. Plain `## Related` links lose the direction and kind; would a convention like
+      "generalised by: [44](…)" be worth recognising?
       would let the index show it. Worth the extra syntax?
 - [ ] Should the format require the question list to be a task list (`- [ ]`) for reliable
       parsing, or accept plain bullets as real-world files use? (Currently: accept both.)
@@ -604,11 +630,11 @@ spec:
 | Initiatives live in nested, ticket- or theme-scoped directories, each with a hand-maintained README summary table and dependency graph. | Collections are marked folders, wherever they live (§2); generated README content (§8) replaces the hand-maintained tables/graph — the second mass-rewrite target. |
 | Numbers are used conversationally ("do 39", "completed `30`"), unpadded. Design happens on main. | Sequential numbers kept; random IDs rejected (§3). |
 | Initiatives link to their own asset directories (fixtures, samples). | Asset directory rule (§3). Moving files would also break these links. |
-| Dependencies mix initiatives, external modules, and soft "informed by but does not depend on" links, each with a reason. | `depends_on` with integer + string entries, `related`, and a kept narrative section (§4, §6). |
+| Dependencies mix initiatives, external modules, and soft "informed by but does not depend on" links, each with a reason. | The `## Dependencies` section *is* the dependency list: links to initiatives block, http links are external; non-blocking links go under `## Related` (§6). |
 | Status wording drifts across files ("Proposed.", "`draft` — design proposal…", `**Status:** Proposed -- <qualifier>`), as sections or bold lead-in lines. | Closed status enum in front-matter, `status_note` for the qualifier; migration recognises both metadata styles (§4, §5, §11). |
 | Many initiatives have no Open Questions section; some deliberately leave decisions to the implementer via acceptance criteria. | Open questions stay optional; `(implementation)` questions don't block `designed` (§6). |
 | Where present, open questions are plain, multi-sentence bullets under `## Open questions`, some fact-finding ("unclear from code"). Settled points move into an "Agreed direction" section or a rejected-alternatives table rather than being ticked off. | Heading matched case-insensitively; plain bullets = unresolved; multi-line items; preferred resolution is "delete the question, record the decision in the body" (§6). |
-| Relationships come in several kinds in prose: depends on, relates to, hands a case over to, is generalised by. | `related` covers all non-blocking kinds; the prose explains which. Typed relations deferred (Open Questions). |
+| Relationships come in several kinds in prose: depends on, relates to, hands a case over to, is generalised by. | `## Related` covers all non-blocking kinds; the prose explains which. Typed relations deferred (Open Questions). |
 | Initiatives end with `## Acceptance criteria`, which the implementing agent treats as the definition of done. | Acceptance criteria are a defined section (§6). |
 | The agent rewrites a completed initiative into current-state wording, and must decide and state which project docs it updated. | Completion rules and `docs_impact` (§7). |
 | The agent file mixes generic lifecycle rules with repo-specific workflow (build tool, docs, worktrees). | Two-layer agent instructions (§9); collection `agent:` pointer. |
