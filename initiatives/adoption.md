@@ -26,6 +26,6 @@ Tagged `adoption`: 7 open, 0 closed or deferred.
 | `initiatives#8` | [Fix mode for mechanical validate findings](8-fix-mode-for-mechanical-validate-findings.md) | feature | draft | — |
 | `initiatives#9` | [Suggest a home for companion notes](9-suggest-an-ignore-pattern-for-companion-notes.md) | feature | draft | — |
 | `initiatives#10` | [Name the base folder in path errors](10-name-the-base-folder-in-path-errors.md) | feature | draft | — |
-| `initiatives#11` | [Batch status backfill tool](11-batch-status-backfill-tool.md) | feature | draft | — |
+| `initiatives#11` | [batch_update tool](11-batch-status-backfill-tool.md) | feature | draft | — |
 
 <!-- brindley:generated:end -->

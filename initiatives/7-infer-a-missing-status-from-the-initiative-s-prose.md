@@ -22,7 +22,7 @@ _None._
 
 ## Decisions
 
-- Inference is a shared function, not a tool: `proseStatus()` (src/markdown.ts:292) for the two explicit forms — a `**Status:**` lead-in line or the first line under `## Status` — mapped with `normaliseStatus()` (core names, the collection's `statuses:`, then aliases). No free-text detection: an agent reading a sentence like "still exploratory" decides and passes the status explicitly. Used by `backfill_status` (initiatives#11) when no status is given, by `migrate` (initiatives#1), and by a new `validate` finding `status-inferable` ("No status recorded; the body says Proposed (draft) — record it with backfill_status") so adopters discover the tool. A missing or unmappable status line is listed for a person or agent to decide, never guessed. Fix mode (initiatives#8) does not write statuses.
+- Inference is a shared function, not a tool: `proseStatus()` (src/markdown.ts:292) for the two explicit forms — a `**Status:**` lead-in line or the first line under `## Status` — mapped with `normaliseStatus()` (core names, the collection's `statuses:`, then aliases). No free-text detection: an agent reading a sentence like "still exploratory" decides and passes the status explicitly. Used by `batch_update` (initiatives#11) when asked to take the status from the text, by `migrate` (initiatives#1), and by a new `validate` finding `status-inferable` ("No status recorded; the body says Proposed (draft) — record it with batch_update") so adopters discover the tool. A missing or unmappable status line is listed for a person or agent to decide, never guessed. Fix mode (initiatives#8) does not write statuses.
 
 ## Open questions
 
