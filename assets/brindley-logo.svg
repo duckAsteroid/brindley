@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 64" width="300" height="64" role="img" aria-labelledby="t">
+  <title id="t">Brindley — Design fully before anyone digs</title>
+  <!-- Tile: canal water at depth -->
+  <rect width="64" height="64" rx="14" fill="#12343b"/>
+  <!-- The design: a page with a folded corner -->
+  <path d="M15 9h25l9 9v38H15z" fill="#f4efe6"/>
+  <path d="M40 9v9h9z" fill="#d6cbb6"/>
+  <!-- Lines of design, written first -->
+  <rect x="20" y="17" width="14" height="3" rx="1.5" fill="#12343b" opacity=".55"/>
+  <rect x="20" y="23" width="22" height="3" rx="1.5" fill="#12343b" opacity=".55"/>
+  <!-- The dig: a lock chamber, high pound stepping down to low pound -->
+  <path d="M15 35h17v21H15z" fill="#2f8f9d"/>
+  <path d="M32 43h17v13H32z" fill="#4fb3bf"/>
+  <!-- Lock gate and balance beam -->
+  <rect x="30.5" y="30" width="3.5" height="26" rx="1.2" fill="#12343b"/>
+  <rect x="24" y="30" width="10" height="3.5" rx="1.2" fill="#12343b"/>
+  <text x="78" y="37" fill="#12343b" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif" font-size="34" font-weight="700">Brindley</text>
+  <text x="79" y="55" fill="#2f8f9d" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif" font-size="12" font-weight="500">Design fully before anyone digs</text>
+</svg>
