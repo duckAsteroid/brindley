@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { normaliseStatus } from "../src/model.js";
 import { editFrontMatter, findSection, listItems, parseQuestions, setH1, slugify, splitFrontMatter } from "../src/markdown.js";
 
 describe("front-matter", () => {
@@ -67,5 +68,14 @@ describe("helpers", () => {
   it("replaces or inserts the H1", () => {
     expect(setH1("# Old\n\nx", "New")).toBe("# New\n\nx");
     expect(setH1("x", "New")).toBe("# New\n\nx");
+  });
+});
+
+describe("status words", () => {
+  it("maps aliases to core statuses", () => {
+    expect(normaliseStatus("Future")).toBe("deferred");
+    expect(normaliseStatus("Proposed")).toBe("draft");
+    expect(normaliseStatus("spiked", { spiked: "designed" })).toBe("designed");
+    expect(normaliseStatus("Design")).toBeUndefined();
   });
 });

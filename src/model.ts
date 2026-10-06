@@ -19,6 +19,7 @@ export const STATUS_ALIASES: Readonly<Record<string, Status>> = {
   parked: "deferred",
   "on-hold": "deferred",
   backlog: "deferred",
+  future: "deferred",
   complete: "done",
   completed: "done",
   implemented: "done",

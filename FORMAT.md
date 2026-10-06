@@ -236,7 +236,7 @@ draft ──► designed ──► in-progress ──► done
 
 **Status words.** Besides the core names, tools accept common aliases — `proposed`,
 `exploratory`, `unresolved` → `draft`; `ready` → `designed`; `in-review`, `wip` → `in-progress`;
-`parked`, `on-hold`, `backlog` → `deferred`; `complete`, `completed`, `implemented` → `done`;
+`parked`, `on-hold`, `backlog`, `future` → `deferred`; `complete`, `completed`, `implemented` → `done`;
 `cancelled`, `rejected`, `dropped` → `abandoned`; `replaced` → `superseded` — and a collection
 can map its own words in its README front-matter:
 
