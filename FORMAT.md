@@ -236,10 +236,29 @@ case-insensitively):
 When an initiative becomes `done`, the implementer, in the same commit as the code:
 
 - updates the project docs (§7.1) and records `docs_impact`;
-- rewrites design-future wording into settled wording (no "we will") — or replaces the design
-  body with a `## Completion summary` that points at the current-state docs;
+- rewrites the main body into a concise, settled account of what was decided and built (no
+  "we will"), pointing at the current-state docs for the detail;
+- moves rejected alternatives and design debate into a final `## Appendix: Rejected alternatives`
+  — kept, not deleted, but out of the way of the main account;
 - keeps acceptance criteria and constraints unless they are preserved in the docs;
 - sets `status: done` and `updated`.
+
+A completed initiative is therefore the permanent **why** record for its change: the main body
+says what was decided, the appendix says what was ruled out and why. The project docs say what
+is (§7.1) and never repeat either.
+
+```markdown
+# Opening-hours change impact
+… settled summary of the agreed direction, links to services/locks/docs/ …
+
+## Acceptance criteria
+…
+
+## Appendix: Rejected alternatives
+| Option | Why rejected |
+|--------|--------------|
+| Re-notify every captain with any future booking | Floods captains whose slots are unaffected by the change. |
+```
 
 The file stays where it is. Nothing else in the collection is edited, except the generated
 README content.
@@ -448,9 +467,8 @@ Warnings:
       SHA; the merge commit could be recorded by a follow-up, or a PR URL used.)
 - [ ] Record who/what is implementing an `in-progress` item (branch/worktree name) to stop two
       agents picking up the same one?
-- [ ] Should a completed initiative keep its rejected alternatives and design debate as the
-      permanent "why" record (ADR-style), or be collapsed to a short completion summary once the
-      docs carry the "what"? Today's agent leans towards collapsing.
+- [x] What happens to rejected alternatives on completion? — they move into a final
+      `## Appendix: Rejected alternatives` in the completed initiative (§7).
 - [ ] Typed relations? One initiative may be "generalised by" another, or "hand over" a case to
       another. A plain `related` list loses the direction and kind; e.g.
       `related: [{to: 44, as: generalised-by}]`
