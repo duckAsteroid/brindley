@@ -1,0 +1,58 @@
+# The workflow
+
+**draft** → **designed** → **in-progress** → **done**
+<br/><small>design it · ready once its dependencies are done · build it · docs updated</small>
+
+## 1. Design it
+
+Create the initiative, then work through its open questions with your agent:
+
+> Let's work through the open questions on sb#22.
+
+The **design-review** prompt runs the conversation the way it should go:
+
+- **one question at a time**, in open chat — never a form or multiple-choice picker;
+- **grounded in the code** — the agent reads the classes, queries and tests involved and cites
+  them, and says *unclear from code* instead of guessing;
+- **concrete examples** from your real domain, not `Foo` and `bar`;
+- **a recommendation**, then your decision.
+
+Each decision is written into the initiative as it is made (by default under `## Decisions` — or
+any section you name, such as `## Agreed direction`), and the question is removed. When none are
+left, mark it **designed**.
+
+## 2. Check it's ready
+
+> Is sb#22 ready?
+
+`check_ready` confirms the status, that every linked dependency is done, that no blocking
+questions remain, that acceptance criteria exist, and that the file has no validation errors.
+The implement and spike briefs begin with the same check, and stop if it fails.
+
+## 3. Build it
+
+> Implement sb#21.
+
+The **implement** brief hands the agent the initiative, its dependency report and the rules:
+settle any `(implementation)` questions and record them, then finish in the **same commit** as
+the code:
+
+1. **Update the project docs** so they describe the code *as it now is* — present tense, no
+   history, no ruled-out alternatives, no links to initiatives.
+2. **Settle the initiative's wording** into what was decided and built; move rejected
+   alternatives to `## Appendix: Rejected alternatives`.
+3. **`complete`** it, stating which docs changed — or `none: <reason>`.
+
+If your repo has its own implementing-agent instructions (worktrees, build commands), point the
+collection's `agent:` field at them and the brief tells the agent to follow them.
+
+## Docs say what is; initiatives say why
+
+| | Initiatives | Project docs |
+|-|-------------|--------------|
+| Describe | a change: why, options, decisions | the system as the code is now |
+| Tense | future while open, settled once done | present only |
+| Lifetime | frozen once done — the record | edited with every change |
+
+`check_docs` flags history phrasing ("previously", "we added"), design debate and links into
+initiatives in your project docs.

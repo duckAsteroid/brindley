@@ -3,3 +3,6 @@ dist/
 coverage/
 .idea/
 src/version.ts
+site/node_modules/
+site/.vitepress/dist/
+site/.vitepress/cache/

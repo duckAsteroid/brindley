@@ -1,0 +1,47 @@
+/* Brindley: canal water, sandstone towpaths, lock-gate dark. */
+:root {
+  --canal-deep: #12343b;
+  --canal: #2f8f9d;
+  --canal-light: #4fb3bf;
+  --sandstone: #f4efe6;
+  --sandstone-dark: #d6cbb6;
+
+  --vp-c-brand-1: #237785;
+  --vp-c-brand-2: #2f8f9d;
+  --vp-c-brand-3: #2f8f9d;
+  --vp-c-brand-soft: rgba(47, 143, 157, 0.14);
+
+  --vp-home-hero-name-color: transparent;
+  --vp-home-hero-name-background: linear-gradient(120deg, var(--canal-deep) 20%, var(--canal) 80%);
+  --vp-home-hero-image-background-image: radial-gradient(circle at 50% 55%, rgba(79, 179, 191, 0.45), rgba(47, 143, 157, 0) 65%);
+  --vp-home-hero-image-filter: blur(56px);
+}
+
+.dark {
+  --vp-c-brand-1: #4fb3bf;
+  --vp-c-brand-2: #3fa3af;
+  --vp-c-brand-3: #2f8f9d;
+  --vp-c-brand-soft: rgba(79, 179, 191, 0.16);
+  --vp-home-hero-name-background: linear-gradient(120deg, var(--sandstone) 15%, var(--canal-light) 85%);
+}
+
+/* A gentle canal ripple under the home hero. */
+.VPHero::after {
+  content: "";
+  display: block;
+  height: 18px;
+  margin-top: 40px;
+  opacity: 0.55;
+  background: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='80' height='18' viewBox='0 0 80 18'><path d='M0 9 Q10 2 20 9 T40 9 T60 9 T80 9' fill='none' stroke='%232f8f9d' stroke-width='2'/></svg>") repeat-x center;
+}
+
+/* Feature cards: sandstone in light mode. */
+:root:not(.dark) .VPFeature {
+  background-color: #faf7f1;
+  border-color: var(--sandstone-dark);
+}
+
+/* Quotes from Brindley's story. */
+.vp-doc blockquote {
+  border-left-color: var(--canal);
+}
