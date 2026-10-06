@@ -112,9 +112,9 @@ Every write preserves unknown front-matter fields and the author's Markdown form
 
 ## 4. Resources
 
-- `brindley://<collection>/<number>` — raw Markdown of one initiative, so a client can attach it
+- `brindley://initiative/<collection>/<number>` — raw Markdown of one initiative, so a client can attach it
   as context when handing it to an implementer.
-- `brindley://<collection>/index` — the same overview the README index contains, generated on the
+- `brindley://collection/<collection>` — the same overview the README index contains, generated on the
   fly.
 - `brindley://index` — the root overview: all collections and cross-collection edges.
 - `brindley://tag/<tag>` — every initiative with that tag, across collections, as one document
@@ -210,11 +210,10 @@ regenerate. Because output is deterministic, an unaffected README is not rewritt
 result lists every file it touched, so the agent can include them in its commit.
 
 **After edits the server didn't make.** Initiatives are also edited by hand, by agents without the
-server, by `git pull`, and by merges. On startup and at the start of every tool call the server
-compares a fingerprint of each collection's inputs (front-matter + H1s) with what produced the
-current generated block (stored as a hash in the begin marker:
-`<!-- brindley:generated:begin sha=… -->`). If stale, it regenerates and says so in the tool
-result ("README for `LOCK-42/slot-booking` was stale; regenerated"). This
+server, by `git pull`, and by merges. At the start of every tool call the server regenerates
+each existing README's block in memory and compares it with what is on disk — generation is
+deterministic and cheap, so no stored fingerprint is needed. If stale, it rewrites the block and
+says so in the tool result ("README for `LOCK-42/slot-booking` was stale; regenerated"). This
 self-healing is on by default; `--no-auto-readme` turns it off, leaving staleness to `validate`.
 
 **Merges.** If a generated block contains conflict markers, the server regenerates it outright

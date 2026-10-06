@@ -83,7 +83,8 @@ Tools look for the root at `initiatives/` then `docs/initiatives/`, or take an e
 There is exactly one root per repo.
 
 **Collections.** The folder *is* the collection. Any directory under the root that directly
-contains initiative files is a collection, and its identity is its path relative to the root
+contains initiative files — or a `README.md` with front-matter, so a collection can exist before
+its first initiative — is a collection, and its identity is its path relative to the root
 (`LOCK-42/slot-booking`, `search-rework`). Collections can be grouped one or more levels deep
 however suits the project, but initiatives are always directly inside their collection.
 
