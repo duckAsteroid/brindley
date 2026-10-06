@@ -1,8 +1,8 @@
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { posix } from "node:path";
-import type { Collection, Initiative, Root } from "./model.js";
+import type { Collection, Initiative, Root, Theme } from "./model.js";
 import { blockers, dependencyReport, displayRef, isActive, isReady, target } from "./deps.js";
-import { allInitiatives, declaredTags, initiativeKey, lookup } from "./repo.js";
+import { allInitiatives, declaredTags, initiativeKey, lookup, themeFor } from "./repo.js";
 
 export const BEGIN = "<!-- brindley:generated:begin — do not edit by hand; regenerate instead -->";
 export const END = "<!-- brindley:generated:end -->";
@@ -204,8 +204,10 @@ export function rootBlock(root: Root, fromDir = "."): string {
     out.push("", "### Themes");
     for (const tag of [...tagNames].sort()) {
       out.push("", `#### \`${tag}\``, "");
+      const doc = themeFor(root, tag);
       const desc = declaredTags(root)?.[tag];
-      if (desc) out.push(desc, "");
+      if (doc) out.push(`Overview: [${esc(doc.title)}](${posix.relative(fromDir, doc.rel)})${desc && desc !== doc.title ? ` — ${desc}` : ""}`, "");
+      else if (desc) out.push(desc, "");
       const items = allInitiatives(root).filter((i) => i.tags.includes(tag));
       const ordered = [...items.filter(isActive), ...items.filter((i) => !isActive(i))];
       for (const i of ordered) {
@@ -251,13 +253,34 @@ export function blockOf(text: string): string | null {
   return ls.slice(begin, end + 1).join("\n");
 }
 
+/** Generated member list for a theme doc: every initiative tagged with the theme, across collections. */
+export function themeBlock(root: Root, theme: Theme): string {
+  const fromDir = posix.dirname(theme.rel);
+  const items = allInitiatives(root).filter((i) => i.tags.includes(theme.tag));
+  if (items.length === 0) return `### Initiatives in this theme\n\n_None tagged \`${theme.tag}\` yet._`;
+  const row = (i: Initiative) =>
+    `| \`${initiativeKey(i)}\` | ${link(i, fromDir)} | ${esc(i.type ?? "—")} | ${esc(statusLabel(i))} | ${isActive(i) ? readiness(root, i) : "—"} |`;
+  const active = items.filter(isActive);
+  const rest = items.filter((i) => !isActive(i));
+  return [
+    `### Initiatives in this theme`,
+    "",
+    `Tagged \`${theme.tag}\`: ${active.length} open, ${rest.length} closed or deferred.`,
+    "",
+    "| Ref | Initiative | Type | Status | Ready / blocked by |",
+    "|-----|------------|------|--------|--------------------|",
+    ...active.map(row),
+    ...rest.map(row),
+  ].join("\n");
+}
+
 export interface ReadmeChange {
   path: string;
   reason: "updated" | "created" | "conflict";
 }
 
 /**
- * Regenerate each collection README's generated block. With onlyConflicted,
+ * Regenerate generated blocks: each collection README's, and each theme doc's member list. With onlyConflicted,
  * only blocks containing conflict markers are rewritten (used during merges/rebases).
  */
 export function regenerate(
@@ -265,14 +288,19 @@ export function regenerate(
   opts: { collections?: Collection[]; onlyConflicted?: boolean; check?: boolean } = {},
 ): ReadmeChange[] {
   const changes: ReadmeChange[] = [];
-  for (const c of opts.collections ?? root.collections) {
-    const current = existsSync(c.readme) ? readFileSync(c.readme, "utf8") : null;
+  const handle = (path: string, block: string, initial: string) => {
+    const current = existsSync(path) ? readFileSync(path, "utf8") : null;
     const conflicted = current !== null && hasConflictMarkers(blockOf(current) ?? "");
-    if (opts.onlyConflicted && !conflicted) continue;
-    const next = applyBlock(current ?? `# ${c.meta.title}\n`, collectionBlock(root, c));
-    if (next === current) continue;
-    changes.push({ path: c.readme, reason: current === null ? "created" : conflicted ? "conflict" : "updated" });
-    if (!opts.check) writeFileSync(c.readme, next);
-  }
+    if (opts.onlyConflicted && !conflicted) return;
+    const next = applyBlock(current ?? initial, block);
+    if (next === current) return;
+    changes.push({ path, reason: current === null ? "created" : conflicted ? "conflict" : "updated" });
+    if (!opts.check) writeFileSync(path, next);
+  };
+  const collections = opts.collections ?? root.collections;
+  for (const c of collections) handle(c.readme, collectionBlock(root, c), `# ${c.meta.title}\n`);
+  // Theme docs in those collections get their member list kept current too.
+  const names = new Set(collections.map((c) => c.name));
+  for (const t of root.themes) if (names.has(t.collection)) handle(t.file, themeBlock(root, t), `# ${t.title}\n`);
   return changes;
 }

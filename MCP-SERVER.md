@@ -92,7 +92,7 @@ All tools return structured JSON plus a short text rendering.
 | `get` | `ref` | Front-matter, title, body, parsed open questions and acceptance criteria, plus a **dependency report**: each dependency link classified `satisfied` / `blocking` / `external` (FORMAT §5), with the dependency's title and path; related links; dependants. This is the implementing agent's "select and validate" step in one call. |
 | `ready` | `collection?`, `type?` | Across the repo unless `collection` is given. Initiatives that are `designed` with nothing blocking (including cross-collection deps), in suggested order (topological, then number), each with its external deps listed. |
 | `graph` | `collection?`, `ref?`, `tag?`, `include_done = false` | Dependency graph as adjacency list + Mermaid. With `tag`, the graph of that theme across all collections. |
-| `tags` | — | Every tag in use (plus declared-but-unused ones), with description and initiative counts by status. |
+| `tags` | — | Every tag in use (plus declared-but-unused ones), with description, initiative counts by status, and the theme overview doc if there is one (FORMAT §4.2). `get` also lists the theme docs for an initiative's tags, and the `design-review` / `implement` prompts tell the agent to read them. |
 | `questions` | `collection?`, `ref?`, `include_implementation = true` | Unresolved open questions, grouped by initiative. |
 | `check_docs` | `paths?` | Lints project docs (default: those changed vs `HEAD`, else all matching `docs:`) against FORMAT §7.1: history phrasing, rejected-alternative/debate wording, links into collection folders. Returns findings with file/line and the offending phrase. Heuristic; warnings only. |
 | `next_question` | `ref`, `after?` | The next unresolved question in one initiative, with its index, related body sections and count remaining. Drives `design-review` (§5.1). |
@@ -123,7 +123,7 @@ Every write preserves unknown front-matter fields and the author's Markdown form
   on the fly.
 - `brindley://index` — the overview of every collection: counts, cross-collection dependencies
   and themes (FORMAT §8.2). This is the only place the repo-wide view lives; no file is written.
-- `brindley://tag/<tag>` — every initiative with that tag, across collections, as one document
+- `brindley://tag/<tag>` — the theme as one document: its overview doc (if any), then every initiative with that tag, across collections
   (useful context for a design session on a cross-cutting theme).
 - The resource list enumerates all initiatives for clients with resource pickers.
 

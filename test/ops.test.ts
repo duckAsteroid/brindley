@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { C, fixture, git, lockExample, write, type Fixture } from "./helpers.js";
 import * as ops from "../src/ops.js";
-import { resolveRef } from "../src/repo.js";
+import { declaredTags, resolveRef } from "../src/repo.js";
 import { dependants, dependencyReport, isReady } from "../src/deps.js";
 import { validate } from "../src/validate.js";
 import { regenerate, rootBlock } from "../src/readme.js";
@@ -472,5 +472,43 @@ describe("dependencies from the ## Dependencies section", () => {
     expect(text).toContain("## Dependencies\n\n- [20 Slot calendar and read model](20-slot-calendar-and-read-model.md) — _why this is needed_");
     expect(text).toContain("## Related\n\n- [22 Opening-hours change impact](22-opening-hours-change-impact.md)");
     expect(text).not.toMatch(/depends_on:/);
+  });
+});
+
+describe("theme overview docs", () => {
+  const files = {
+    ...lockExample,
+    [`${C}/NOTIFICATIONS.md`]:
+      "---\ntheme: notifications\nsummary: How captains hear about changes\n---\n# Notifications — orientation map\n\nHand-written overview.\n",
+    "plans/README.md": "---\nbrindley: 1\n---\n# Plans\n",
+    "plans/1-sms.md": "---\nstatus: designed\ntags: [notifications]\n---\n# SMS alerts\n",
+  };
+
+  it("finds the doc, keeps a member list in it across collections, and leaves the prose alone", () => {
+    fx = fixture({ files });
+    const root = fx.load();
+    expect(root.themes).toEqual([expect.objectContaining({ tag: "notifications", title: "Notifications — orientation map", collection: "slot-booking" })]);
+    regenerate(root);
+    const doc = read(`${C}/NOTIFICATIONS.md`);
+    expect(doc).toContain("Hand-written overview.");
+    expect(doc).toContain("Tagged `notifications`: 2 open, 0 closed or deferred.");
+    expect(doc).toContain("| `slot-booking#22` | [Opening-hours change impact](22-opening-hours-change-impact.md) |");
+    expect(doc).toContain("| `plans#1` | [SMS alerts](../../../../plans/1-sms.md) |");
+  });
+
+  it("updates the member list when a tagged initiative changes, and links it from the overview", () => {
+    fx = fixture({ files });
+    let root = fx.load();
+    ops.setStatus(root, resolveRef(root, "plans#1"), "abandoned");
+    expect(read(`${C}/NOTIFICATIONS.md`)).toContain("1 open, 1 closed or deferred");
+    root = fx.load();
+    expect(rootBlock(root)).toContain("Overview: [Notifications — orientation map](docs/initiatives/LOCK-42/slot-booking/NOTIFICATIONS.md) — How captains hear about changes");
+    // The theme doc's own summary wins over a collection's tag description.
+    expect(declaredTags(root)).toMatchObject({ notifications: "How captains hear about changes" });
+  });
+
+  it("flags two docs for one theme", () => {
+    fx = fixture({ files: { ...files, "plans/ALSO.md": "---\ntheme: notifications\n---\n# Also\n" } });
+    expect(validate(fx.load()).map((f) => f.rule)).toContain("duplicate-theme");
   });
 });

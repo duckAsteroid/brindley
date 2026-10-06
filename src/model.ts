@@ -145,9 +145,28 @@ export interface Collection {
 }
 
 /** Everything Brindley knows about one repository: its collections. There is no repo-level file. */
+/**
+ * An overview document for a theme: a non-initiative .md in a collection folder whose
+ * front-matter has `theme: <tag>`. Initiatives join the theme with `tags: [<tag>]`.
+ */
+export interface Theme {
+  /** The tag initiatives use to join the theme. */
+  tag: string;
+  title: string;
+  summary?: string;
+  /** Absolute path. */
+  file: string;
+  /** Path relative to the repo root. */
+  rel: string;
+  /** Name of the collection whose folder holds the doc. */
+  collection: string;
+}
+
 export interface Root {
   repoRoot: string;
   collections: Collection[];
+  /** Theme overview documents found in collection folders. */
+  themes: Theme[];
 }
 
 /** Map a status word to a core status: core names, collection mappings, then common aliases. */

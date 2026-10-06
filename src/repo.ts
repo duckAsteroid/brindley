@@ -10,6 +10,7 @@ import {
   type Initiative,
   type Ref,
   type Root,
+  type Theme,
 } from "./model.js";
 import {
   DEPENDENCIES,
@@ -297,7 +298,7 @@ export function loadRoot(repoRoot: string): Root {
     }
   });
 
-  const root: Root = { repoRoot, collections };
+  const root: Root = { repoRoot, collections, themes: collections.flatMap((c) => findThemes(repoRoot, c)) };
   const all = collections.flatMap((c) => c.initiatives);
   const byFile = new Map(all.map((i) => [i.file, i]));
   const byName = new Map<string, Initiative[]>();
@@ -361,11 +362,48 @@ function resolveLink(
   return undefined;
 }
 
-/** Tags declared by any collection, merged (first description wins); undefined if none declare tags. */
+/**
+ * Theme docs in a collection folder: non-numbered .md files (other than README.md) whose
+ * front-matter has `theme: <tag>` (or a list of tags). Ignored paths are skipped.
+ */
+export function findThemes(repoRoot: string, c: Collection): Theme[] {
+  const ignored = ignoreMatcher(c.meta.ignore);
+  const out: Theme[] = [];
+  for (const e of readdirSync(c.dir).sort()) {
+    if (!e.endsWith(".md") || e === "README.md" || INITIATIVE_FILE.test(e) || ignored(e)) continue;
+    const file = join(c.dir, e);
+    if (!statSync(file).isFile()) continue;
+    const text = readFileSync(file, "utf8");
+    const { fmText, body } = splitFrontMatter(text);
+    if (fmText === null) continue;
+    const data = parseFrontMatter(fmText).data;
+    for (const tag of strList(data["theme"])) {
+      out.push({
+        tag,
+        title: h1(body) ?? e.replace(/\.md$/, ""),
+        summary: str(data["summary"]),
+        file,
+        rel: toPosix(relative(repoRoot, file)),
+        collection: c.name,
+      });
+    }
+  }
+  return out;
+}
+
+export function themeFor(root: Root, tag: string): Theme | undefined {
+  return root.themes.find((t) => t.tag === tag);
+}
+
+/**
+ * Tags declared by collections (`tags:`) or by theme docs, merged; first description wins.
+ * Undefined if nothing declares tags.
+ */
 export function declaredTags(root: Root): Record<string, string> | undefined {
   const declaring = root.collections.filter((c) => c.meta.tags);
-  if (declaring.length === 0) return undefined;
+  if (declaring.length === 0 && root.themes.length === 0) return undefined;
   const out: Record<string, string> = {};
+  for (const t of root.themes) if (!out[t.tag]) out[t.tag] = t.summary ?? t.title;
   for (const c of declaring) for (const [k, v] of Object.entries(c.meta.tags!)) if (!out[k]) out[k] = v;
   return out;
 }

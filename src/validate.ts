@@ -46,6 +46,14 @@ export function validate(root: Root, opts: { collection?: string; docs?: boolean
       warn("nested-collection", rel(c.readme), "Collection is nested inside another collection's folder.");
   }
 
+  const themeOwners = new Map<string, string>();
+  for (const t of root.themes) {
+    const prev = themeOwners.get(t.tag);
+    if (prev) err("duplicate-theme", t.rel, `Theme "${t.tag}" already has an overview doc: ${prev}.`);
+    else themeOwners.set(t.tag, t.rel);
+    if (!KEBAB.test(t.tag)) warn("tag-format", t.rel, `Theme "${t.tag}" should be lowercase kebab-case (it is used as a tag).`);
+  }
+
   const collections = root.collections.filter((c) => !opts.collection || c.name === opts.collection || c.path === opts.collection);
   for (const c of collections) {
     if (!(COLLECTION_STATUSES as readonly string[]).includes(c.meta.status))

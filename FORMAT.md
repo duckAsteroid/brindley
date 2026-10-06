@@ -234,6 +234,25 @@ in `LOCK-42/slot-booking` and another in `search-rework`.
   protection) and descriptions are shown in the overview; when none do, any tag is accepted.
 - Tags are descriptive only: they never affect readiness or lifecycle rules.
 
+**Theme overview docs.** A theme can have one overview document: a non-numbered `.md` file in any
+collection folder whose front-matter names the tag it covers. Initiatives join with the tag as
+usual.
+
+```yaml
+---
+theme: freshness
+summary: Is this validation result still true, and how do I know cheaply?
+---
+# Freshness and the validation report — orientation map
+```
+
+- The doc is written by people: an orientation map of how the theme is split across initiatives.
+  Tools keep a generated block in it listing every initiative tagged with the theme, across all
+  collections, with status and readiness (§8).
+- Its `summary` (else its H1) becomes the tag's description; the doc declares the tag.
+- Tools point to the doc wherever a tagged initiative is shown or handed to an agent.
+- At most one doc per theme (validation error otherwise).
+
 ## 5. Status lifecycle
 
 Core statuses (format v1; other words map onto these, see below):
@@ -417,7 +436,8 @@ is not allowed — the implementer must decide and state, which is what keeps do
 ## 8. Generated README content
 
 Each collection's `README.md` is its human entry point: front-matter (§2), a free-form
-introduction written by people, plus a **generated block** that tools keep current:
+introduction written by people, plus a **generated block** that tools keep current. Theme
+overview docs (§4.2) get the same treatment, with a generated list of the theme's initiatives:
 
 ```markdown
 <!-- brindley:generated:begin — do not edit by hand; regenerate instead -->

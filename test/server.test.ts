@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { createServer } from "../src/server.js";
-import { fixture, lockExample, type Fixture } from "./helpers.js";
+import { C, fixture, lockExample, type Fixture } from "./helpers.js";
 
 let fx: Fixture;
 afterEach(() => fx?.cleanup());
@@ -92,6 +92,18 @@ describe("MCP server", () => {
     expect(text).toContain("Open chat, not forms");
     expect(text).toContain("1. Must captains with a booked slot");
     expect(text).toContain("Delegated to implementation (1");
+  });
+
+  it("points get and the prompts at a theme's overview doc", async () => {
+    fx = fixture({
+      files: { ...lockExample, [`${C}/NOTIFICATIONS.md`]: "---\ntheme: notifications\n---\n# Notifications map\n" },
+    });
+    const client = await connect(fx.repo);
+    const res = json(await client.callTool({ name: "get", arguments: { ref: "sb#22" } }));
+    const got = res.result ?? res; // first call self-heals the stale theme doc, so it carries notes
+    expect(got.themes).toEqual([expect.objectContaining({ tag: "notifications", doc: `${C}/NOTIFICATIONS.md` })]);
+    const p = await client.getPrompt({ name: "implement", arguments: { ref: "sb#22" } });
+    expect((p.messages[0]!.content as { text: string }).text).toContain(`read the overview \`${C}/NOTIFICATIONS.md\``);
   });
 
   it("reads an initiative resource", async () => {

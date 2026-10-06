@@ -9,6 +9,7 @@ import {
   initiativeKey,
   canonicalCollection,
   declaredTags,
+  themeFor,
   loadRoot,
   lookup,
   openRepo,
@@ -32,6 +33,7 @@ export const INSTRUCTIONS = `Brindley manages planned work as Markdown files in 
 - A collection is any folder whose README.md front-matter has \`brindley: 1\`. Mark one with create_collection (existing files are adopted; nothing moves). There is no repo-level file.
 - Initiatives are \`<number>-<slug>.md\` files in the collection folder or its immediate sub-folders. Refer to them as \`<collection>#<number>\`, where the collection is its name (front-matter \`name:\`, else the folder name), an alias (\`aliases:\` in front-matter, or the automatic initials of the folder name, e.g. entity-schema-enhancements → ese), or its path; or a bare number when unambiguous.
 - Status comes from front-matter \`status:\`, else the sub-folder name (completed/ → done, deferred/ → deferred, superseded/ → superseded). Core statuses: draft, designed (design complete, ready to implement), in-progress, deferred, done, abandoned, superseded. Common words are aliases (proposed → draft, completed → done, future → deferred, …); a collection can map its own with \`statuses:\`.
+- A theme overview doc is a non-numbered .md in a collection folder with \`theme: <tag>\` in its front-matter; initiatives join the theme with \`tags: [<tag>]\`. Brindley keeps a generated list of the theme's initiatives in the doc, and points to it from \`get\`, \`tags\` and the prompts.
 - \`ignore:\` in the collection README holds .gitignore-style patterns (relative to the collection folder) for numbered files that are not initiatives, e.g. companion rationale notes. Use the \`ignore\` tool to add/remove/preview patterns; \`collections\` lists what is ignored.
 - Dependencies are the links under an initiative's \`## Dependencies\` heading (links to initiative files, in any collection, block it; http links are external prerequisites). Links under \`## Related\` are non-blocking. Use set_dependencies to add or remove them.
 - Brindley never moves files. Every write regenerates the collection README's generated block. \`validate\` reports structural problems (missing or conflicting statuses, files outside their status folder, duplicate numbers, broken links, …).
@@ -67,9 +69,18 @@ function summary(root: Root, i: Initiative) {
   };
 }
 
+/** Theme overview docs for the initiative's tags. */
+function themesOf(root: Root, i: Initiative) {
+  return i.tags
+    .map((t) => themeFor(root, t))
+    .filter((t): t is NonNullable<typeof t> => !!t)
+    .map((t) => ({ tag: t.tag, title: t.title, summary: t.summary ?? null, doc: t.rel }));
+}
+
 function detail(root: Root, i: Initiative) {
   return {
     ...summary(root, i),
+    themes: themesOf(root, i),
     frontMatter: i.fm,
     dependencies: dependencyReport(root, i),
     related: i.related.map((r) => {
@@ -323,7 +334,7 @@ export function createServer(opts: ServerOptions): McpServer {
 
   tool(
     "tags",
-    "Every tag (theme) in use plus declared-but-unused ones, with descriptions and counts by status.",
+    "Every tag in use plus declared-but-unused ones, with descriptions, counts by status, and the theme overview doc if one exists (a doc whose front-matter says `theme: <tag>`).",
     {},
     (root) => {
       const declared = declaredTags(root);
@@ -332,7 +343,15 @@ export function createServer(opts: ServerOptions): McpServer {
         const items = allInitiatives(root).filter((i) => i.tags.includes(tag));
         const counts: Record<string, number> = {};
         for (const i of items) counts[i.status ?? "?"] = (counts[i.status ?? "?"] ?? 0) + 1;
-        return { tag, description: declared?.[tag] ?? null, declared: !!declared && tag in declared, total: items.length, counts };
+        const doc = themeFor(root, tag);
+        return {
+          tag,
+          description: declared?.[tag] ?? null,
+          declared: !!declared && tag in declared,
+          themeDoc: doc ? { title: doc.title, path: doc.rel } : null,
+          total: items.length,
+          counts,
+        };
       });
     },
     { readOnlyHint: true },
@@ -532,15 +551,17 @@ export function createServer(opts: ServerOptions): McpServer {
           .map((t) => ({ uri: `brindley://tag/${t}`, name: `Theme: ${t}`, mimeType: "text/markdown" })),
       }),
     }),
-    { description: "Every initiative with a tag, across collections, as one document", mimeType: "text/markdown" },
+    { description: "A theme as one document: its overview doc (if any), then every initiative tagged with it, across collections", mimeType: "text/markdown" },
     async (uri, vars) => {
       const root = open().root;
       const tag = String(vars["tag"]);
       const items = allInitiatives(root).filter((i) => i.tags.includes(tag));
       const desc = declaredTags(root)?.[tag];
+      const doc = themeFor(root, tag);
       const text = [
         `# Theme: ${tag}`,
         ...(desc ? ["", desc] : []),
+        ...(doc ? [`\n---\n\n<!-- theme overview (${doc.rel}) -->\n\n${readFileSync(doc.file, "utf8")}`] : []),
         ...items.map((i) => `\n---\n\n<!-- ${initiativeKey(i)} (${i.rel}) -->\n\n${readFileSync(i.file, "utf8")}`),
       ].join("\n");
       return { contents: [{ uri: uri.href, mimeType: "text/markdown", text }] };
@@ -580,6 +601,7 @@ Use \`next_question\` to step through.
 ## The initiative
 
 Status: ${i.status}${i.type ? ` · type: ${i.type}` : ""}${i.tags.length ? ` · tags: ${i.tags.join(", ")}` : ""}
+${themesOf(root, i).map((t) => `Theme "${t.tag}": read the overview \`${t.doc}\` first — it explains how this initiative fits the wider theme.`).join("\n")}
 
 Dependencies:
 ${d.dependencies.length ? d.dependencies.map((x) => `- ${x.ref} — ${x.classification}${x.title ? ` (${x.title}, ${x.status})` : ""}`).join("\n") : "- none"}
@@ -614,7 +636,7 @@ ${readFileSync(i.file, "utf8")}
       const docs = i.docs.length ? i.docs : (findCollection(root, i.collection)?.meta.docs ?? []);
       return prompt(`Implement initiative ${initiativeKey(i)} "${i.title}" — this one only; do not pick up other initiatives.
 
-${agent ? `**Repo workflow:** read and follow \`${agent}\` (worktrees, verification, commits). Where it conflicts with the generic rules below on repo specifics, it wins.\n` : ""}
+${themesOf(root, i).map((t) => `**Theme "${t.tag}":** read the overview \`${t.doc}\` for how this fits the wider theme; if your change alters the theme's model, update that doc too.\n`).join("")}${agent ? `**Repo workflow:** read and follow \`${agent}\` (worktrees, verification, commits). Where it conflicts with the generic rules below on repo specifics, it wins.\n` : ""}
 ## Before you start
 
 - Readiness: ${isReady(root, i) ? "ready." : `NOT ready (status ${i.status}; blocked by ${blockers(root, i).map((x) => x.ref).join(", ") || "nothing"}). Stop and report.`}
