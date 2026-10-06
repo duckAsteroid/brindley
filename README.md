@@ -38,8 +38,9 @@ cd site && npm install && npm run dev   # the documentation site
 
 The version comes from git: the last `vX.Y.Z` tag, bumped by the Conventional Commits since it
 (`feat` → minor, `fix`/`perf` → patch, `!` → major), with `-SNAPSHOT` off-tag — the same rules as
-[gradle-versioning](https://github.com/duckAsteroid/gradle-versioning). Release by tagging:
-`git tag v1.0.0 && git push origin v1.0.0`.
+[gradle-versioning](https://github.com/duckAsteroid/gradle-versioning). Release by tagging —
+`git tag v1.0.0 && git push origin v1.0.0` — and the Release workflow tests, publishes to npm
+(with provenance) and creates a GitHub Release.
 
 Design documents: [FORMAT.md](FORMAT.md) (the file format) and [MCP-SERVER.md](MCP-SERVER.md)
 (the server). Documentation pages live in [`site/`](site/) and publish to GitHub Pages on push.

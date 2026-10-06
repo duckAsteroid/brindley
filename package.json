@@ -21,7 +21,7 @@
     "typecheck": "node scripts/version.mjs --write && tsc -p tsconfig.json --noEmit",
     "version:explain": "node scripts/version.mjs --explain",
     "version:sync": "node scripts/version.mjs --sync",
-    "prepack": "npm run version:sync && npm run build",
+    "prepack": "npm run build",
     "prepare": "npm run build"
   },
   "repository": {
@@ -46,5 +46,14 @@
     "@types/node": "^26.6.4",
     "typescript": "^7.0.2",
     "vitest": "^5.0.3"
-  }
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
+  "homepage": "https://duckasteroid.github.io/brindley/",
+  "bugs": {
+    "url": "https://github.com/duckAsteroid/brindley/issues"
+  },
+  "author": "Chris Senior"
 }

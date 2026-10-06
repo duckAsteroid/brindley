@@ -1,0 +1,59 @@
+name: Release
+
+# Publishes to npm when a release tag (vX.Y.Z) is pushed:
+#   git tag v1.2.3 && git push origin v1.2.3
+on:
+  push:
+    tags: ["v*.*.*"]
+
+permissions:
+  contents: write # create the GitHub Release
+  id-token: write # npm trusted publishing + provenance
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment: npm
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # the version is computed from git tags
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: https://registry.npmjs.org
+          cache: npm
+
+      # Trusted publishing needs npm 11.5.1 or later.
+      - run: npm install -g npm@latest
+
+      - run: npm ci
+
+      - name: Check the computed version matches the tag
+        run: |
+          computed="$(node scripts/version.mjs)"
+          tagged="${GITHUB_REF_NAME#v}"
+          echo "tag: $tagged  computed: $computed"
+          if [ "$computed" != "$tagged" ]; then
+            echo "::error::Computed version $computed does not match tag $GITHUB_REF_NAME"
+            exit 1
+          fi
+
+      - run: npm test
+
+      # npm reads the version before any lifecycle script runs, so set it first.
+      - name: Set package.json version from git
+        run: npm run version:sync
+
+      # prepack builds dist/ (stamping the same version into the server).
+      - name: Publish to npm
+        run: npm publish --provenance --access public
+        env:
+          # Optional: only needed until trusted publishing is configured on npmjs.com.
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Create GitHub Release
+        run: gh release create "$GITHUB_REF_NAME" --title "$GITHUB_REF_NAME" --generate-notes --verify-tag
+        env:
+          GH_TOKEN: ${{ github.token }}
