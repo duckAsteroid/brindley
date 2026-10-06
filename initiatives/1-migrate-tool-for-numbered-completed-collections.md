@@ -2,6 +2,7 @@
 type: feature
 status: draft
 updated: 2026-10-06
+tags: [adoption]
 ---
 # migrate tool for numbered + completed/ collections
 
