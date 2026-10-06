@@ -46,7 +46,9 @@ export function classify(subject, body = "") {
 export function computeVersion() {
   const head = git("rev-parse", "HEAD");
   if (!head) return { version: "0.0.0-SNAPSHOT", commit: null, base: null, commits: [], bump: "none", onTag: false, dirty: false };
-  const dirty = (git("status", "--porcelain", "--untracked-files=no") ?? "") !== "";
+  // Publishing writes the version into package.json before building, so that change alone
+  // doesn't count as uncommitted work.
+  const dirty = (git("status", "--porcelain", "--untracked-files=no", "--", ".", ":(exclude)package.json") ?? "") !== "";
   const tags = (git("tag", "--merged", "HEAD", "--list", "v*") ?? "").split("\n").filter((t) => RELEASE_TAG.test(t));
   const parse = (t) => RELEASE_TAG.exec(t).slice(1).map(Number);
   const cmp = (a, b) => a[0] - b[0] || a[1] - b[1] || a[2] - b[2];
