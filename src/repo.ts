@@ -240,7 +240,22 @@ export function loadCollection(repoRoot: string, readmeRel: string): Collection 
       ),
     ),
   ].sort((a, b) => a.number - b.number || a.rel.localeCompare(b.rel));
-  return { name, path, dir, readme, meta, initiatives };
+  return { name, path, dir, readme, meta, initiatives, ignored: numberedFilesMatching(dir, ignored) };
+}
+
+/** Numbered .md files in a collection folder and its immediate sub-folders that `match` selects. */
+export function numberedFilesMatching(dir: string, match: (relPath: string) => boolean): string[] {
+  const out: string[] = [];
+  for (const e of readdirSync(dir).sort()) {
+    if (e.startsWith(".")) continue;
+    const p = join(dir, e);
+    if (statSync(p).isDirectory()) {
+      if (ASSET_DIR.test(e) || isCollectionReadme(join(p, "README.md"))) continue;
+      for (const f of readdirSync(p).sort())
+        if (INITIATIVE_FILE.test(f) && statSync(join(p, f)).isFile() && match(`${e}/${f}`)) out.push(`${e}/${f}`);
+    } else if (INITIATIVE_FILE.test(e) && match(e)) out.push(e);
+  }
+  return out;
 }
 
 export function loadRoot(repoRoot: string): Root {

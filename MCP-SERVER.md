@@ -61,6 +61,13 @@
   path. A bare number is resolved within `collection`, or across the repo if unambiguous;
   otherwise the error lists the candidates.
 
+### Server instructions
+
+On connect the server sends MCP `instructions`: a short summary of how Brindley sees a repo —
+collection markers, initiative files and references, status resolution and aliases, `ignore:`,
+never moving files, and how to discuss open questions — so an agent can use the tools correctly
+without reading this spec.
+
 ## 3. Tools
 
 All tools return structured JSON plus a short text rendering.
@@ -70,6 +77,7 @@ All tools return structured JSON plus a short text rendering.
 | Tool | Params | Behaviour |
 |------|--------|-----------|
 | `create_collection` | `path`, `name?`, `title?`, `summary?`, `owner?`, `link?`, `agent?`, `docs?`, `types?`, `tags?` | Marks a folder as a collection: adds `brindley: 1` and the given details to its README front-matter, creating the folder and README if needed and keeping any existing README text. Works on a folder already full of numbered initiatives. Refuses a name already used by another collection. For the repo's first collection, also returns the format-rules agent snippet (FORMAT §9) to add to `AGENTS.md`/`CLAUDE.md`. `create` given a new folder path does the same implicitly. |
+| `ignore` | `collection`, `add?`, `remove?`, `dry_run?` | Adds or removes the collection's `ignore:` patterns (`.gitignore` semantics, FORMAT §2) without rewriting the whole list. Returns the resulting patterns, every numbered file now ignored, and what changed; `dry_run` previews without writing. |
 | `update_collection` | `collection`, `status?`, `title?`, `summary?`, `owner?`, `link?`, `agent?`, `docs?`, `types?`, `tags?` | Edits the collection README's front-matter, including the changeset's status (`active` / `done` / `abandoned`; warns when marking `done` with unfinished initiatives). Refuses to change `name`, since references would break. |
 | `rename_collection` | `collection`, `to` | Moves the folder and rewrites `"<collection>#<n>"` references and relative links that point into it — the only other sanctioned multi-file rewrite besides `migrate`. |
 | `migrate` | `collection`, `dry_run = true` | Converts a numbered + `completed/` collection (FORMAT §11). Infers front-matter from status/owner/last-updated metadata (as `## Status` sections or `**Status:**` lead-in lines) and from `## Dependencies` / "Relationship to" prose; anything it can't map confidently is listed for a human/agent to decide rather than guessed. Dry run returns the full plan (moves, front-matter, link rewrites). The **one** sanctioned mass-rewrite. |
@@ -78,7 +86,8 @@ All tools return structured JSON plus a short text rendering.
 
 | Tool | Params | Returns |
 |------|--------|---------|
-| `collections` | — | Every collection: name, folder path, details, counts by initiative status, number ready. |
+| `collections` | — | Every collection: name, folder path, details, counts by initiative status, number ready, and the numbered files it ignores. |
+| `version` | — | The server's version (from git tags + Conventional Commits) and build commit. |
 | `list` | `collection?`, `type?`, `status?`, `tag?`, `owner?`, `ready?` | Across the whole repo unless `collection` is given. Summaries: number, title, type, status, owner, `ready`, blocking deps, open question counts. |
 | `get` | `ref` | Front-matter, title, body, parsed open questions and acceptance criteria, plus a **dependency report**: each `depends_on` entry classified `satisfied` / `blocking` / `external` (FORMAT §5), with the dependency's title and path; `related` items; dependants. This is the implementing agent's "select and validate" step in one call. |
 | `ready` | `collection?`, `type?` | Across the repo unless `collection` is given. Initiatives that are `designed` with nothing blocking (including cross-collection deps), in suggested order (topological, then number), each with its external deps listed. |

@@ -338,12 +338,33 @@ describe("ignore", () => {
     expect(numbersOf(fx)).toEqual(["1-one.md", "completed/3-three.md"]);
     const rules = validate(fx.load()).map((f) => f.rule);
     expect(rules).not.toContain("duplicate-number");
+    const other = fixture({ files: files("  - code-review/\n") });
+    try {
+      const dup = validate(other.load()).find((f) => f.rule === "duplicate-number");
+      expect(dup?.message).toMatch(/ignore/);
+    } finally {
+      other.cleanup();
+    }
   });
 
   it("supports negation", () => {
     fx = fixture({ files: files('  - "code-review/*"\n  - "!code-review/5-keep.md"\n') });
     expect(numbersOf(fx)).toContain("code-review/5-keep.md");
     expect(numbersOf(fx)).not.toContain("code-review/4-review.md");
+  });
+
+  it("previews, adds and removes patterns, reporting what changes", () => {
+    fx = fixture({ files: files("  - code-review/\n") });
+    const c = () => fx.load().collections[0]!;
+    expect(c().ignored).toEqual(["code-review/4-review.md", "code-review/5-keep.md"]);
+    const preview = ops.setIgnore(fx.load(), "plans", { add: ["*-rationale.md"], dryRun: true });
+    expect(preview.result.newlyIgnored).toEqual(["completed/3-three-rationale.md"]);
+    expect(preview.touched).toEqual([]);
+    expect(c().ignored).not.toContain("completed/3-three-rationale.md"); // dry run wrote nothing
+    ops.setIgnore(fx.load(), "plans", { add: ["*-rationale.md"], remove: ["code-review/"] });
+    expect(c().meta.ignore).toEqual(["*-rationale.md"]);
+    expect(c().ignored).toEqual(["completed/3-three-rationale.md"]);
+    expect(read("plans/README.md")).toMatch(/ignore:\n  - "\*-rationale\.md"\n/);
   });
 
   it("still counts ignored numbers when coining", () => {

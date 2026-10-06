@@ -21,8 +21,10 @@ import {
   BrindleyError,
   findCollection,
   initiativeKey,
+  ignoreMatcher,
   loadRoot,
   lookup,
+  numberedFilesMatching,
   parseRef,
   requireCollection,
   resolveRef,
@@ -187,6 +189,36 @@ export function updateCollection(root: Root, nameOrPath: string, changes: Collec
   const newBody = changes.title ? setH1(body, changes.title) : body;
   writeFileSync(c.readme, joinFrontMatter(editFrontMatter(fmText, defined), newBody));
   return finish(root, [c.name], [c.readme], { collection: c.name }, warnings);
+}
+
+/**
+ * Add or remove `ignore:` patterns on a collection (or, with dryRun, preview them). Returns the
+ * resulting patterns, the numbered files they ignore, and which files changed status.
+ */
+export function setIgnore(
+  root: Root,
+  nameOrPath: string,
+  input: { add?: string[]; remove?: string[]; dryRun?: boolean },
+): OpResult<{ collection: string; patterns: string[]; ignored: string[]; newlyIgnored: string[]; noLongerIgnored: string[]; dryRun: boolean }> {
+  const c = requireCollection(root, nameOrPath);
+  const current = c.meta.ignore ?? [];
+  let patterns = current.filter((p) => !(input.remove ?? []).includes(p));
+  for (const p of input.add ?? []) if (!patterns.includes(p)) patterns = [...patterns, p];
+  const ignored = numberedFilesMatching(c.dir, ignoreMatcher(patterns));
+  const before = new Set(c.ignored);
+  const result = {
+    collection: c.name,
+    patterns,
+    ignored,
+    newlyIgnored: ignored.filter((f) => !before.has(f)),
+    noLongerIgnored: c.ignored.filter((f) => !ignored.includes(f)),
+    dryRun: !!input.dryRun,
+  };
+  const warnings = (input.remove ?? []).filter((p) => !current.includes(p)).map((p) => `Pattern "${p}" was not in the list.`);
+  if (input.dryRun) return { result, touched: [], warnings };
+  const { fmText, body } = splitFrontMatter(readFileSync(c.readme, "utf8"));
+  writeFileSync(c.readme, joinFrontMatter(editFrontMatter(fmText, { ignore: patterns.length ? patterns : undefined }), body));
+  return finish(root, [c.name], [c.readme], result, warnings);
 }
 
 // ---------------------------------------------------------------------------

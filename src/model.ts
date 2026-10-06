@@ -121,6 +121,8 @@ export interface Collection {
   readme: string;
   meta: CollectionMeta;
   initiatives: Initiative[];
+  /** Numbered files (relative to the collection folder) excluded by `ignore:` patterns. */
+  ignored: string[];
 }
 
 /** Everything Brindley knows about one repository: its collections. There is no repo-level file. */

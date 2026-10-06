@@ -23,6 +23,16 @@ import { COMMIT, VERSION } from "./version.js";
 
 export { VERSION };
 
+/** Sent to clients on connect: how Brindley sees a repository. */
+export const INSTRUCTIONS = `Brindley manages planned work ("initiatives") as Markdown files in git. Design fully before anyone digs.
+
+- A collection is any folder whose README.md front-matter has \`brindley: 1\`. Mark one with create_collection (existing files are adopted; nothing moves). There is no repo-level file.
+- Initiatives are \`<number>-<slug>.md\` files in the collection folder or its immediate sub-folders. Refer to them as \`<collection-name>#<number>\`, or a bare number when unambiguous.
+- Status comes from front-matter \`status:\`, else the sub-folder name (completed/ → done, deferred/ → deferred, superseded/ → superseded). Core statuses: draft, designed (design complete, ready to implement), in-progress, deferred, done, abandoned, superseded. Common words are aliases (proposed → draft, completed → done, future → deferred, …); a collection can map its own with \`statuses:\`.
+- \`ignore:\` in the collection README holds .gitignore-style patterns (relative to the collection folder) for numbered files that are not initiatives, e.g. companion rationale notes. Use the \`ignore\` tool to add/remove/preview patterns; \`collections\` lists what is ignored.
+- Brindley never moves files. Every write regenerates the collection README's generated block. \`validate\` reports structural problems (missing or conflicting statuses, files outside their status folder, duplicate numbers, broken links, …).
+- When discussing open questions with the user: one at a time, in open chat (no form or multiple-choice prompts), grounded in the actual code, with concrete examples.`;
+
 export interface ServerOptions {
   cwd: string;
   autoReadme?: boolean;
@@ -76,7 +86,7 @@ function agentFile(root: Root, i: Initiative): string | undefined {
 }
 
 export function createServer(opts: ServerOptions): McpServer {
-  const server = new McpServer({ name: "brindley", version: VERSION });
+  const server = new McpServer({ name: "brindley", version: VERSION }, { instructions: INSTRUCTIONS });
 
   const open = (): { root: Root; notes: string[] } => {
     let root = openRepo(opts.cwd);
@@ -166,6 +176,18 @@ export function createServer(opts: ServerOptions): McpServer {
     async () => reply({ name: "brindley", version: VERSION, commit: COMMIT, formatVersion: 1 }),
   );
 
+  tool(
+    "ignore",
+    "Add or remove a collection's `ignore:` patterns — numbered files that are not initiatives (companion notes, reviews). .gitignore semantics, relative to the collection folder: `#` comments, `!` re-includes, leading `/` anchors, trailing `/` = folder, no `/` = any depth. Use dry_run to preview which files a change would ignore. Ignored numbers are still never reused.",
+    {
+      collection: z.string().describe("Collection name or folder path"),
+      add: z.array(z.string()).optional(),
+      remove: z.array(z.string()).optional(),
+      dry_run: z.boolean().optional(),
+    },
+    (root, a) => ops.setIgnore(root, a.collection, { add: a.add, remove: a.remove, dryRun: a.dry_run }),
+  );
+
   // --- Reading ----------------------------------------------------------------
 
   tool(
@@ -181,6 +203,7 @@ export function createServer(opts: ServerOptions): McpServer {
           ...c.meta,
           counts: Object.fromEntries(STATUSES.map((s) => [s, count(s)])),
           ready: c.initiatives.filter((i) => isReady(root, i)).length,
+          ignoredFiles: c.ignored,
         };
       }),
     { readOnlyHint: true },

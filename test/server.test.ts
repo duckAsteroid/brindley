@@ -70,6 +70,7 @@ describe("MCP server", () => {
     expect(v.name).toBe("brindley");
     expect(v.version).toMatch(/^\d+\.\d+\.\d+(-SNAPSHOT)?$/);
     expect(client.getServerVersion()?.version).toBe(v.version);
+    expect(client.getInstructions()).toMatch(/ignore:/);
   });
 
   it("returns tool errors rather than throwing", async () => {

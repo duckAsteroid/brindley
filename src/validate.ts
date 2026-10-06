@@ -43,7 +43,8 @@ export function validate(root: Root, opts: { collection?: string; docs?: boolean
     const seen = new Map<number, Initiative>();
     for (const i of c.initiatives) {
       const prev = seen.get(i.number);
-      if (prev) err("duplicate-number", rel(i.file), `Number ${i.number} is also used by ${prev.rel}; renumber one of them.`);
+      if (prev)
+        err("duplicate-number", rel(i.file), `Number ${i.number} is also used by ${prev.rel}; renumber one of them, or if one isn't an initiative (e.g. companion notes), exclude it with the \`ignore\` tool / an \`ignore:\` pattern in the collection README.`);
       else seen.set(i.number, i);
       checkInitiative(root, i, err, warn, rel);
     }
