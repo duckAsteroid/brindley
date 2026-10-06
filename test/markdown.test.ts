@@ -100,3 +100,12 @@ describe("blank sections", () => {
     expect(sectionIsBlank("# T\n", "Measures")).toBe(true);
   });
 });
+
+describe("type words", () => {
+  it("accepts Brindley's raconitering as a spike", async () => {
+    const { normaliseType } = await import("../src/model.js");
+    expect(normaliseType("Raconitering")).toBe("spike");
+    expect(normaliseType("raconiter")).toBe("spike");
+    expect(normaliseType("refactor")).toBe("refactor");
+  });
+});

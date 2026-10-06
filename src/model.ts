@@ -169,6 +169,23 @@ export interface Root {
   themes: Theme[];
 }
 
+/** Other words for initiative types. "Raconitering" is James Brindley's own spelling of a reconnoitre. */
+export const TYPE_ALIASES: Readonly<Record<string, string>> = {
+  raconiter: "spike",
+  raconitering: "spike",
+  reconnoitre: "spike",
+  investigation: "spike",
+  bugfix: "bug",
+  fix: "bug",
+  feat: "feature",
+};
+
+export function normaliseType(word: string | undefined): string | undefined {
+  if (!word) return undefined;
+  const w = word.trim().toLowerCase();
+  return TYPE_ALIASES[w] ?? word.trim();
+}
+
 /** Map a status word to a core status: core names, collection mappings, then common aliases. */
 export function normaliseStatus(word: string | undefined, custom?: Record<string, string>): Status | undefined {
   if (!word) return undefined;

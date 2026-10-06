@@ -7,8 +7,22 @@ Brindley is a plain-Markdown convention for planning work in a git repo — one 
 initiative, designed with an AI agent until every open question is settled, then handed to an
 agent to implement — plus an MCP server that makes the convention easy to adopt and work with.
 
-Named after James Brindley, engineer of Manchester's Bridgewater Canal, who worked his designs out
-completely before construction began.
+## Why "Brindley"?
+
+James Brindley (1716–1772) engineered Manchester's Bridgewater Canal, the start of Britain's canal
+network. Three things are told about how he worked:
+
+- **He designed fully before anyone dug.** He "worked out complex engineering problems in his
+  head, sometimes retiring to bed for days while he mentally solved particularly difficult
+  challenges". Brindley the tool keeps that habit: an initiative is not ready until its open
+  questions are settled.
+- **He went and looked first.** He surveyed routes "by eye and instinct … often lying down on
+  hilltops to judge the lie of the land", and his notebook records setting out on "a
+  raconitering" — his spelling of a reconnoitre. That is a *spike*: build just enough to measure
+  the ground before committing to the route (`type: spike`, or `type: raconiter` if you prefer).
+- **He didn't write it down.** "His stubborn refusal to delegate or properly record his methods
+  created problems for those who worked with him." This is the habit the tool fixes: the design
+  lives in the repo, where the people and agents who come after can follow it.
 
 - [FORMAT.md](FORMAT.md) — the file format and conventions (usable with no tooling at all)
 - [MCP-SERVER.md](MCP-SERVER.md) — the MCP server's design

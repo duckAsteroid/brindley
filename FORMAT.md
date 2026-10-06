@@ -407,6 +407,10 @@ README content.
 
 ### 7.1 Spikes
 
+> James Brindley's notebook records him setting out on "a raconitering" — his spelling of a
+> reconnoitre: going to look at the ground before committing to a route. `raconiter` is accepted
+> as a type alias for `spike`.
+
 A spike (`type: spike`) is an initiative whose purpose is to **measure something specific**. It
 builds as much implementation as the measurement needs; its main output is knowledge, written
 into the initiative. Two sections are defined for spikes:
