@@ -81,9 +81,9 @@ All tools return structured JSON plus a short text rendering.
 | Tool | Params | Returns |
 |------|--------|---------|
 | `collections` | — | Every collection: path, title, status, counts by initiative status, number ready. |
-| `list` | `collection?`, `status?`, `tag?`, `owner?`, `ready?` | Across the whole root unless `collection` is given. Summaries: number, title, status, owner, `ready`, blocking deps, open question counts. |
+| `list` | `collection?`, `type?`, `status?`, `tag?`, `owner?`, `ready?` | Across the whole root unless `collection` is given. Summaries: number, title, type, status, owner, `ready`, blocking deps, open question counts. |
 | `get` | `ref` | Front-matter, title, body, parsed open questions and acceptance criteria, plus a **dependency report**: each `depends_on` entry classified `satisfied` / `blocking` / `external` (FORMAT §5), with the dependency's title and path; `related` items; dependants. This is the implementing agent's "select and validate" step in one call. |
-| `ready` | `collection?` | Across the root unless `collection` is given. Initiatives that are `designed` with nothing blocking (including cross-collection deps), in suggested order (topological, then number), each with its external deps listed. |
+| `ready` | `collection?`, `type?` | Across the root unless `collection` is given. Initiatives that are `designed` with nothing blocking (including cross-collection deps), in suggested order (topological, then number), each with its external deps listed. |
 | `graph` | `collection?`, `ref?`, `include_done = false` | Dependency graph as adjacency list + Mermaid. |
 | `questions` | `collection?`, `ref?`, `include_implementation = true` | Unresolved open questions, grouped by initiative. |
 | `check_docs` | `paths?` | Lints project docs (default: those changed vs `HEAD`, else all matching `docs:`) against FORMAT §7.1: history phrasing, rejected-alternative/debate wording, links into the initiatives root. Returns findings with file/line and the offending phrase. Heuristic; warnings only. |
@@ -97,8 +97,8 @@ Every write preserves unknown front-matter fields and the author's Markdown form
 
 | Tool | Params | Behaviour |
 |------|--------|-----------|
-| `create` | `collection`, `title`, `goal?`, `depends_on?`, `related?`, `owner?` | Coins the next number by repo scan (§6), writes `<n>-<slug>.md` with `status: draft`, H1, and a section skeleton (Goal, Dependencies, Open Questions, Acceptance criteria). |
-| `update` | `ref`, `title?`, `owner?`, `tags?`, `section?`, `content?` | Edits front-matter / H1, or replaces a named body section. Cannot change the number or filename. |
+| `create` | `collection`, `title`, `type?`, `goal?`, `depends_on?`, `related?`, `owner?` | Coins the next number by repo scan (§6), writes `<n>-<slug>.md` with `status: draft`, H1, and a section skeleton (Goal, Dependencies, Open Questions, Acceptance criteria). |
+| `update` | `ref`, `title?`, `type?`, `owner?`, `tags?`, `section?`, `content?` | Edits front-matter / H1, or replaces a named body section. Cannot change the number or filename. |
 | `set_status` | `ref`, `status`, `force = false` | Enforces transition rules (refuses `→ designed` with blocking open questions; refuses `→ in-progress` when blocked), explaining why. `force` overrides with a warning. |
 | `add_question` | `ref`, `text`, `implementation = false` | Appends to `## Open Questions` (creating it if needed). A blocking question on a `designed` initiative moves it back to `draft`, and says so. |
 | `resolve_question` | `ref`, `index` \| `match`, `answer`, `record_in?`, `mode = "remove"` | Default (`remove`): deletes the question and appends the decision to the `record_in` section (default `## Decisions`, created if missing — e.g. pass `Agreed direction`). `mode: "tick"` instead keeps it as `- [x] … — answer`. Returns the edited sections so the agent can smooth the prose. |

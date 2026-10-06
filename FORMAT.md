@@ -72,6 +72,7 @@ docs/initiatives/                                  # the root (one per repo)
 brindley: 1            # marks the initiatives root; value = format version
 agent: .github/agents/implement-initiative.agent.md   # optional default repo workflow, see §9
 docs: ["docs/**/*.md", "*/docs/**/*.md"]              # optional: what counts as project docs, see §7.1
+types: [feature, bug, refactor, perf, docs, chore, spike]   # optional: the repo's initiative types, see §4.1
 ---
 ```
 
@@ -127,6 +128,7 @@ YAML front-matter, delimited by `---`. Deliberately small:
 
 ```yaml
 ---
+type: feature
 status: draft
 depends_on: [19, 20, "lib:geo-coords"]
 related: [30]
@@ -139,6 +141,7 @@ updated: 2026-09-24
 | Field        | Required | Type | Notes |
 |--------------|----------|------|-------|
 | `status`     | yes      | enum | See §5. |
+| `type`       | no       | string | Kind of work: `feature`, `bug`, `refactor`, … (§4.1). |
 | `status_note` | no      | string | One-line qualifier shown next to the status, e.g. "synchronous impact validation on publish" or "design proposal, no implementation yet". |
 | `depends_on` | no       | list | **Hard prerequisites.** An integer is an initiative in this collection; `"<collection>#<n>"` is an initiative in another collection; any other string is an **external** prerequisite (module, other repo) that tools record but cannot check. Default `[]`. |
 | `related`    | no       | list | Soft links: "informed by, but does not depend on". Integers or `"<collection>#<n>"`. Never blocks. |
@@ -153,6 +156,26 @@ updated: 2026-09-24
   GitHub shows.
 - The format version is declared once, on the collection (§2), not per file.
 - Unknown fields are permitted and must be preserved by tools (extension point).
+
+### 4.1 Initiative types
+
+`type` is a free-form string saying what kind of work an initiative is. Suggested vocabulary:
+
+| Type | Use for |
+|------|---------|
+| `feature` | New user- or caller-visible capability. |
+| `bug` | Behaviour that is wrong today. |
+| `refactor` | Internal restructuring with no behaviour change. |
+| `perf` | Performance work. |
+| `docs` | Documentation-only change. |
+| `chore` | Build, dependencies, tooling, CI. |
+| `spike` | Time-boxed investigation whose output is knowledge (often new initiatives), not shipped code. |
+
+- A repo may declare its own list with `types:` in the root front-matter. When declared, an
+  unlisted `type` is a validation warning (typo protection); when not, any string is accepted.
+- Type is descriptive only: it never affects readiness or lifecycle rules.
+- Tools may use it for grouping and filtering, and an implementing agent may use it to choose a
+  commit type (e.g. `feature` → `feat`, `bug` → `fix` in Conventional Commits).
 
 ## 5. Status lifecycle
 
@@ -316,11 +339,11 @@ Rules for the generated block:
 
 1. **Active** table — every initiative not `done`/`abandoned`/`superseded`:
 
-   | # | Initiative | Status | Ready / blocked by | Open Qs | Owner |
-   |---|------------|--------|--------------------|---------|-------|
-   | 21 | [Lock sensor CSV import](21-lock-sensor-import.md) | designed | ✅ ready · ext: `lib:geo-coords` | 0 | — |
-   | 22 | [Opening-hours change impact](22-opening-hours-change-impact.md) | draft | ⛔ 23 | 7 | `locks/core` |
-   | 39 | [Paged slot listings](39-paged-slot-listings.md) | draft | — | 0 (+2 impl.) | `locks/api` |
+   | # | Initiative | Type | Status | Ready / blocked by | Open Qs | Owner |
+   |---|------------|------|--------|--------------------|---------|-------|
+   | 21 | [Lock sensor CSV import](21-lock-sensor-import.md) | feature | designed | ✅ ready · ext: `lib:geo-coords` | 0 | — |
+   | 22 | [Opening-hours change impact](22-opening-hours-change-impact.md) | feature | draft | ⛔ 23 | 7 | `locks/core` |
+   | 39 | [Paged slot listings](39-paged-slot-listings.md) | perf | draft | — | 0 (+2 impl.) | `locks/api` |
 
    `status_note`, when present, is shown under the status.
 
@@ -402,7 +425,7 @@ Two layers:
      wording, moving rejected alternatives into `## Appendix: Rejected alternatives`; set
      `status: done` and `updated`.
    - New initiative: next number in the collection, filename `<number>-<slug>.md`,
-     `status: draft`.
+     `status: draft`, and a `type` (e.g. `feature`, `bug`, `refactor`).
    ```
 
 2. **Repo workflow** — specific to the project: verification commands, docs to keep current,
@@ -434,6 +457,7 @@ Warnings:
 14. `status: done` without `docs_impact`.
 15. A project doc (per `docs:` globs) that links into the initiatives root.
 16. History phrasing in a project doc (heuristic — see §7.1 list).
+17. `type` not in the root's `types:` list, when one is declared.
 
 ## 11. Migration from the numbered + `completed/` layout
 
