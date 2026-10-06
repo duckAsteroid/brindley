@@ -6,12 +6,12 @@
   <path d="M15 9h25l9 9v38H15z" fill="#f4efe6"/>
   <path d="M40 9v9h9z" fill="#d6cbb6"/>
   <!-- Lines of design, written first -->
-  <rect x="20" y="17" width="14" height="3" rx="1.5" fill="#12343b" opacity=".55"/>
-  <rect x="20" y="23" width="22" height="3" rx="1.5" fill="#12343b" opacity=".55"/>
-  <!-- The dig: a lock chamber, high pound stepping down to low pound -->
-  <path d="M15 35h17v21H15z" fill="#2f8f9d"/>
-  <path d="M32 43h17v13H32z" fill="#4fb3bf"/>
-  <!-- Lock gate and balance beam -->
-  <rect x="30.5" y="30" width="3.5" height="26" rx="1.2" fill="#12343b"/>
-  <rect x="24" y="30" width="10" height="3.5" rx="1.2" fill="#12343b"/>
+  <rect x="19" y="15" width="10" height="3" rx="1.5" fill="#12343b" opacity=".55"/>
+  <rect x="19" y="21" width="8" height="3" rx="1.5" fill="#12343b" opacity=".55"/>
+  <!-- The dig: a lock, high pound stepping down to low pound -->
+  <path d="M15 35h21v21H15z" fill="#2f8f9d"/>
+  <path d="M36 43h13v13H36z" fill="#4fb3bf"/>
+  <!-- The spade, waiting until the design is done -->
+  <path d="M32 12h8a1.5 1.5 0 0 1 1.5 1.5v4a1.5 1.5 0 0 1-1.5 1.5h-2.6v19h-2.8v-19H32a1.5 1.5 0 0 1-1.5-1.5v-4A1.5 1.5 0 0 1 32 12zm.5 2.5v2h7v-2z" fill="#12343b"/>
+  <path d="M31 37.5h10v8.5c0 3.4-2.4 6.6-5 8.5-2.6-1.9-5-5.1-5-8.5z" fill="#12343b"/>
 </svg>
