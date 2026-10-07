@@ -274,6 +274,26 @@ export function createServer(opts: ServerOptions): McpServer {
     link: z.string().optional().describe("External ticket/epic URL"),
     agent: z.string().optional().describe("Repo workflow agent file for this collection"),
     docs: z.array(z.string()).optional().describe("Globs of project docs this collection usually affects"),
+    dimensions: z
+      .record(z.string(), z.unknown())
+      .nullable()
+      .optional()
+      .describe('Scoring dimensions: name → { values (first ranks first), required?, default? } or a list of values. null removes.'),
+    graph: z
+      .record(z.string(), z.unknown())
+      .nullable()
+      .optional()
+      .describe("Dependency graph settings: direction, arrows, related, show, external, themes, enabled. null removes."),
+    columns: z
+      .record(z.string(), z.array(z.string()))
+      .nullable()
+      .optional()
+      .describe("README table columns: { active: [...], completed: [...] }. null removes."),
+    folders: z
+      .record(z.string(), z.string())
+      .nullable()
+      .optional()
+      .describe("Opt in to status folders: status → folder name, e.g. { done: done }. Status changes then move files; run tidy for existing ones. null removes (files stay where they are)."),
   };
 
   tool(

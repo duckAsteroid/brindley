@@ -103,3 +103,32 @@ describe("status folders", () => {
     expect(has("locks/01-gates.md")).toBe(true);
   });
 });
+
+describe("collection settings through the tools", () => {
+  it("update_collection sets folders, graph, columns and dimensions, refuses bad values, and null removes", () => {
+    fx = fixture({ files: files("---\nbrindley: 1\n---\n# Locks\n") });
+    ops.updateCollection(fx.load(), "locks", {
+      folders: { done: "done" },
+      graph: { direction: "top-to-bottom", related: true },
+      columns: { active: ["number", "title", "risk"] },
+      dimensions: { risk: { values: ["high", "low"], default: "low" } },
+    });
+    const readme = read("locks/README.md");
+    expect(readme).toMatch(/folders:\n  done: done\n/);
+    expect(readme).toMatch(/graph:\n  direction: top-to-bottom\n  related: true\n/);
+    expect(readme).toContain("| # | Initiative | Risk |");
+    expect(() => ops.updateCollection(fx.load(), "locks", { folders: { finished: "done" } })).toThrow(/Not written: `folders` lists "finished"/);
+    expect(() => ops.updateCollection(fx.load(), "locks", { columns: { active: ["colour"] } })).toThrow(/Unknown column "colour"/);
+    expect(() => ops.updateCollection(fx.load(), "locks", { graph: { arrows: "both" } })).toThrow(/arrows: both/);
+    ops.updateCollection(fx.load(), "locks", { graph: null, folders: null });
+    expect(read("locks/README.md")).not.toMatch(/^graph:|^folders:/m);
+  });
+
+  it("tidy reports each file it wrote where it ends up", () => {
+    fx = fixture({ files: { ...files(), "locks/03-sluice.md": "---\nstatus: done\ndocs_impact: 'none: x'\n---\n# Sluice\n\nAfter [gates](01-gates.md).\n" } });
+    const r = ops.tidy(fx.load(), "locks", { dry_run: false });
+    expect(r.touched).toContain("locks/completed/03-sluice.md");
+    expect(r.touched).not.toContain("locks/03-sluice.md");
+    expect(read("locks/completed/03-sluice.md")).toContain("After [gates](../01-gates.md).");
+  });
+});

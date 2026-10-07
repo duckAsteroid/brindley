@@ -122,9 +122,10 @@ export function planRefs(root: Root, change: (collection: string, n: number, wri
   return out;
 }
 
-/** Apply a plan: rewrite the links in place, then make the moves. */
+/** Apply a plan: rewrite the links in place, then make the moves. Returns every file written, where it ends up. */
 export function applyRelink(root: Root, plan: RelinkPlan): string[] {
   const touched = new Set<string>();
+  const abs = plan.moves.map((m) => ({ from: join(root.repoRoot, m.from), to: join(root.repoRoot, m.to) }));
   const byFile = new Map<string, Rewrite[]>();
   for (const r of plan.rewrites) byFile.set(r.file, [...(byFile.get(r.file) ?? []), r]);
   for (const [rel, rs] of byFile) {
@@ -137,7 +138,7 @@ export function applyRelink(root: Root, plan: RelinkPlan): string[] {
       ls[r.line - 1] = l.slice(0, r.column) + r.after + l.slice(r.column + r.before.length);
     }
     writeFileSync(file, ls.join("\n"));
-    touched.add(file);
+    touched.add(moved(file, abs));
   }
   for (const m of plan.moves) {
     mkdirSync(dirname(join(root.repoRoot, m.to)), { recursive: true });

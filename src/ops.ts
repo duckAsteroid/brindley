@@ -43,12 +43,13 @@ import {
 } from "./repo.js";
 import { blockers, dependants, dependencyReport, isReady, wouldCycle } from "./deps.js";
 import { changedSinceHead, highestNumberElsewhere } from "./git.js";
-import { regenerate } from "./readme.js";
+import { readmeColumns, regenerate } from "./readme.js";
 import { checkDocs, docsGlobs, inCollection, isProjectDoc } from "./docs.js";
-import { dimensionsFor, sameValue, type DimensionValue } from "./dimensions.js";
+import { dimensionsFor, parseDimensions, sameValue, type DimensionValue } from "./dimensions.js";
 import { capacity, collectionWidth, nearFull, padNumber } from "./numbering.js";
 import { applyRelink, planRefs, planRelink, type Move, type Rewrite } from "./relink.js";
 import { movesFor, parseFolders } from "./folders.js";
+import { parseGraph } from "./graph.js";
 
 export function today(): string {
   return process.env["BRINDLEY_TODAY"] ?? new Date().toISOString().slice(0, 10);
@@ -166,13 +167,45 @@ export interface CollectionInput {
   statuses?: Record<string, string>;
   ignore?: string[];
   aliases?: string[];
+  /** Scoring dimensions (FORMAT §4.3); null removes the setting. */
+  dimensions?: Record<string, unknown> | null;
+  /** Dependency graph settings (FORMAT §8.3); null removes the setting. */
+  graph?: Record<string, unknown> | null;
+  /** README table columns (FORMAT §8.1); null removes the setting. */
+  columns?: Record<string, string[]> | null;
+  /** Status → folder, opting in to status folders (FORMAT §2); null removes the setting. */
+  folders?: Record<string, string> | null;
 }
 
-const COLLECTION_KEYS = ["name", "aliases", "title", "summary", "status", "owner", "link", "agent", "docs", "types", "tags", "statuses", "ignore"] as const;
+const COLLECTION_KEYS = [
+  "name", "aliases", "title", "summary", "status", "owner", "link", "agent", "docs", "types", "tags", "statuses", "ignore",
+  "dimensions", "graph", "columns", "folders",
+] as const;
 
-/** Keep only collection README fields, dropping undefined values and any other arguments. */
+/** Keep only collection README fields, dropping undefined values and any other arguments; null removes a field. */
 function collectionFields(input: CollectionInput): Record<string, unknown> {
-  return Object.fromEntries(COLLECTION_KEYS.map((k) => [k, input[k]]).filter(([, v]) => v !== undefined));
+  return Object.fromEntries(
+    COLLECTION_KEYS.map((k) => [k, input[k]])
+      .filter(([, v]) => v !== undefined)
+      .map(([k, v]) => [k, v === null ? undefined : v]),
+  );
+}
+
+/**
+ * Problems with the structured settings in `changes` — dimensions, graph, columns, folders — read
+ * as they would be once written, so a bad value is refused rather than left for `validate`.
+ */
+function settingProblems(root: Root, c: Collection | undefined, changes: CollectionInput): string[] {
+  const statuses = changes.statuses ?? c?.meta.statuses;
+  const problems: string[] = [];
+  if (changes.dimensions) problems.push(...parseDimensions(changes.dimensions).problems);
+  if (changes.graph) problems.push(...parseGraph(changes.graph, statuses).problems);
+  if (changes.folders) problems.push(...parseFolders(changes.folders, statuses).problems);
+  if (changes.columns) {
+    const meta = { ...(c?.meta ?? { title: "", status: "active" }), columns: changes.columns, ...(changes.dimensions ? { dimensions: changes.dimensions } : {}) };
+    problems.push(...readmeColumns(root, { ...(c ?? ({ name: "", path: "", dir: "", readme: "", initiatives: [], aliases: [], ignored: [] } as unknown as Collection)), meta }).problems);
+  }
+  return problems;
 }
 
 /**
@@ -184,6 +217,8 @@ function markCollection(root: Root, path: string, meta: CollectionInput): { path
   const p = checkFolderPath(root, path);
   const existing = root.collections.find((c) => c.path === p);
   if (existing) throw new BrindleyError(`${p} is already a collection ("${existing.name}").`);
+  const problems = settingProblems(root, undefined, meta);
+  if (problems.length) throw new BrindleyError(`Not written: ${problems.join(" ")}`);
   const name = meta.name ?? p.split("/").pop()!;
   const clash = root.collections.find((c) => c.name.toLowerCase() === name.toLowerCase());
   if (clash) throw new BrindleyError(`A collection named "${name}" already exists at ${clash.path}; pass a distinct \`name\`.`);
@@ -228,6 +263,8 @@ export function updateCollection(root: Root, nameOrPath: string, changes: Collec
     throw new BrindleyError("A collection's name can't be changed here: references to it would break.");
   if (changes.status && !(COLLECTION_STATUSES as readonly string[]).includes(changes.status))
     throw new BrindleyError(`Collection status must be one of ${COLLECTION_STATUSES.join(", ")}.`);
+  const problems = settingProblems(root, c, changes);
+  if (problems.length) throw new BrindleyError(`Not written: ${problems.join(" ")}`);
   const warnings: string[] = [];
   if (changes.status === "done") {
     const open = c.initiatives.filter((i) => ["draft", "designed", "in-progress"].includes(i.status ?? ""));
