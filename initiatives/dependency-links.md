@@ -16,11 +16,11 @@ sits inside a sentence.
 
 ### Initiatives in this theme
 
-Tagged `dependency-links`: 2 open, 0 closed or deferred.
+Tagged `dependency-links`: 1 open, 1 closed or deferred.
 
 | Ref | Initiative | Type | Status | Ready / blocked by |
 |-----|------------|------|--------|--------------------|
-| `initiatives#4` | [Cycle errors advise where back-references belong](4-flag-reverse-direction-links-under-dependencies.md) | feature | designed | ✅ ready |
 | `initiatives#5` | [set_dependencies explains links it cannot remove](5-set-dependencies-removes-links-inside-prose.md) | feature | designed | ✅ ready |
+| `initiatives#4` | [Cycle errors advise where back-references belong](4-flag-reverse-direction-links-under-dependencies.md) | feature | done | — |
 
 <!-- brindley:generated:end -->

@@ -87,7 +87,11 @@ export function validate(root: Root, opts: { collection?: string; docs?: boolean
   }
 
   for (const cycle of cycles(root)) {
-    err("cycle", cycle[0]!, `Dependency cycle: ${cycle.join(" → ")}.`);
+    err(
+      "cycle",
+      cycle[0]!,
+      `Dependency cycle: ${cycle.join(" → ")}. If one of these links is a back-reference ("depended on by", "precedes") rather than something needed first, move it to ## Related (keeps a non-blocking link) or to a section such as ## See also (a plain link).`,
+    );
   }
 
   for (const ch of regenerate(root, { check: true, collections })) {

@@ -16,12 +16,11 @@ to make adoption one call plus a review rather than an afternoon of hand-editing
 
 ### Initiatives in this theme
 
-Tagged `adoption`: 9 open, 0 closed or deferred.
+Tagged `adoption`: 8 open, 1 closed or deferred.
 
 | Ref | Initiative | Type | Status | Ready / blocked by |
 |-----|------------|------|--------|--------------------|
 | `initiatives#1` | [migrate tool for numbered + completed/ collections](1-migrate-tool-for-numbered-completed-collections.md) | feature | designed | ⛔ 7, 13 |
-| `initiatives#4` | [Cycle errors advise where back-references belong](4-flag-reverse-direction-links-under-dependencies.md) | feature | designed | ✅ ready |
 | `initiatives#7` | [Infer a missing status from the initiative's prose](7-infer-a-missing-status-from-the-initiative-s-prose.md) | feature | designed | ✅ ready |
 | `initiatives#8` | [Fix mode for mechanical validate findings](8-fix-mode-for-mechanical-validate-findings.md) | feature | designed | ✅ ready |
 | `initiatives#9` | [Suggest a home for companion notes](9-suggest-an-ignore-pattern-for-companion-notes.md) | feature | designed | ✅ ready |
@@ -29,5 +28,6 @@ Tagged `adoption`: 9 open, 0 closed or deferred.
 | `initiatives#11` | [batch_update tool](11-batch-status-backfill-tool.md) | feature | designed | ⛔ 6, 7 |
 | `initiatives#13` | [Consistent zero-padded numbering](13-consistent-zero-padded-numbering.md) | feature | designed | ✅ ready |
 | `initiatives#16` | [Resolve settled questions in bulk](16-resolve-settled-questions-in-bulk.md) | feature | draft | — |
+| `initiatives#4` | [Cycle errors advise where back-references belong](4-flag-reverse-direction-links-under-dependencies.md) | feature | done | — |
 
 <!-- brindley:generated:end -->

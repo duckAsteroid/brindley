@@ -2,7 +2,7 @@
 type: feature
 status: designed
 updated: 2026-10-07
-tags: [dependency-links]
+tags: [dependency-links, text]
 ---
 # set_dependencies explains links it cannot remove
 

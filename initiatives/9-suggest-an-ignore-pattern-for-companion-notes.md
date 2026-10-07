@@ -2,7 +2,7 @@
 type: feature
 status: designed
 updated: 2026-10-07
-tags: [adoption]
+tags: [adoption, text]
 ---
 # Suggest a home for companion notes
 

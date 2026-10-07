@@ -1,8 +1,11 @@
 ---
 type: feature
-status: designed
+status: done
 updated: 2026-10-07
-tags: [dependency-links, adoption]
+tags: [dependency-links, adoption, text]
+docs_impact:
+  - FORMAT.md
+  - site/reference/validation.md
 ---
 # Cycle errors advise where back-references belong
 

@@ -11,7 +11,7 @@
 | `status-missing` | No status — and no status folder to take it from. The message quotes what the body says, if anything. |
 | `status-invalid` | A status word that isn't a core status, an alias, or mapped with `statuses:`. |
 | `duplicate-number` | Two initiatives in one collection share a number. |
-| `cycle` | Dependencies loop back on themselves. |
+| `cycle` | Dependencies loop back on themselves. Often one link is a back-reference ("depended on by"): move it to `## Related`, or to `## See also` for a plain link. |
 | `dangling-ref` | `superseded_by` refers to an initiative that doesn't exist. |
 | `date` | `updated` isn't an ISO date. |
 | `superseded-by` | Superseded, with nothing saying by what (a warning for files in a `superseded/` folder). |

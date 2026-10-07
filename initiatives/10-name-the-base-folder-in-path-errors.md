@@ -2,7 +2,7 @@
 type: feature
 status: designed
 updated: 2026-10-07
-tags: [adoption]
+tags: [adoption, text]
 ---
 # Name the base folder in path errors
 

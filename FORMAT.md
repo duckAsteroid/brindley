@@ -363,6 +363,7 @@ requirements, except where marked):
 | `## Goal` or `## Context` | What and why. |
 | `## Dependencies` *(defined)* | **The** list of prerequisites, as links (below), each with why it is needed. |
 | `## Related` *(defined)* | Non-blocking links: "informed by", "relates to", "generalised by". |
+| `## See also`, or any other section | Plain cross-references with no Brindley meaning — e.g. back-references such as "depended on by 19", which would form a cycle under `## Dependencies`. |
 | design sections | Whatever the initiative needs: proposed direction, mappings, compatibility, failure behaviour, testing… |
 | `## Open Questions` *(defined)* | Task list of undecided points (below). |
 | `## Acceptance criteria` *(defined)* | Bullet list of verifiable outcomes. The implementing agent's definition of done. |

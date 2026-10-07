@@ -78,7 +78,39 @@ describe("readiness and lifecycle", () => {
   it("refuses a dependency cycle", () => {
     fx = fixture({ files: lockExample });
     const root = fx.load();
-    expect(() => ops.setDependencies(root, resolveRef(root, 23), { add: [22] })).toThrow(/cycle/);
+    expect(() => ops.setDependencies(root, resolveRef(root, 23), { add: [22] })).toThrow(/cycle\. If it is related rather than needed first, add it under ## Related/);
+  });
+
+  it("advises where a back-reference belongs when dependencies loop", () => {
+    fx = fixture({
+      files: {
+        "plans/README.md": "---\nbrindley: 1\n---\n# Plans\n",
+        "plans/1-gates.md": "---\nstatus: draft\n---\n# Gates\n\n## Dependencies\n\n- [2](2-paddles.md)\n",
+        "plans/2-paddles.md": "---\nstatus: draft\n---\n# Paddles\n\n## Dependencies\n\n- Depended on by [1](1-gates.md).\n",
+      },
+    });
+    const cycle = validate(fx.load()).find((f) => f.rule === "cycle")!;
+    expect(cycle.message).toBe(
+      'Dependency cycle: plans#1 → plans#2 → plans#1. If one of these links is a back-reference ("depended on by", "precedes") rather than something needed first, move it to ## Related (keeps a non-blocking link) or to a section such as ## See also (a plain link).',
+    );
+  });
+
+  it("reads a ## See also link as a plain link: no dependency, related edge or cycle", () => {
+    fx = fixture({
+      files: {
+        "plans/README.md": "---\nbrindley: 1\ngraph:\n  related: true\n---\n# Plans\n",
+        "plans/1-gates.md": "---\nstatus: draft\n---\n# Gates\n\n## Dependencies\n\n- [2](2-paddles.md)\n",
+        "plans/2-paddles.md": "---\nstatus: draft\n---\n# Paddles\n\n## See also\n\n- Depended on by [1](1-gates.md).\n",
+      },
+    });
+    const root = fx.load();
+    const paddles = resolveRef(root, "plans#2");
+    expect(paddles.dependsOn).toEqual([]);
+    expect(paddles.related).toEqual([]);
+    expect(validate(root).filter((f) => f.rule === "cycle")).toEqual([]);
+    regenerate(root);
+    expect(read("plans/README.md")).toContain("n1 --> n2");
+    expect(read("plans/README.md")).not.toMatch(/n2 -(-|\.-)>/);
   });
 });
 

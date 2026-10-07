@@ -566,7 +566,8 @@ export function setDependencies(
       if (!url) {
         const t = resolveRef(root, x, i.collection);
         if (t === i) throw new BrindleyError("An initiative cannot depend on itself.");
-        if (blocking && wouldCycle(root, i, t)) throw new BrindleyError(`Adding ${initiativeKey(t)} would create a dependency cycle.`);
+        if (blocking && wouldCycle(root, i, t))
+          throw new BrindleyError(`Adding ${initiativeKey(t)} would create a dependency cycle. If it is related rather than needed first, add it under ## Related instead (related_add).`);
         const existing = blocking ? i.dependsOn : i.related;
         if (existing.some((r) => r.kind === "initiative" && r.collection === t.collection && r.number === t.number)) {
           warnings.push(`${initiativeKey(t)} is already linked under "## ${section}".`);
