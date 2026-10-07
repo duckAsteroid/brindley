@@ -28,4 +28,9 @@ _None._
 
 ## Acceptance criteria
 
-_What must be true when this is done._
+- `update` accepts `status`. On an initiative with no `status:` in front-matter it writes the status with no lifecycle checks, mapping aliases ("Proposed" → `draft`) through the collection's `statuses:` as `set_status` does.
+- On an initiative that already has a front-matter `status:`, `update` with `status` is refused, saying to use `set_status` (the change is a transition).
+- Recording `done` this way also writes `docs_impact: "none: completed before Brindley"`, and `validate` reports no `docs-impact` warning for it.
+- An initiative whose status came from a status folder (e.g. `completed/`) has no front-matter `status:`, so it can be recorded; the front-matter value then takes precedence, as `set_status` already warns.
+- `update` on a `done` initiative's body (e.g. `section: "Findings"`) keeps working without a status change, and the `update` tool description, MCP-SERVER.md and the site's MCP reference say it is the way to refine settled work.
+- Tests cover each case above.

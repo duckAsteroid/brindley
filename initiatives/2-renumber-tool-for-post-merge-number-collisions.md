@@ -19,4 +19,8 @@ _None._
 
 ## Acceptance criteria
 
-_What must be true when this is done._
+- `renumber` takes a ref and an optional new number (default: the next number, coined as `create` does — scanning other worktrees, branches and history).
+- It renames the file and its asset folder (`<n>-…/`), keeping the slug, and rewrites every relative link to them across all collections, and every `"<collection>#<n>"` reference.
+- It refuses a number already in use, and works on either file of a `duplicate-number` pair by path.
+- After it runs, `validate` reports no `duplicate-number` or broken links for that initiative.
+- Documented in MCP-SERVER.md and the site's MCP reference; tested on a collision with links from the same and another collection.

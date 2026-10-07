@@ -12,12 +12,11 @@ A `batch_update` tool that applies `update`-style changes — `status`, `type`, 
 
 ## Dependencies
 
-_None._
+- [6 Record status without lifecycle checks](6-record-status-without-lifecycle-checks.md) — batch_update applies the status-recording rule, and the single `update` status write, that #6 builds
+- [7 Infer a missing status from the initiative's prose](7-infer-a-missing-status-from-the-initiative-s-prose.md) — taking a status from the text calls #7's inference function
 
 ## Related
 
-- [6 Record status without lifecycle checks](6-record-status-without-lifecycle-checks.md) — decides when a status may be written without lifecycle checks
-- [7 Infer a missing status from the initiative's prose](7-infer-a-missing-status-from-the-initiative-s-prose.md) — how a status is taken from the text
 - [GitHub #4](https://github.com/duckAsteroid/brindley/issues/4) — the request this came from
 
 ## Decisions
@@ -30,4 +29,9 @@ _None._
 
 ## Acceptance criteria
 
-_What must be true when this is done._
+- A `batch_update` tool takes a list of entries, each a ref plus any fields `update` accepts (`status`, `type`, `owner`, `tags`, `status_note`, `docs`), or `status: "from-text"` to take the status from the initiative's text (initiatives#7).
+- Every entry is checked before anything is written. If any fails — unknown ref, a status that would be a transition, no status in the text — nothing is written and every failure is returned with its entry.
+- Otherwise each initiative is written once and the READMEs are regenerated once, and the result lists what each file got.
+- `dry_run: true` returns the same per-entry result without writing, showing statuses taken from the text with their source ("22 → draft, from 'Proposed'").
+- The `status-inferable` finding (initiatives#7) mentions `batch_update` for recording many at once.
+- The tool is documented in MCP-SERVER.md and the site's MCP reference, and tested for success, all-or-nothing failure and dry run.

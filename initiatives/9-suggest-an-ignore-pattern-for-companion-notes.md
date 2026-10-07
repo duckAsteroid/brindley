@@ -28,4 +28,8 @@ _None._
 
 ## Acceptance criteria
 
-_What must be true when this is done._
+- When `duplicate-number` fires and one file's name is the other's plus a suffix (`24-booking-window.md` / `24-booking-window-rationale.md`), the finding names it as a likely companion and offers, in order: move it into the initiative's asset folder (e.g. `24-booking-window/rationale.md`) and link it from the initiative; or add an `ignore` pattern.
+- The suggested pattern is `*-<suffix>.md` for `rationale`, `notes` and `design`, and the exact filename otherwise.
+- The finding says links to a moved file need updating; Brindley moves nothing.
+- Duplicates with no suffix relationship keep today's message.
+- No configuration is added. Tests cover a common suffix, an unusual suffix and an unrelated duplicate.

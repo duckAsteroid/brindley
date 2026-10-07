@@ -17,7 +17,6 @@ _None._
 ## Related
 
 - [GitHub #4](https://github.com/duckAsteroid/brindley/issues/4) — the request this came from
-- [1 migrate tool for numbered + completed/ collections](1-migrate-tool-for-numbered-completed-collections.md) — migrate also maps status wording to the enum
 - [6 Record status without lifecycle checks](6-record-status-without-lifecycle-checks.md) — writing the inferred status needs a non-lifecycle write
 
 ## Decisions
@@ -30,4 +29,9 @@ _None._
 
 ## Acceptance criteria
 
-_What must be true when this is done._
+- One exported function returns the status stated in an initiative's text — from a `**Status:**` lead-in line or the first line under `## Status` — mapped with `normaliseStatus` (core names, the collection's `statuses:`, then aliases), or says why there is none (no status line / word it can't map, quoting the word).
+- It reads only those two forms: a sentence such as "This proposal is still exploratory." gives no status.
+- `validate` reports a `status-inferable` warning for an initiative with no recorded status (no front-matter `status:`, not in a status folder) whose text states one, e.g. "No status recorded; the body says Proposed (draft). Record it with `update`."
+- `status-prose-mismatch` uses the same function, and its current behaviour is unchanged.
+- The rule is listed in the site's validation reference and FORMAT §10.
+- Tests cover both forms, aliases, a collection's own `statuses:` word, an unmappable word and free text.

@@ -19,7 +19,7 @@ Planned work on Brindley itself: tools specified in MCP-SERVER.md but not yet bu
 
 | # | Initiative | Type | Status | Ready / blocked by | Open Qs | Owner |
 |---|------------|------|--------|--------------------|---------|-------|
-| 1 | [migrate tool for numbered + completed/ collections](1-migrate-tool-for-numbered-completed-collections.md) | feature | draft | — | 0 | — |
+| 1 | [migrate tool for numbered + completed/ collections](1-migrate-tool-for-numbered-completed-collections.md) | feature | draft | ⛔ 7, 13 | 0 | — |
 | 2 | [renumber tool for post-merge number collisions](2-renumber-tool-for-post-merge-number-collisions.md) | feature | draft | — | 0 | — |
 | 3 | [rename_collection tool](3-rename-collection-tool.md) | feature | draft | — | 0 | — |
 | 4 | [Cycle errors advise where back-references belong](4-flag-reverse-direction-links-under-dependencies.md) | feature | draft | — | 0 | — |
@@ -29,7 +29,9 @@ Planned work on Brindley itself: tools specified in MCP-SERVER.md but not yet bu
 | 8 | [Fix mode for mechanical validate findings](8-fix-mode-for-mechanical-validate-findings.md) | feature | draft | — | 0 | — |
 | 9 | [Suggest a home for companion notes](9-suggest-an-ignore-pattern-for-companion-notes.md) | feature | draft | — | 0 | — |
 | 10 | [Name the base folder in path errors](10-name-the-base-folder-in-path-errors.md) | feature | draft | — | 0 (+1 impl.) | — |
-| 11 | [batch_update tool](11-batch-status-backfill-tool.md) | feature | draft | — | 0 | — |
+| 11 | [batch_update tool](11-batch-status-backfill-tool.md) | feature | draft | ⛔ 6, 7 | 0 | — |
+| 12 | [Themes overview and tag cloud in the collection README](12-themes-overview-and-tag-cloud-in-the-collection-readme.md) | feature | draft | — | 3 | — |
+| 13 | [Consistent zero-padded numbering](13-consistent-zero-padded-numbering.md) | feature | draft | — | 2 | — |
 
 ### Dependencies
 
@@ -46,14 +48,20 @@ flowchart LR
   n9["9 Suggest a home for companion notes"]:::draft
   n10["10 Name the base folder in path errors"]:::draft
   n11["11 batch_update tool"]:::draft
+  n12["12 Themes overview and tag cloud in the collection README"]:::draft
+  n13["13 Consistent zero-padded numbering"]:::draft
+  n7 --> n1
+  n13 --> n1
   n8 -.-> n1
   n4 -.-> n5
-  n1 -.-> n7
   n6 -.-> n7
   n7 -.-> n8
   n1 -.-> n8
-  n6 -.-> n11
-  n7 -.-> n11
+  n6 --> n11
+  n7 --> n11
+  n1 -.-> n13
+  n2 -.-> n13
+  n8 -.-> n13
   classDef done fill:#e6e6e6,color:#777,stroke:#bbb
   classDef draft fill:#fff,stroke:#999,stroke-dasharray:4 3
   classDef designed fill:#e8f0fe,stroke:#4a7bd0

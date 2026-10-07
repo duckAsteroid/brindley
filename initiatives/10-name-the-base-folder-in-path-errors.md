@@ -25,4 +25,6 @@ _None._
 
 ## Acceptance criteria
 
-_What must be true when this is done._
+- Errors and findings that reject a path — `broken-link`, `status-not-in-folder`, and path lookups in tools (`resolveRef` by path, `ignore`, `create_collection`) — say which folder they resolved against when that helps, following the decision on this initiative's implementation question.
+- When another worktree has the missing file, the message names it, as `complete`'s `docs_impact` check already does.
+- Tests cover a broken link and a path lookup in a repo with a second worktree.

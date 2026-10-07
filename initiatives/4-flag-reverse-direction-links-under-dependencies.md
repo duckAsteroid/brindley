@@ -28,4 +28,7 @@ _None._
 
 ## Acceptance criteria
 
-_What must be true when this is done._
+- Every `cycle` error, after naming the loop, advises the fix: move a back-reference in the loop to `## Related` (keeps the link and a non-blocking graph edge) or to a section such as `## See also` (an ordinary link with no Brindley meaning).
+- No reverse or sideways wording is detected, and no file is changed.
+- A link under `## See also` is confirmed by a test to create no dependency, related edge or cycle.
+- The site's validation reference and FORMAT §6 mention `## See also` as the place for plain cross-references.

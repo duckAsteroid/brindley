@@ -29,4 +29,8 @@ _None._
 
 ## Acceptance criteria
 
-_What must be true when this is done._
+- `set_dependencies` with `remove` still deletes the whole bullet when the link is in a list item.
+- When the only link to the target under `## Dependencies` is in a paragraph, nothing is changed and the warning names the line and gives the advice from initiatives#4, e.g. "initiatives#23 is linked in a paragraph under ## Dependencies (line 14), not a bullet, so it was not removed. Edit the text: delete the link, or move the sentence to ## Related or ## See also."
+- "is not linked" is only reported when the target is genuinely not linked in that section.
+- `related_remove` behaves the same under `## Related`.
+- The tool description says it removes bullets only. Tests cover bullet, paragraph and absent links in both sections.
