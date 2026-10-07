@@ -32,6 +32,7 @@ Planned work on Brindley itself: tools specified in MCP-SERVER.md but not yet bu
 | 11 | [batch_update tool](11-batch-status-backfill-tool.md) | feature | draft | ⛔ 6, 7 | 0 | — |
 | 12 | [Themes overview and tag cloud in the collection README](12-themes-overview-and-tag-cloud-in-the-collection-readme.md) | feature | draft | — | 3 | — |
 | 13 | [Consistent zero-padded numbering](13-consistent-zero-padded-numbering.md) | feature | draft | — | 2 | — |
+| 14 | [README front-matter controls what the dependency graph shows](14-readme-front-matter-controls-what-the-dependency-graph-shows.md) | feature | draft | — | 2 | — |
 
 ### Dependencies
 
@@ -50,6 +51,7 @@ flowchart LR
   n11["11 batch_update tool"]:::draft
   n12["12 Themes overview and tag cloud in the collection README"]:::draft
   n13["13 Consistent zero-padded numbering"]:::draft
+  n14["14 README front-matter controls what the dependency graph shows"]:::draft
   n7 --> n1
   n13 --> n1
   n8 -.-> n1
@@ -62,6 +64,7 @@ flowchart LR
   n1 -.-> n13
   n2 -.-> n13
   n8 -.-> n13
+  n12 -.-> n14
   classDef done fill:#e6e6e6,color:#777,stroke:#bbb
   classDef draft fill:#fff,stroke:#999,stroke-dasharray:4 3
   classDef designed fill:#e8f0fe,stroke:#4a7bd0
