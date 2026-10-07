@@ -507,7 +507,7 @@ export function createServer(opts: ServerOptions): McpServer {
 
   tool(
     "update",
-    "Edit an initiative's (ticket's/issue's) front-matter fields or H1, or replace a named body section. Cannot change its number or filename.",
+    "Edit an initiative's (ticket's/issue's) front-matter fields or H1, or replace a named body section — including on a done initiative, which is how settled work is refined (no status change needed). `status` records the status an initiative already has when its front-matter has none (no lifecycle checks); to change a recorded status, use set_status. Cannot change its number or filename.",
     {
       ref: refArg,
       collection: z.string().optional(),
@@ -517,6 +517,7 @@ export function createServer(opts: ServerOptions): McpServer {
       tags: z.array(z.string()).optional(),
       status_note: z.string().optional(),
       docs: z.array(z.string()).optional(),
+      status: z.string().optional().describe("Record the status this initiative already has, when its front-matter has none (e.g. backfilling an adopted folder). Refused if a status is recorded: use set_status."),
       dimensions: z
         .record(z.string(), dimensionValue.nullable())
         .optional()

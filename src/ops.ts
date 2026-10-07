@@ -374,7 +374,12 @@ export interface UpdateInput {
   content?: string;
   /** Scoring dimension values to set; null clears one. */
   dimensions?: Record<string, DimensionValue | null>;
+  /** Records the status an initiative already has, when front-matter has none (not a transition). */
+  status?: string;
 }
+
+/** `docs_impact` written when `done` is recorded rather than reached through `complete`. */
+export const PRE_BRINDLEY_DOCS_IMPACT = "none: completed before Brindley";
 
 export function update(root: Root, i: Initiative, input: UpdateInput): OpResult<{ ref: string }> {
   let body = i.body;
@@ -401,8 +406,19 @@ export function update(root: Root, i: Initiative, input: UpdateInput): OpResult<
       changes[name] = value === null ? undefined : d.values.find((v) => sameValue(v, value));
     }
   }
+  const warnings: string[] = [];
+  if (input.status !== undefined) {
+    // Recording what an initiative already is, not moving it: only when front-matter has no status.
+    if (i.statusSource === "front-matter")
+      throw new BrindleyError(`${initiativeKey(i)} already records status: ${i.status}. Changing it is a transition: use set_status.`);
+    const core = normaliseStatus(input.status, findCollection(root, i.collection)?.meta.statuses);
+    if (!core) throw new BrindleyError(`Unknown status "${input.status}". Use one of ${STATUSES.join(", ")} or a known alias.`);
+    changes["status"] = core;
+    if (core === "done" && i.docsImpact === undefined) changes["docs_impact"] = PRE_BRINDLEY_DOCS_IMPACT;
+    if (i.folder) warnings.push(`The file stays in "${i.folder}/" (Brindley never moves files); its front-matter status now takes precedence over the folder.`);
+  }
   writeInitiative(i, changes, body);
-  return finish(root, [i.collection], [i.file], { ref: initiativeKey(i) });
+  return finish(root, [i.collection], [i.file], { ref: initiativeKey(i) }, warnings);
 }
 
 export function setStatus(

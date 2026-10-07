@@ -271,6 +271,41 @@ describe("add_question", () => {
 });
 
 describe("update", () => {
+  it("records a status only where front-matter has none, and refuses to change one", () => {
+    fx = fixture({
+      files: {
+        "plans/README.md": "---\nbrindley: 1\nstatuses:\n  spiked: designed\n---\n# Plans\n",
+        "plans/1-gates.md": "# Gates\n\n**Status:** Proposed.\n",
+        "plans/2-paddles.md": "# Paddles\n",
+        "plans/3-sluice.md": "# Sluice\n",
+        "plans/completed/4-towpath.md": "# Towpath\n",
+        "plans/5-weir.md": "---\nstatus: draft\n---\n# Weir\n",
+      },
+    });
+    let root = fx.load();
+    ops.update(root, resolveRef(root, "plans#1"), { status: "Proposed" }); // an alias
+    ops.update(root, resolveRef(root, "plans#2"), { status: "spiked" }); // the collection's own word
+    ops.update(root, resolveRef(root, "plans#3"), { status: "done" }); // no lifecycle checks, no complete
+    const w = ops.update(root, resolveRef(root, "plans#4"), { status: "done" }); // from a folder: front-matter now wins
+    expect(w.warnings[0]).toMatch(/stays in "completed\/".*front-matter status now takes precedence/);
+    expect(() => ops.update(root, resolveRef(root, "plans#5"), { status: "done" })).toThrow(/already records status: draft\. Changing it is a transition: use set_status/);
+    expect(() => ops.update(root, resolveRef(root, "plans#2"), { status: "nearly" })).toThrow(/Unknown status "nearly"/);
+    root = fx.load();
+    expect(["plans#1", "plans#2", "plans#3", "plans#4"].map((r) => resolveRef(root, r).status)).toEqual(["draft", "designed", "done", "done"]);
+    expect(read("plans/3-sluice.md")).toContain('docs_impact: "none: completed before Brindley"');
+    const docsImpact = validate(root).filter((f) => f.rule === "docs-impact" || f.rule === "status-missing");
+    expect(docsImpact.map((f) => f.file)).toEqual([]);
+  });
+
+  it("edits a done initiative's body without a status change", () => {
+    fx = fixture({ files: lockExample });
+    const root = fx.load();
+    ops.update(root, resolveRef(root, 19), { section: "Findings", content: "Boats keep their identity across locks." });
+    const after = resolveRef(fx.load(), 19);
+    expect(after.status).toBe("done");
+    expect(after.body).toContain("## Findings\n\nBoats keep their identity across locks.");
+  });
+
   it("writes one heading when section content repeats it", () => {
     fx = fixture({ files: lockExample });
     let root = fx.load();

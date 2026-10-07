@@ -15,12 +15,12 @@ body (initiatives#6).
 
 ### Initiatives in this theme
 
-Tagged `status-recording`: 3 open, 0 closed or deferred.
+Tagged `status-recording`: 2 open, 1 closed or deferred.
 
 | Ref | Initiative | Type | Status | Ready / blocked by |
 |-----|------------|------|--------|--------------------|
-| `initiatives#6` | [Record status without lifecycle checks](6-record-status-without-lifecycle-checks.md) | feature | designed | ✅ ready |
 | `initiatives#7` | [Infer a missing status from the initiative's prose](7-infer-a-missing-status-from-the-initiative-s-prose.md) | feature | designed | ✅ ready |
-| `initiatives#11` | [batch_update tool](11-batch-status-backfill-tool.md) | feature | designed | ⛔ 6, 7 |
+| `initiatives#11` | [batch_update tool](11-batch-status-backfill-tool.md) | feature | designed | ⛔ 7 |
+| `initiatives#6` | [Record status without lifecycle checks](6-record-status-without-lifecycle-checks.md) | feature | done | — |
 
 <!-- brindley:generated:end -->
