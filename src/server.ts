@@ -532,6 +532,13 @@ export function createServer(opts: ServerOptions): McpServer {
   );
 
   tool(
+    "fix",
+    "Repair the validate findings that have one obvious fix, editing text in place (never renaming or moving a file): a broken link whose filename matches exactly one initiative in its collection, and `depends_on` / `related` front-matter (turned into links under ## Dependencies / ## Related). Anything ambiguous is listed in `unfixed`. Dry run by default: returns each edit (file, line, before, after); pass dry_run: false to write. Padding is fixed by repad, numbers by renumber.",
+    { collection: z.string().optional(), dry_run: z.boolean().optional() },
+    (root, a) => ops.fix(root, { collection: a.collection, dry_run: a.dry_run }),
+  );
+
+  tool(
     "rename_collection",
     "Move a collection to a new folder, rewriting every relative link into it from anywhere in the repo and out of it from inside. If its name comes from its folder (no `name:` in its README), the name changes too and \"<name>#<n>\" references by the old name, path or automatic alias are rewritten; explicit aliases are kept. Refuses a destination that exists or is inside another collection, and a new name another collection uses. `dry_run: true` returns the plan.",
     { collection: z.string(), to: z.string().describe("The new folder, relative to the repo root."), dry_run: z.boolean().optional() },

@@ -1,8 +1,12 @@
 ---
 type: feature
-status: designed
+status: done
 updated: 2026-10-07
 tags: [adoption]
+docs_impact:
+  - MCP-SERVER.md
+  - site/reference/mcp.md
+  - site/reference/cli.md
 ---
 # Fix mode for mechanical validate findings
 
@@ -23,6 +27,7 @@ _None._
 ## Decisions
 
 - Fix mode only edits text inside files; it never renames or moves one (FORMAT.md:576; `migrate` stays the one sanctioned mass-rewrite). Repairs: a `broken-link` whose filename matches exactly one moved file is rewritten with the right relative path (two or more candidates are reported, not fixed); `front-matter-dependencies` become links under `## Dependencies` and the field is dropped. `readme-stale` needs nothing new (regenerated on every tool call). Making padding consistent moves to `migrate` (initiatives#1) and the padding tools of initiatives#13, which rename and rewrite links; padding findings point there. (Padding is kept, not removed — see initiatives#13.) Dry run by default, like `migrate` and `ignore`: returns each planned edit (file, line, before/after) and writes only with `dry_run: false`.
+- Implementation: `fix` in src/ops.ts, the `fix` MCP tool, and `brindley validate --fix [--write]`. It also lists what it leaves (`unfixed`): a broken link with no or several candidates, or a front-matter entry that isn't an initiative (that file's front-matter is then left whole). Broken links are matched against initiatives in the same collection only.
 
 ## Open questions
 

@@ -221,3 +221,41 @@ describe("rename_collection", () => {
     expect(() => ops.renameCollection(root, "lock-gates", "elsewhere/canal")).toThrow(/new name "canal" is already used/);
   });
 });
+
+describe("fix", () => {
+  const files = (): Record<string, string> => ({
+    "locks/README.md": "---\nbrindley: 1\n---\n# Locks\n",
+    "locks/01-gates.md": draft("Gates", "\nSee [paddles](02-paddles.md#design) and [sluice](03-sluice.md), and [notes](04-notes.md).\n"),
+    "locks/completed/02-paddles.md": "---\nstatus: done\ndocs_impact: 'none: x'\n---\n# Paddles\n",
+    "locks/03-sluice.md": draft("Sluice"),
+    "locks/completed/03-sluice.md": "---\nstatus: done\ndocs_impact: 'none: x'\n---\n# Old sluice\n",
+    "locks/05-weir.md": "---\nstatus: draft\ndepends_on: [1]\nrelated: [3]\n---\n# Weir\n\n## Dependencies\n\n_None._\n",
+  });
+
+  it("plans edits without writing, and reports what it can't fix", () => {
+    fx = fixture({ files: files() });
+    const before = read("locks/01-gates.md");
+    const r = ops.fix(fx.load());
+    expect(r.result.dryRun).toBe(true);
+    expect(r.result.edits.map((e) => `${e.file}:${e.line} ${e.rule} ${e.before} → ${e.after}`)).toEqual([
+      "locks/01-gates.md:6 broken-link 02-paddles.md#design → completed/02-paddles.md#design",
+      "locks/05-weir.md:3 front-matter-dependencies depends_on: [1] → - [1 Gates](01-gates.md) under ## Dependencies",
+      "locks/05-weir.md:4 front-matter-dependencies related: [3] → - [3 Sluice](03-sluice.md) under ## Related",
+    ]);
+    expect(r.result.unfixed.map((u) => u.message)).toEqual(["Broken link 04-notes.md matches no initiative in locks."]);
+    expect(read("locks/01-gates.md")).toBe(before);
+  });
+
+  it("writes the edits, never moving a file, and leaves an ambiguous link", () => {
+    fx = fixture({ files: { ...files(), "locks/01-gates.md": draft("Gates", "\nSee [paddles](02-paddles.md) and [old sluice](old/03-sluice.md).\n") } });
+    const r = ops.fix(fx.load(), { dry_run: false });
+    expect(read("locks/01-gates.md")).toContain("See [paddles](completed/02-paddles.md) and [old sluice](old/03-sluice.md).");
+    expect(r.result.unfixed[0]!.message).toMatch(/^Broken link old\/03-sluice\.md matches 2 files/);
+    const weir = read("locks/05-weir.md");
+    expect(weir).not.toMatch(/depends_on|related:/);
+    expect(weir).toContain("## Dependencies\n\n- [1 Gates](01-gates.md)\n");
+    expect(weir).toContain("## Related\n\n- [3 Sluice](03-sluice.md)\n");
+    expect(existsSync(join(fx.repo, "locks/completed/02-paddles.md"))).toBe(true);
+    expect(validate(fx.load()).filter((f) => f.rule === "front-matter-dependencies")).toEqual([]);
+  });
+});

@@ -4,7 +4,7 @@ import { relative, resolve } from "node:path";
 import { createServer, VERSION } from "./server.js";
 import { openRepo, toPosix } from "./repo.js";
 import { summarise, validate } from "./validate.js";
-import { createCollection, regenerateReadmes, repad } from "./ops.js";
+import { createCollection, fix, regenerateReadmes, repad } from "./ops.js";
 
 const USAGE = `brindley ${VERSION} — Design fully before anyone digs.
 
@@ -12,6 +12,8 @@ Usage:
   brindley [serve] [--no-auto-readme]     Run the MCP server on stdio (default)
   brindley init [<folder>] [--name <n>]   Mark a folder (default: the current one) as a collection
   brindley validate [--docs]              Check every collection; exits 1 on errors
+  brindley validate --fix [--write]       Plan (or with --write, make) the repairs with one obvious fix:
+                                          broken links to a moved initiative, front-matter dependencies
   brindley readmes [--check]              Regenerate collection README blocks; --check exits 1 if stale
   brindley repad <collection> [<width>] [--write]
                                           Pad a collection's numbers to one width (default: the one most
@@ -62,6 +64,15 @@ async function main() {
       return;
     }
     case "validate": {
+      if (flag(args, "--fix")) {
+        const write = flag(args, "--write");
+        const r = fix(openRepo(process.cwd()), { dry_run: !write });
+        for (const e of r.result.edits) console.log(`${write ? "fixed" : "fix"}  ${e.file}:${e.line} [${e.rule}] ${e.before} → ${e.after}`);
+        for (const u of r.result.unfixed) console.log(`left ${u.file}:${u.line} ${u.message}`);
+        if (r.result.edits.length === 0) console.log("Nothing to fix.");
+        else if (!write) console.log("\nDry run. Re-run with --write to apply.");
+        return;
+      }
       const docs = flag(args, "--docs");
       const findings = validate(openRepo(process.cwd()), { docs });
       console.log(summarise(findings));

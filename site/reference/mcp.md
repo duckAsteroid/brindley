@@ -11,6 +11,7 @@ accepts a name, an alias or a folder path.
 | `create_collection` | `path`, `name?`, `aliases?`, `title?`, `summary?`, `owner?`, `link?`, `agent?`, `docs?`, `types?`, `tags?`, `statuses?`, `ignore?` | Marks a folder as a collection (creating it if needed). The first one in a repo also returns the AGENTS.md snippet. |
 | `update_collection` | `collection`, `status?`, and the same details | Edits the collection README's front-matter. Its name can't be changed here. |
 | `ignore` | `collection`, `add?`, `remove?`, `dry_run?` | Adds or removes `.gitignore`-style patterns for numbered files that aren't initiatives; `dry_run` previews. |
+| `fix` | `collection?`, `dry_run?` | Repairs findings with one obvious fix — a broken link to an initiative that moved (one match by filename), dependencies written in front-matter — editing text only. Plans unless `dry_run: false`. |
 | `rename_collection` | `collection`, `to`, `dry_run?` | Moves a collection to a new folder, rewriting links into and out of it, and `name#n` references when its name follows the folder. |
 | `renumber` | `ref`, `to?`, `dry_run?` | Gives an initiative a new number (default: the next free one) — the fix for a number collision after a merge. Renames its file and asset folder and rewrites links and `name#n` references to it. Pass one file of a colliding pair by path. |
 | `repad` | `collection`, `width?`, `dry_run?` | Pads every number in a collection to one width (`01-`), renaming files and asset folders and rewriting links across the repo. Plans only unless `dry_run: false`. |

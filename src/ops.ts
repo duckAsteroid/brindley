@@ -17,6 +17,8 @@ import {
   parseQuestions,
   replaceLines,
   sectionLinks,
+  stripCodeFences,
+  withoutInlineCode,
   setH1,
   setSection,
   slugify,
@@ -548,12 +550,12 @@ function linkTo(root: Root, fromRel: string, fromCollection: string, ref: string
   return `[${label} ${t.title ?? t.slug}](${posix.relative(posix.dirname(fromRel), t.rel)})`;
 }
 
-/** Does a link (as written in `i`) point at initiative `t` (or, for URLs, equal `url`)? */
 /** 1-based line in the file for a 0-based body line, counting the front-matter block. */
 function fileLine(i: Initiative, bodyLine: number): number {
   return bodyLine + 1 + (i.fmText === null ? 0 : i.fmText.split("\n").length + 1);
 }
 
+/** Does a link (as written in `i`) point at initiative `t` (or, for URLs, equal `url`)? */
 function linkHits(i: Initiative, href: string, t: Initiative | null, url: string | null): boolean {
   if (url) return href === url;
   if (!t) return false;
@@ -882,6 +884,103 @@ export function renameCollection(root: Root, collection: string, to: string, opt
   const result: RenameCollectionResult = { from: c.path, to: dest, name, dryRun: opts.dry_run === true, moves: plan.moves, rewrites: plan.rewrites };
   if (result.dryRun) return { result, touched: [], warnings: [] };
   return finish(root, [c.name], applyRelink(root, plan), result);
+}
+
+export interface FixEdit {
+  file: string;
+  line: number;
+  rule: "broken-link" | "front-matter-dependencies";
+  before: string;
+  after: string;
+}
+
+/**
+ * Repair the validate findings that have one obvious fix, editing text in place — never renaming
+ * or moving a file: a broken link whose filename matches exactly one initiative in its collection
+ * (relinked to it), and `depends_on` / `related` front-matter (turned into links under
+ * `## Dependencies` / `## Related`, field removed). Anything else is reported, not fixed.
+ * Dry run by default.
+ */
+export function fix(root: Root, opts: { collection?: string; dry_run?: boolean } = {}): OpResult<{ dryRun: boolean; edits: FixEdit[]; unfixed: { file: string; line: number; message: string }[] }> {
+  const dryRun = opts.dry_run !== false;
+  const edits: FixEdit[] = [];
+  const unfixed: { file: string; line: number; message: string }[] = [];
+  const written: string[] = [];
+  const collections = opts.collection ? [requireCollection(root, opts.collection)] : root.collections;
+  for (const c of collections) {
+    for (const i of c.initiatives) {
+      const fileEdits: { line: number; column: number; before: string; after: string }[] = [];
+      const original = readFileSync(i.file, "utf8");
+      const ls = lines(original);
+      // Broken links that one initiative in the collection, found by filename, explains.
+      for (const { line, text } of stripCodeFences(ls.join("\n"))) {
+        for (const m of withoutInlineCode(text).matchAll(/\]\(\s*<?([^)\s>]+)>?/g)) {
+          const href = m[1]!;
+          if (/^[a-z][a-z0-9+.-]*:/i.test(href) || href.startsWith("#")) continue;
+          const [path, fragment] = href.split(/(?=#)/);
+          if (existsSync(resolve(dirname(i.file), decodeURIComponent(path!)))) continue;
+          const base = path!.split("/").pop()!;
+          const candidates = c.initiatives.filter((o) => o.rel.split("/").pop() === base);
+          if (candidates.length !== 1) {
+            unfixed.push({
+              file: i.rel,
+              line: line + 1,
+              message: candidates.length
+                ? `Broken link ${href} matches ${candidates.length} files (${candidates.map((o) => o.rel).join(", ")}); choose one by hand.`
+                : `Broken link ${href} matches no initiative in ${c.name}.`,
+            });
+            continue;
+          }
+          const after = `${toPosix(relative(dirname(i.file), candidates[0]!.file))}${fragment ?? ""}`;
+          fileEdits.push({ line, column: m.index! + m[0].indexOf(href), before: href, after });
+          edits.push({ file: i.rel, line: line + 1, rule: "broken-link", before: href, after });
+        }
+      }
+      for (const e of [...fileEdits].sort((a, b) => a.line - b.line || b.column - a.column))
+        ls[e.line] = ls[e.line]!.slice(0, e.column) + e.after + ls[e.line]!.slice(e.column + e.before.length);
+      // depends_on / related in front-matter: ignored by Brindley, so move them into the body as links.
+      let text = ls.join("\n");
+      const fmRefs = (["depends_on", "related"] as const).filter((k) => i.fm[k] !== undefined);
+      if (fmRefs.length) {
+        const { fmText, body } = splitFrontMatter(text);
+        let newBody = body;
+        const changes: Record<string, unknown> = {};
+        let ok = true;
+        const bullets: Record<string, string[]> = {};
+        for (const k of fmRefs) {
+          const refs = Array.isArray(i.fm[k]) ? (i.fm[k] as unknown[]) : [i.fm[k]];
+          try {
+            bullets[k] = refs.map((r) => `- ${linkTo(root, i.rel, c.name, String(r))}`);
+          } catch (e) {
+            ok = false;
+            unfixed.push({ file: i.rel, line: fmLineOf(fmText, k), message: `\`${k}\` lists something that isn't an initiative (${(e as Error).message}); move it by hand.` });
+          }
+        }
+        if (ok) {
+          for (const k of fmRefs) {
+            const section = k === "depends_on" ? DEPENDENCIES : RELATED;
+            for (const b of bullets[k]!) newBody = appendToSection(newBody, section, b, k === "depends_on" ? [RELATED, OPEN_QUESTIONS, "Acceptance criteria"] : [OPEN_QUESTIONS, "Acceptance criteria"]);
+            changes[k] = undefined;
+            edits.push({ file: i.rel, line: fmLineOf(fmText, k), rule: "front-matter-dependencies", before: `${k}: ${JSON.stringify(i.fm[k])}`, after: `${bullets[k]!.join(" ")} under ## ${section}` });
+          }
+          text = joinFrontMatter(editFrontMatter(fmText, changes), newBody);
+        }
+      }
+      if (!dryRun && text !== original) {
+        writeFileSync(i.file, text);
+        written.push(i.file);
+      }
+    }
+  }
+  const result = { dryRun, edits, unfixed };
+  if (dryRun || written.length === 0) return { result, touched: [], warnings: [] };
+  return finish(root, collections.map((c) => c.name), written, result);
+}
+
+/** 1-based line of a front-matter key in the file (the opening `---` is line 1). */
+function fmLineOf(fmText: string | null, key: string): number {
+  const k = (fmText ?? "").split("\n").findIndex((l) => l.startsWith(`${key}:`));
+  return k < 0 ? 1 : k + 2;
 }
 
 export function regenerateReadmes(root: Root, collection?: string, check = false) {
