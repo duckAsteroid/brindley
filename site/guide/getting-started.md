@@ -62,7 +62,7 @@ without the server.
 
 > Create a feature ticket in plans called "Lock sensor import".
 
-Brindley coins the next number, writes `1-lock-sensor-import.md` with a skeleton, and updates the
+Brindley coins the next number, writes `01-lock-sensor-import.md` with a skeleton, and updates the
 collection README's table. From here, see [the workflow](/guide/workflow).
 
 ::: tip Try it

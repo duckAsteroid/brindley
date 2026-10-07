@@ -9,6 +9,7 @@ import { regenerate } from "./readme.js";
 import { checkDocs } from "./docs.js";
 import { dimensionsOf, parseDimensions, sameValue } from "./dimensions.js";
 import { parseGraph } from "./graph.js";
+import { capacity, collectionWidth, fitsWidth, nearFull, numberPrefix, padNumber } from "./numbering.js";
 
 export interface Finding {
   level: "error" | "warning";
@@ -49,6 +50,18 @@ export function validate(root: Root, opts: { collection?: string; docs?: boolean
       warn("nested-collection", rel(c.readme), "Collection is nested inside another collection's folder.");
     for (const p of parseDimensions(c.meta.dimensions).problems) err("dimension-declaration", rel(c.readme), p);
     for (const p of parseGraph(c.meta.graph, c.meta.statuses).problems) warn("graph-setting", rel(c.readme), p);
+    // Padding: every number at the width most files use, and room to grow.
+    const width = collectionWidth(c);
+    for (const i of c.initiatives) {
+      const prefix = numberPrefix(i);
+      if (fitsWidth(prefix, width)) continue;
+      const name = i.rel.split("/").pop()!;
+      const herd = width === 1 ? "this collection doesn't pad its numbers" : `this collection pads to ${width} digits`;
+      warn("number-padding", rel(i.file), `${name} is ${prefix.startsWith("0") ? `padded to ${prefix.length} digits` : "unpadded"}; ${herd} (${padNumber(i.number, width)}-). \`repad\` makes them consistent.`);
+    }
+    const highest = Math.max(0, ...c.initiatives.map((i) => i.number));
+    if (highest >= nearFull(width))
+      warn("number-width", rel(c.readme), `The highest number, ${highest}, is ${Math.round((highest / capacity(width)) * 100)}% of what ${width === 1 ? "1 digit holds" : `${width} digits hold`}. \`repad\` to ${width + 1} digits (${padNumber(1, width + 1)}-) before it runs out.`);
   }
 
   const themeOwners = new Map<string, string>();
@@ -181,7 +194,6 @@ function checkInitiative(
     warn("spike-measures", f, 'A spike needs a "## Measures" section (question, hypothesis, measure, answer criteria, time-box) before it starts.');
   if (i.type === "spike" && i.status === "done" && sectionIsBlank(i.body, FINDINGS))
     warn("spike-findings", f, 'A finished spike needs "## Findings" (method, results, conclusion, adopt / adapt / abandon for the code).');
-  if (/^0\d/.test(i.rel.split("/").pop()!)) warn("number-padding", f, `Zero-padded number; the format uses "${i.number}-…".`);
   for (const key of ["updated", "created"]) {
     const v = i.fm[key];
     if (v !== undefined && !ISO_DATE.test(String(v))) err("date", f, `\`${key}\` must be an ISO date (YYYY-MM-DD).`);

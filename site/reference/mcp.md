@@ -11,6 +11,7 @@ accepts a name, an alias or a folder path.
 | `create_collection` | `path`, `name?`, `aliases?`, `title?`, `summary?`, `owner?`, `link?`, `agent?`, `docs?`, `types?`, `tags?`, `statuses?`, `ignore?` | Marks a folder as a collection (creating it if needed). The first one in a repo also returns the AGENTS.md snippet. |
 | `update_collection` | `collection`, `status?`, and the same details | Edits the collection README's front-matter. Its name can't be changed here. |
 | `ignore` | `collection`, `add?`, `remove?`, `dry_run?` | Adds or removes `.gitignore`-style patterns for numbered files that aren't initiatives; `dry_run` previews. |
+| `repad` | `collection`, `width?`, `dry_run?` | Pads every number in a collection to one width (`01-`), renaming files and asset folders and rewriting links across the repo. Plans only unless `dry_run: false`. |
 | `collections` | — | Every collection with aliases, counts by status, number ready and ignored files. |
 
 ## Reading

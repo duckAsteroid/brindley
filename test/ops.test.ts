@@ -513,7 +513,7 @@ describe("status folders and aliases", () => {
     expect(msg("status-not-in-folder", "4-reopened.md")).toBeUndefined(); // draft has no status folder
     expect(msg("status-prose-mismatch", "3-done-thing.md")).toMatch(/body says "Proposed" \(draft\), but the status is done \(from "completed\/"\)/);
     expect(msg("broken-link", "2-spike.md")).toMatch(/it is now at completed\/3-done-thing\.md/);
-    expect(msg("number-padding", "01-batch.md")).toMatch(/"1-…"/);
+    expect(msg("number-padding", "01-batch.md")).toBe("01-batch.md is padded to 2 digits; this collection doesn't pad its numbers (1-). `repad` makes them consistent.");
     expect(msg("status-missing", "10-no-front-matter.md")).toBe("No `status` in front-matter (see status-inferable).");
     expect(msg("status-inferable", "10-no-front-matter.md")).toBe("No status recorded; the body says draft (draft). Record it with `update` (`status: draft`).");
   });

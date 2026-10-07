@@ -15,7 +15,7 @@ appended after your text.
   words map to core statuses; map your own with `statuses:` in the collection README.
 - **Dependency links.** Links under `## Dependencies` count — even links to files that have since
   been moved into `completed/`, which are matched by filename.
-- **Zero-padded numbers** like `01-` are read (and flagged, since the format doesn't use them).
+- **Zero-padded numbers** like `01-` are read; a collection keeps one padding width, the one most of its files use, and `repad` evens out the rest.
 
 ## What to tidy
 

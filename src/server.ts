@@ -532,6 +532,17 @@ export function createServer(opts: ServerOptions): McpServer {
   );
 
   tool(
+    "repad",
+    "Pad every initiative number in a collection to one width (`01-`, `001-`) — the given `width`, or the width most of its files use — renaming the files and their asset folders and rewriting every link to them across the repo. Dry run by default: returns each rename and link rewrite; pass dry_run: false to apply. Refuses a width too small for the highest number.",
+    {
+      collection: z.string(),
+      width: z.number().int().optional().describe("Digits to pad to; default: the width most of the collection's files use."),
+      dry_run: z.boolean().optional().describe("Default true: plan only."),
+    },
+    (root, a) => ops.repad(root, a.collection, { width: a.width, dry_run: a.dry_run }),
+  );
+
+  tool(
     "set_status",
     "Change an initiative's (ticket's/issue's) status, enforcing the lifecycle: designed needs no blocking open questions; in-progress needs ready; done goes through `complete`.",
     {

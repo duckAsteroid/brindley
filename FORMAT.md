@@ -148,7 +148,13 @@ the dangling references and a tool can rewrite them.
 
 - Every initiative has a **number**: a positive integer, unique within its collection, allocated
   sequentially (next = highest existing + 1). People say "do 39"; the format keeps that.
-- Filename: `<number>-<slug>.md`. No zero-padding (`21-…`, not `0021-…`).
+- Filename: `<number>-<slug>.md`. The number may be zero-padded so files sort in order in a
+  folder listing (`01-…`, `02-…`, … `10-…`); the number is its integer value (`01` is initiative 1).
+- **Padding is per collection**: its width is the one most of its initiative files use — unpadded
+  is width 1, `01-` width 2, `001-` width 3 — the wider on a tie, and 2 for a collection with no
+  initiatives yet. New numbers are written at that width. A number too big for the width (`100-` at
+  width 2) still fits; growing or shrinking the width is a rename of every file and asset folder,
+  with links rewritten, which a tool does (`repad`).
 - **The filename is permanent.** Retitling changes the H1 only; the slug is not updated. This is
   the price of never-breaking links.
 - **Assets** (fixtures, diagrams, samples) live in a sibling directory whose name starts with the
@@ -709,7 +715,8 @@ Warnings:
 21. The collection files a status in a status folder (e.g. done in `completed/`), but this file
     with that status is elsewhere.
 22. A status written in the body (`**Status:** …` or `## Status`) disagrees with the file's status.
-23. A zero-padded number (`01-…`).
+23. A number padded differently from the collection's width (§3), or a collection whose highest
+    number has reached 80% of its width (8, 80, 800 …).
 24. A required scoring dimension (§4.3) without a value.
 25. A collection README's `graph:` with an unknown setting or an unusable value (§8.3).
 26. No status recorded (no front-matter `status`, not in a status folder), but the body states one in a

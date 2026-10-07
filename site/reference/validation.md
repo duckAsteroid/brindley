@@ -38,7 +38,8 @@
 | `status-prose-mismatch` | The body's "Status:" line disagrees with the actual status. |
 | `broken-link` | A link target doesn't exist — with where the file is now, if it moved; the repo path a `../` link resolves to; and the worktree that has it, if another one does. |
 | `front-matter-dependencies` | `depends_on` / `related` in front-matter, which are ignored; use the sections. |
-| `number-padding` | A zero-padded number like `01-`. |
+| `number-padding` | A number padded differently from the rest of its collection (e.g. `9-` among `01-`, `02-`). `repad` makes them consistent. |
+| `number-width` | The collection's highest number has reached 80% of its padding width (8, 80, 800 …): `repad` to one digit more. |
 | `orphan-assets` | An asset folder whose number matches no initiative. |
 | `spike-measures` | A designed spike without `## Measures`. |
 | `spike-findings` | A finished spike without `## Findings`. |

@@ -1,8 +1,16 @@
 ---
 type: feature
-status: designed
+status: done
 tags: [adoption]
 updated: 2026-10-07
+docs_impact:
+  - FORMAT.md
+  - MCP-SERVER.md
+  - site/reference/validation.md
+  - site/reference/cli.md
+  - site/reference/mcp.md
+  - site/guide/getting-started.md
+  - site/guide/adopting.md
 ---
 # Consistent zero-padded numbering
 
@@ -29,6 +37,7 @@ _None._
 - Inferred from the files, not declared: the collection's width is the padding most of its initiative files use, and any file that doesn't follow the herd gets a warning (e.g. "1-foo.md is unpadded; this collection pads to 2 digits (01-)"). A number too large for the width (`100-` in a width-2 collection) is not a mismatch — the near-end-of-range warning should have come first. A tie, or an empty collection, falls back to the default width.
 - A new (empty) collection starts at width 2: its first initiative is `01-…`, files sort correctly from the start, and the near-full warning doesn't fire until 80. The default only applies while a collection has no initiatives; after that the herd rule decides. `create_collection` takes no width for now — a collection wanting width 3 from day one gets it by its first file being `001-…`; add a parameter only if someone asks.
 - Its own tool, `repad(collection, width?)`, dry run by default, returning every file and asset-folder rename and every link rewrite (including links from other collections). With `width` it changes the collection to that width — growing, or shrinking — e.g. `repad("initiatives", 2)` turns `1-…`–`9-…` into `01-…`–`09-…`; without `width` it pads stray files to the herd's width, the fix the mismatch warning points to. A width too small for the population (the highest number has more digits than the width, e.g. width 2 with a `100-…`) is an error and nothing is written. A width the population already fills to the warning threshold (e.g. width 2 when the highest number is 80 or more — the highest number, not the count, since numbers are never reused) is allowed but warns, the same 80% rule `validate` uses — in the dry run as well as the real run. `migrate` (initiatives#1) reuses it for its padding step; one shared rename-and-relink function sits underneath it, `renumber` (initiatives#2) and `rename_collection` (initiatives#3) alike.
+- Implementation: width rules are in src/numbering.ts, the shared move-and-relink planner in src/relink.ts (`planRelink`/`applyRelink`, rewriting only the planned link occurrence, never one inside inline code or a code block). A tie goes to the wider width rather than "the default": the same answer for `1-` against `02-`, and the right one for a collection whose numbers are all naturally two or three digits (`12-`, `13-` fit both 1 and 2, so they read as width 2). The findings are `number-padding` (a file off the herd) and `number-width` (80% full). `repad` also takes ignored numbered files into account when checking the highest number. CLI: `brindley repad <collection> [<width>] [--write]`.
 
 ## Open questions
 

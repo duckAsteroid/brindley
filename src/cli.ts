@@ -4,7 +4,7 @@ import { relative, resolve } from "node:path";
 import { createServer, VERSION } from "./server.js";
 import { openRepo, toPosix } from "./repo.js";
 import { summarise, validate } from "./validate.js";
-import { createCollection, regenerateReadmes } from "./ops.js";
+import { createCollection, regenerateReadmes, repad } from "./ops.js";
 
 const USAGE = `brindley ${VERSION} — Design fully before anyone digs.
 
@@ -13,6 +13,10 @@ Usage:
   brindley init [<folder>] [--name <n>]   Mark a folder (default: the current one) as a collection
   brindley validate [--docs]              Check every collection; exits 1 on errors
   brindley readmes [--check]              Regenerate collection README blocks; --check exits 1 if stale
+  brindley repad <collection> [<width>] [--write]
+                                          Pad a collection's numbers to one width (default: the one most
+                                          files use), renaming files and rewriting links; plans only
+                                          unless --write
 `;
 
 function flag(args: string[], name: string): boolean {
@@ -72,6 +76,22 @@ async function main() {
       process.exit(check && changes.length > 0 ? 1 : 0);
     }
     // eslint-disable-next-line no-fallthrough
+    case "repad": {
+      const write = flag(args, "--write");
+      const [collection, width] = args;
+      if (!collection) {
+        process.stderr.write(USAGE);
+        process.exit(2);
+      }
+      const r = repad(openRepo(process.cwd()), collection, { width: width ? Number(width) : undefined, dry_run: !write });
+      const { moves, rewrites } = r.result;
+      for (const m of moves) console.log(`${write ? "renamed" : "rename"}  ${m.from} → ${m.to}`);
+      for (const w of rewrites) console.log(`${write ? "relinked" : "relink"} ${w.file}:${w.line}  ${w.before} → ${w.after}`);
+      for (const w of r.warnings) console.log(`warning: ${w}`);
+      if (moves.length === 0) console.log(`${r.result.collection} is already padded to ${r.result.width} digit${r.result.width === 1 ? "" : "s"}.`);
+      else if (!write) console.log(`\nDry run. Re-run with --write to apply.`);
+      return;
+    }
     default:
       process.stderr.write(USAGE);
       process.exit(2);

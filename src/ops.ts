@@ -1,6 +1,6 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { dirname, isAbsolute, join, posix, relative, resolve, sep } from "node:path";
-import { COLLECTION_STATUSES, STATUSES, normaliseStatus, type Collection, type Initiative, type Root } from "./model.js";
+import { ASSET_DIR, COLLECTION_STATUSES, STATUSES, normaliseStatus, type Collection, type Initiative, type Root } from "./model.js";
 import {
   DEPENDENCIES,
   NONE,
@@ -41,6 +41,8 @@ import { changedSinceHead, highestNumberElsewhere } from "./git.js";
 import { regenerate } from "./readme.js";
 import { checkDocs, docsGlobs, inCollection, isProjectDoc } from "./docs.js";
 import { dimensionsFor, sameValue, type DimensionValue } from "./dimensions.js";
+import { capacity, collectionWidth, nearFull, padNumber } from "./numbering.js";
+import { applyRelink, planRelink, type Move, type Rewrite } from "./relink.js";
 
 export function today(): string {
   return process.env["BRINDLEY_TODAY"] ?? new Date().toISOString().slice(0, 10);
@@ -285,7 +287,7 @@ export function create(root: Root, input: CreateInput): OpResult<{ ref: string; 
     c = requireCollection(root, m.path);
   }
   const { number, note } = nextNumber(root, c);
-  const fileRel = `${c.path}/${number}-${slugify(input.title)}.md`;
+  const fileRel = `${c.path}/${padNumber(number, collectionWidth(c))}-${slugify(input.title)}.md`;
   // A blocking link should say why it is needed, so dependencies get a prompt to fill in.
   // `why` explains the dependencies; related links have different reasons, so get none.
   const bullets = (refs: (string | number)[] | undefined, note?: string) =>
@@ -727,6 +729,59 @@ export function complete(
       .filter((x) => x.questions.length > 0);
   }
   return out;
+}
+
+export interface RepadResult {
+  collection: string;
+  /** The width the collection is (or would be) padded to. */
+  width: number;
+  dryRun: boolean;
+  moves: Move[];
+  rewrites: Rewrite[];
+}
+
+/**
+ * Pad every initiative number in a collection to one width — the given one, or the width most
+ * files already use — renaming files and their asset folders and rewriting every link to them.
+ * Dry run by default: returns the plan without writing.
+ */
+export function repad(root: Root, collection: string, opts: { width?: number; dry_run?: boolean } = {}): OpResult<RepadResult> {
+  const c = requireCollection(root, collection);
+  const width = opts.width ?? collectionWidth(c);
+  if (!Number.isInteger(width) || width < 1) throw new BrindleyError(`Width must be a whole number of digits, 1 or more (got ${opts.width}).`);
+  const highest = Math.max(0, ...c.initiatives.map((i) => i.number), ...c.ignored.map((f) => Number(/(\d+)-/.exec(f.split("/").pop()!)?.[1] ?? 0)));
+  if (highest > capacity(width))
+    throw new BrindleyError(`Width ${width} is too small for ${c.name}: its highest number is ${highest}. Use ${String(highest).length} or more.`);
+  const warnings: string[] = [];
+  if (highest >= nearFull(width))
+    warnings.push(`${c.name}'s highest number, ${highest}, is ${Math.round((highest / capacity(width)) * 100)}% of what ${width === 1 ? "1 digit holds" : `${width} digits hold`}; consider ${width + 1} (${padNumber(1, width + 1)}-).`);
+  const moves: Move[] = [];
+  const renamedNumbers = new Map<number, string>();
+  for (const i of c.initiatives) {
+    const base = i.rel.split("/").pop()!;
+    const m = /^(\d+)-(.*)$/.exec(base)!;
+    const want = padNumber(i.number, width);
+    if (m[1] === want) continue;
+    moves.push({ from: i.rel, to: `${i.rel.slice(0, -base.length)}${want}-${m[2]}` });
+    renamedNumbers.set(i.number, want);
+  }
+  // Asset folders (`<n>-…/`) beside the initiatives follow their initiative's number.
+  for (const dir of [c.dir, ...readdirSync(c.dir).map((e) => join(c.dir, e)).filter((p) => statSync(p).isDirectory() && !ASSET_DIR.test(p.split(sep).pop()!))]) {
+    for (const e of readdirSync(dir)) {
+      const m = /^(\d+)-(.*)$/.exec(e);
+      if (!m || !statSync(join(dir, e)).isDirectory()) continue;
+      const want = renamedNumbers.get(Number(m[1]));
+      if (want && m[1] !== want) {
+        const from = toPosix(relative(root.repoRoot, join(dir, e)));
+        moves.push({ from, to: `${from.slice(0, -e.length)}${want}-${m[2]}` });
+      }
+    }
+  }
+  const plan = planRelink(root, moves);
+  const result: RepadResult = { collection: c.name, width, dryRun: opts.dry_run !== false, moves: plan.moves, rewrites: plan.rewrites };
+  if (result.dryRun) return { result, touched: [], warnings };
+  const written = applyRelink(root, plan);
+  return finish(root, [c.name], written, result, warnings);
 }
 
 export function regenerateReadmes(root: Root, collection?: string, check = false) {
