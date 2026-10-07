@@ -197,6 +197,17 @@ describe("section placeholders", () => {
   });
 });
 
+describe("add_question", () => {
+  it("indents a multi-line question so it stays one list item", () => {
+    fx = fixture({ files: lockExample });
+    const root = fx.load();
+    ops.addQuestion(root, resolveRef(root, 23), "Which shape?\n`a` or `b`?");
+    expect(read(`${C}/23-passage-recorded-event.md`)).toContain("- Which shape?\n  `a` or `b`?");
+    const q = resolveRef(fx.load(), 23).questions.at(-1)!;
+    expect(q.text).toContain("`a` or `b`?");
+  });
+});
+
 describe("update", () => {
   it("writes one heading when section content repeats it", () => {
     fx = fixture({ files: lockExample });
@@ -545,6 +556,16 @@ describe("dependencies from the ## Dependencies section", () => {
     expect(text).toContain("## Dependencies\n\n- [20 Slot calendar and read model](20-slot-calendar-and-read-model.md) — _why this is needed_");
     expect(text).toContain("## Related\n\n- [22 Opening-hours change impact](22-opening-hours-change-impact.md)\n");
     expect(text).not.toMatch(/depends_on:/);
+  });
+
+  it("removing the last related link removes the Related section", () => {
+    fx = fixture({ files: lockExample });
+    const r = ops.create(fx.load(), { collection: "sb", title: "Moorings", related: [22] });
+    const root = fx.load();
+    ops.setDependencies(root, resolveRef(root, r.result.ref), { related_remove: [22] });
+    const text = read(r.result.path);
+    expect(text).not.toContain("## Related");
+    expect(text).toContain("## Dependencies\n\n_None._\n\n## Open questions");
   });
 
   it("create appends why to each link, and gives related links no placeholder", () => {

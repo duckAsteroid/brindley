@@ -420,7 +420,9 @@ export function setStatus(
 
 export function addQuestion(root: Root, i: Initiative, text: string, implementation = false): OpResult<{ ref: string; index: number; status: string | undefined }> {
   const clean = text.trim().replace(/^[-*+]\s+/, "");
-  const item = `- ${implementation && !/^\(implementation\)/i.test(clean) ? "(implementation) " : ""}${clean}`;
+  const prefix = implementation && !/^\(implementation\)/i.test(clean) ? "(implementation) " : "";
+  // Indent continuation lines so a multi-line question stays one list item, as decisions are.
+  const item = `- ${prefix}${clean.split("\n").map((l, k) => (k === 0 || l.trim() === "" ? l : `  ${l.trimStart()}`)).join("\n")}`;
   const body = appendToSection(i.body, OPEN_QUESTIONS, item, ["Acceptance criteria"]);
   const warnings: string[] = [];
   const changes: Record<string, unknown> = {};
@@ -537,8 +539,9 @@ export function setDependencies(
       if (hits.length === 0) warnings.push(`${x} is not linked under "## ${section}".`);
       for (const item of [...hits].reverse()) body = replaceLines(body, item.start, item.end, []);
       const after = findSection(body, section);
-      if (after && lines(body).slice(after.start, after.end).every((l) => l.trim() === "") && blocking)
-        body = setSection(body, section, NONE);
+      // An emptied Dependencies says so; an emptied Related goes, as `create` omits it when empty.
+      if (after && lines(body).slice(after.start, after.end).every((l) => l.trim() === ""))
+        body = blocking ? setSection(body, section, NONE) : replaceLines(body, after.heading.line, after.end, []);
     }
     for (const x of add) {
       const url = /^https?:\/\//i.test(String(x));
