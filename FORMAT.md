@@ -495,7 +495,16 @@ Two kinds of document, with a strict division of labour:
 | Audience | People and agents deciding or implementing a change | Anyone using or changing the code today |
 
 Which files are project docs is declared by `docs:` globs in each collection's README front-matter.
-Files inside collection folders are never project docs.
+Files inside collection folders are never project docs. A pattern starting with `!` excludes what
+it matches; patterns apply in order and the last match wins, as in `.gitignore`. That keeps a page
+that is history by nature — a generated release history, say — out of the rules below:
+
+```yaml
+docs: ["site/**/*.md", "!site/releases.md"]
+```
+
+Each collection's list is read on its own: a file is project documentation if any collection's
+list selects it.
 
 Project docs must:
 

@@ -40,6 +40,7 @@ Planned work on Brindley itself: tools specified in MCP-SERVER.md but not yet bu
 | 18 | [Work on the worktree the agent is implementing in](18-work-on-the-worktree-the-agent-is-implementing-in.md) | feature | draft | — | 2 | — |
 | 20 | [Configurable columns in the generated README tables](20-sorted-and-filtered-views-in-the-generated-readme.md) | feature | draft | — | 1 | — |
 | 21 | [Computed scores such as WSJF](21-computed-scores-such-as-wsjf.md) | feature | draft | — | 2 | — |
+| 22 | [Release history and what's new on the docs site](22-release-history-and-what-s-new-on-the-docs-site.md) | docs | designed | ✅ ready | 0 | — |
 
 ### Dependencies
 
@@ -65,7 +66,9 @@ flowchart LR
   n18["✏️ 18 Work on the worktree the agent is implementing in"]
   n20["✏️ 20 Configurable columns in the generated README tables"]
   n21["✏️ 21 Computed scores such as WSJF"]
+  n22["🟢 22 Release history and what's new on the docs site"]
   n19["✅ <s>19 Scoring dimensions on initiatives</s>"]
+  n23["✅ <s>23 Exclusions in docs globs</s>"]
   n7 --> n1
   n13 --> n1
   n8 -.-> n1
@@ -86,6 +89,7 @@ flowchart LR
   n14 -.-> n20
   n21 -.-> n20
   n19 --> n21
+  n23 --> n22
 ```
 
 ### Completed
@@ -93,5 +97,6 @@ flowchart LR
 | # | Initiative | Type | Updated |
 |---|------------|------|---------|
 | 19 | [Scoring dimensions on initiatives](19-rank-initiatives-by-scoring-dimensions.md) | feature | 2026-10-07 |
+| 23 | [Exclusions in docs globs](23-exclusions-in-docs-globs.md) | feature | 2026-10-07 |
 
 <!-- brindley:generated:end -->

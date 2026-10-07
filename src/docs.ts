@@ -7,9 +7,28 @@ import { globToRegExp, toPosix } from "./repo.js";
 
 export { globToRegExp };
 
-/** Docs globs in effect: the given collection's, else every collection's combined. */
-export function docsGlobs(root: Root, collectionDocs?: string[]): string[] {
-  return collectionDocs ?? [...new Set(root.collections.flatMap((c) => c.meta.docs ?? []))];
+/**
+ * Docs glob lists in effect: the given collection's, else each collection's own. Lists are kept
+ * apart because their `!` exclusions are ordered: one collection's pattern must not re-include a
+ * file another excluded.
+ */
+export function docsGlobs(root: Root, collectionDocs?: string[]): string[][] {
+  const lists = collectionDocs ? [collectionDocs] : root.collections.map((c) => c.meta.docs ?? []);
+  return lists.filter((l) => l.length > 0);
+}
+
+/**
+ * Does an ordered glob list select this path? `.gitignore`-style: patterns apply in order, `!`
+ * excludes what it matches, and the last matching pattern wins. A path no pattern matches is not
+ * selected, so a list of only exclusions selects nothing.
+ */
+export function matchesGlobs(globs: string[], repoPath: string): boolean {
+  let selected = false;
+  for (const g of globs) {
+    const negated = g.startsWith("!");
+    if (globToRegExp(negated ? g.slice(1) : g).test(repoPath)) selected = !negated;
+  }
+  return selected;
 }
 
 /** Is this repo-relative path inside a collection folder (an initiative, its assets or README)? */
@@ -18,11 +37,11 @@ export function inCollection(root: Root, repoPath: string): boolean {
   return root.collections.some((c) => c.path === "." || p === c.path || p.startsWith(c.path + "/"));
 }
 
-/** Is this repo-relative path project documentation (and not part of a collection)? */
-export function isProjectDoc(root: Root, repoPath: string, globs: string[]): boolean {
+/** Is this repo-relative path project documentation (selected by any glob list, and not part of a collection)? */
+export function isProjectDoc(root: Root, repoPath: string, globs: string[][]): boolean {
   const p = toPosix(repoPath).replace(/^\.\//, "");
   if (inCollection(root, p)) return false;
-  return globs.some((g) => globToRegExp(g).test(p));
+  return globs.some((list) => matchesGlobs(list, p));
 }
 
 export function allProjectDocs(root: Root): string[] {

@@ -65,7 +65,7 @@ dimensions:
 | `title`, `summary`, `owner`, `link` | Descriptive. |
 | `status` | `active`, `done` or `abandoned` — the changeset as a whole. |
 | `agent` | Your repo's implementing-agent instructions; the implement brief points to them. |
-| `docs` | Globs of what counts as project documentation. |
+| `docs` | Globs of what counts as project documentation, in order; `!` excludes (`["site/**/*.md", "!site/releases.md"]`), and the last match wins. |
 | `types`, `tags` | Declared values; others are flagged as likely typos. |
 | `statuses` | This collection's own status words, mapped to core statuses. |
 | `ignore` | `.gitignore`-style patterns for numbered files that aren't initiatives. |
