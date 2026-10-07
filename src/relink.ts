@@ -2,7 +2,7 @@ import { existsSync, readFileSync, readdirSync, renameSync, statSync, writeFileS
 import { dirname, join, relative, resolve, sep } from "node:path";
 import type { Root } from "./model.js";
 import { git } from "./git.js";
-import { BrindleyError, toPosix } from "./repo.js";
+import { BrindleyError, findCollection, toPosix } from "./repo.js";
 import { lines, stripCodeFences, withoutInlineCode } from "./markdown.js";
 
 /** A file or folder moving within the repository; paths relative to the repo root. */
@@ -87,6 +87,39 @@ export function planRelink(root: Root, moves: Move[]): RelinkPlan {
     }
   }
   return { moves, rewrites };
+}
+
+/**
+ * Plan rewrites of `"<collection>#<n>"` references across every Markdown file (outside code), and
+ * of a bare `superseded_by: <n>` in the referenced collection's own files. `change` gets each
+ * reference's collection (canonical name) and number and returns the replacement text, or null to
+ * leave it. References whose collection part isn't a known collection (a URL fragment, say) are left.
+ */
+export function planRefs(root: Root, change: (collection: string, n: number, written: string) => string | null): Rewrite[] {
+  const out: Rewrite[] = [];
+  for (const rel of markdownFiles(root)) {
+    const text = readFileSync(join(root.repoRoot, rel), "utf8");
+    const own = root.collections.find((c) => rel.startsWith(c.path + "/") || c.path === ".");
+    for (const { line, text: l } of stripCodeFences(text)) {
+      const plain = withoutInlineCode(l);
+      for (const m of plain.matchAll(/(^|[^\w#./-])([A-Za-z0-9][\w.-]*(?:\/[\w.-]+)*)#(\d+)(?!\d)/g)) {
+        const c = findCollection(root, m[2]!);
+        if (!c) continue;
+        const written = `${m[2]}#${m[3]}`;
+        const next = change(c.name, Number(m[3]), written);
+        if (next !== null && next !== written) out.push({ file: rel, line: line + 1, column: m.index! + m[1]!.length, before: written, after: next });
+      }
+      const sup = /^(superseded_by:\s*["']?)(\d+)(["']?\s*)$/.exec(l);
+      if (sup && own) {
+        const next = change(own.name, Number(sup[2]), sup[2]!);
+        if (next !== null) {
+          const bare = next.replace(/^.*#/, "");
+          if (bare !== sup[2]) out.push({ file: rel, line: line + 1, column: sup[1]!.length, before: sup[2]!, after: bare });
+        }
+      }
+    }
+  }
+  return out;
 }
 
 /** Apply a plan: rewrite the links in place, then make the moves. */

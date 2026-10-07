@@ -118,3 +118,62 @@ describe("repad", () => {
     expect(() => ops.repad(fx.load(), "locks", { width: 2 })).toThrow(/Width 2 is too small for locks: its highest number is 100\. Use 3 or more\./);
   });
 });
+
+describe("renumber", () => {
+  /** Two branches both coined 5 in locks; links and references from both collections. */
+  const files = (collision = true): Record<string, string> => ({
+    ...(collision ? { "locks/05-weirs.md": draft("Weirs") } : {}),
+    "locks/README.md": "---\nbrindley: 1\n---\n# Locks\n",
+    "locks/04-gates.md": draft("Gates", "\nNeeds [paddles](05-paddles.md); see locks#5 and `locks#5` in code.\n"),
+    "locks/05-paddles.md": draft("Paddles"),
+    "locks/05-paddles/sketch.png": "png",
+    "locks/06-old.md": "---\nstatus: superseded\nsuperseded_by: 4\n---\n# Old\n",
+    "canal/README.md": "---\nbrindley: 1\naliases: [cnl]\n---\n# Canal\n",
+    "canal/1-water.md": draft("Water", collision ? "\n## Dependencies\n\n- [weirs](../locks/05-weirs.md)\n" : ""),
+  });
+
+  it("gives one file of a collision the next number, rewriting links but not the ambiguous references", () => {
+    fx = fixture({ files: files() });
+    const root = fx.load();
+    const r = ops.renumber(root, (root.collections.find((c) => c.name === "locks")!.initiatives.find((i) => i.rel.endsWith("05-weirs.md")))!);
+    expect(r.result.to).toBe("locks#7");
+    expect(existsSync(join(fx.repo, "locks/07-weirs.md"))).toBe(true);
+    expect(read("canal/1-water.md")).toContain("[weirs](../locks/07-weirs.md)");
+    expect(read("locks/04-gates.md")).toContain("see locks#5"); // 5 was shared: references left alone
+    expect(r.warnings[0]).toMatch(/Number 5 is shared in locks/);
+    const after = validate(fx.load()).filter((f) => ["duplicate-number", "broken-link"].includes(f.rule));
+    expect(after).toEqual([]);
+  });
+
+  it("renumbers an unshared initiative to a given number, rewriting links, references and asset folders", () => {
+    fx = fixture({ files: files(false) });
+    let root = fx.load();
+    expect(() => ops.renumber(root, (root.collections.find((c) => c.name === "locks")!.initiatives.find((i) => i.number === 5))!, { to: 4 })).toThrow(/already used/);
+    root = fx.load();
+    const paddles = root.collections.find((c) => c.name === "locks")!.initiatives.find((i) => i.number === 5)!;
+    const plan = ops.renumber(root, paddles, { to: 12, dry_run: true });
+    expect(plan.result.moves).toEqual([
+      { from: "locks/05-paddles.md", to: "locks/12-paddles.md" },
+      { from: "locks/05-paddles", to: "locks/12-paddles" },
+    ]);
+    expect(existsSync(join(fx.repo, "locks/05-paddles.md"))).toBe(true);
+    ops.renumber(fx.load(), paddles, { to: 12 });
+    expect(read("locks/04-gates.md")).toContain("Needs [paddles](12-paddles.md); see locks#12 and `locks#5` in code.");
+    expect(existsSync(join(fx.repo, "locks/12-paddles/sketch.png"))).toBe(true);
+  });
+
+  it("rewrites references by alias, and a bare superseded_by in the same collection", () => {
+    fx = fixture({
+      files: {
+        ...files(false),
+        "canal/2-flow.md": draft("Flow", "\nInformed by cnl#1.\n"),
+        "canal/3-old.md": "---\nstatus: superseded\nsuperseded_by: 1\n---\n# Old flow\n",
+      },
+    });
+    const root = fx.load();
+    ops.renumber(root, root.collections.find((c) => c.name === "canal")!.initiatives.find((i) => i.number === 1)!, { to: 9 });
+    expect(read("canal/2-flow.md")).toContain("Informed by cnl#9.");
+    expect(read("canal/3-old.md")).toContain("superseded_by: 9");
+    expect(read("locks/06-old.md")).toContain("superseded_by: 4"); // another collection's bare number is untouched
+  });
+});

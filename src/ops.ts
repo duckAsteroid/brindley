@@ -42,7 +42,7 @@ import { regenerate } from "./readme.js";
 import { checkDocs, docsGlobs, inCollection, isProjectDoc } from "./docs.js";
 import { dimensionsFor, sameValue, type DimensionValue } from "./dimensions.js";
 import { capacity, collectionWidth, nearFull, padNumber } from "./numbering.js";
-import { applyRelink, planRelink, type Move, type Rewrite } from "./relink.js";
+import { applyRelink, planRefs, planRelink, type Move, type Rewrite } from "./relink.js";
 
 export function today(): string {
   return process.env["BRINDLEY_TODAY"] ?? new Date().toISOString().slice(0, 10);
@@ -782,6 +782,62 @@ export function repad(root: Root, collection: string, opts: { width?: number; dr
   if (result.dryRun) return { result, touched: [], warnings };
   const written = applyRelink(root, plan);
   return finish(root, [c.name], written, result, warnings);
+}
+
+export interface RenumberResult {
+  from: string;
+  to: string;
+  number: number;
+  dryRun: boolean;
+  moves: Move[];
+  rewrites: Rewrite[];
+}
+
+/**
+ * Give an initiative a new number — the next one, coined as `create` does, unless `to` is given —
+ * renaming its file and asset folder (keeping the slug, padded to the collection's width) and
+ * rewriting every link and `"<collection>#<n>"` reference to it. For one file of a
+ * `duplicate-number` pair, pass it by path; its number's references are then ambiguous and left
+ * alone, while links (which name the file) are rewritten.
+ */
+export function renumber(root: Root, i: Initiative, opts: { to?: number; dry_run?: boolean } = {}): OpResult<RenumberResult> {
+  const c = requireCollection(root, i.collection);
+  const used = new Set([...c.initiatives.map((x) => x.number), ...c.ignored.map((f) => Number(/(\d+)-/.exec(f.split("/").pop()!)?.[1] ?? 0))]);
+  let n: number;
+  const warnings: string[] = [];
+  if (opts.to !== undefined) {
+    if (!Number.isInteger(opts.to) || opts.to < 1) throw new BrindleyError(`A number must be a whole number, 1 or more (got ${opts.to}).`);
+    if (opts.to === i.number) throw new BrindleyError(`${initiativeKey(i)} is already number ${opts.to}.`);
+    if (used.has(opts.to)) throw new BrindleyError(`Number ${opts.to} is already used in ${c.name}.`);
+    n = opts.to;
+  } else {
+    const next = nextNumber(root, c);
+    n = next.number;
+    if (next.note) warnings.push(next.note);
+  }
+  const shared = c.initiatives.filter((x) => x.number === i.number).length > 1;
+  const base = i.rel.split("/").pop()!;
+  const slug = /^\d+-(.*)\.md$/.exec(base)![1]!;
+  const prefix = padNumber(n, collectionWidth(c));
+  const moves: Move[] = [{ from: i.rel, to: `${i.rel.slice(0, -base.length)}${prefix}-${slug}.md` }];
+  // Its asset folder(s): `<n>-…/` beside it — for a shared number, only one named after this file.
+  const dir = dirname(i.file);
+  for (const e of readdirSync(dir)) {
+    const m = /^(\d+)-(.*)$/.exec(e);
+    if (!m || Number(m[1]) !== i.number || !statSync(join(dir, e)).isDirectory()) continue;
+    if (shared && m[2] !== slug) continue;
+    const from = toPosix(relative(root.repoRoot, join(dir, e)));
+    moves.push({ from, to: `${from.slice(0, -e.length)}${prefix}-${m[2]}` });
+  }
+  const plan = planRelink(root, moves);
+  if (!shared)
+    plan.rewrites.push(
+      ...planRefs(root, (col, num, written) => (col === c.name && num === i.number ? written.replace(/\d+$/, String(n)) : null)),
+    );
+  const result: RenumberResult = { from: initiativeKey(i), to: `${c.name}#${n}`, number: n, dryRun: opts.dry_run === true, moves: plan.moves, rewrites: plan.rewrites };
+  if (shared) warnings.push(`Number ${i.number} is shared in ${c.name}, so "${c.name}#${i.number}" references were left alone; check any that meant this initiative.`);
+  if (result.dryRun) return { result, touched: [], warnings };
+  return finish(root, [c.name], applyRelink(root, plan), result, warnings);
 }
 
 export function regenerateReadmes(root: Root, collection?: string, check = false) {

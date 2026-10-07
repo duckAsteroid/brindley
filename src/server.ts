@@ -532,6 +532,18 @@ export function createServer(opts: ServerOptions): McpServer {
   );
 
   tool(
+    "renumber",
+    "Give an initiative a new number — fixing a number collision after a merge. Renames its file and asset folder (keeping the slug, padded to the collection's width) and rewrites every link and \"<collection>#<n>\" reference to it across the repo. `to` defaults to the next number, coined as `create` does. For one file of a duplicate-number pair, pass `ref` as its path. `dry_run: true` returns the plan without writing.",
+    {
+      ref: refArg,
+      collection: z.string().optional(),
+      to: z.number().int().optional().describe("The new number; default: the next free one."),
+      dry_run: z.boolean().optional(),
+    },
+    (root, a) => ops.renumber(root, resolveRef(root, a.ref, a.collection), { to: a.to, dry_run: a.dry_run }),
+  );
+
+  tool(
     "repad",
     "Pad every initiative number in a collection to one width (`01-`, `001-`) — the given `width`, or the width most of its files use — renaming the files and their asset folders and rewriting every link to them across the repo. Dry run by default: returns each rename and link rewrite; pass dry_run: false to apply. Refuses a width too small for the highest number.",
     {
