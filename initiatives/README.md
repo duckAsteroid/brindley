@@ -38,6 +38,8 @@ Planned work on Brindley itself: tools specified in MCP-SERVER.md but not yet bu
 | 16 | [Resolve settled questions in bulk](16-resolve-settled-questions-in-bulk.md) | feature | draft | — | 1 | — |
 | 17 | [Record why an initiative was abandoned](17-record-why-an-initiative-was-abandoned.md) | feature | draft | — | 2 | — |
 | 18 | [Work on the worktree the agent is implementing in](18-work-on-the-worktree-the-agent-is-implementing-in.md) | feature | draft | — | 2 | — |
+| 19 | [Rank initiatives by scoring dimensions](19-rank-initiatives-by-scoring-dimensions.md) | feature | draft | — | 4 | — |
+| 20 | [Sorted and filtered views in the generated README](20-sorted-and-filtered-views-in-the-generated-readme.md) | feature | draft | ⛔ 19 | 2 | — |
 
 ### Dependencies
 
@@ -61,6 +63,8 @@ flowchart LR
   n16["✏️ 16 Resolve settled questions in bulk"]
   n17["✏️ 17 Record why an initiative was abandoned"]
   n18["✏️ 18 Work on the worktree the agent is implementing in"]
+  n19["✏️ 19 Rank initiatives by scoring dimensions"]
+  n20["✏️ 20 Sorted and filtered views in the generated README"]
   n7 --> n1
   n13 --> n1
   n8 -.-> n1
@@ -76,6 +80,9 @@ flowchart LR
   n12 -.-> n14
   n11 -.-> n16
   n10 -.-> n18
+  n19 --> n20
+  n12 -.-> n20
+  n14 -.-> n20
 ```
 
 ### Completed
