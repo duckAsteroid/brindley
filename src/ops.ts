@@ -426,7 +426,7 @@ export function addQuestion(root: Root, i: Initiative, text: string, implementat
   const clean = text.trim().replace(/^[-*+]\s+/, "");
   const prefix = implementation && !/^\(implementation\)/i.test(clean) ? "(implementation) " : "";
   // Indent continuation lines so a multi-line question stays one list item, as decisions are.
-  const item = `- ${prefix}${clean.split("\n").map((l, k) => (k === 0 || l.trim() === "" ? l : `  ${l.trimStart()}`)).join("\n")}`;
+  const item = `- ${prefix}${clean.split("\n").map((l, k) => (k === 0 || l.trim() === "" ? l : `  ${l}`)).join("\n")}`;
   const body = appendToSection(i.body, OPEN_QUESTIONS, item, ["Acceptance criteria"]);
   const warnings: string[] = [];
   const changes: Record<string, unknown> = {};

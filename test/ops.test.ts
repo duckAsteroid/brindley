@@ -205,6 +205,8 @@ describe("add_question", () => {
     expect(read(`${C}/23-passage-recorded-event.md`)).toContain("- Which shape?\n  `a` or `b`?");
     const q = resolveRef(fx.load(), 23).questions.at(-1)!;
     expect(q.text).toContain("`a` or `b`?");
+    ops.addQuestion(fx.load(), resolveRef(fx.load(), 23), "Like this?\n```yaml\ncolumns:\n  active: [number]\n```");
+    expect(read(`${C}/23-passage-recorded-event.md`)).toContain("- Like this?\n  ```yaml\n  columns:\n    active: [number]\n  ```"); // nested indentation kept
   });
 });
 
