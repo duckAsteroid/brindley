@@ -3,25 +3,36 @@ type: feature
 status: draft
 updated: 2026-10-07
 ---
-# Sorted and filtered views in the generated README
+# Configurable columns in the generated README tables
 
 ## Goal
 
-Once initiatives can be ranked (initiatives#19), readers of a collection README want to see the work by score, by theme or ready-first, not only by number. GitHub renders README Markdown as static HTML with scripts stripped, so tables can't be sorted or filtered by clicking. Generate the useful views statically instead — e.g. "by score" and "ready first" orderings of the Active table, each in a collapsed `<details>` section, which GitHub keeps — so they work on GitHub, in VitePress and in a plain editor and stay deterministic (FORMAT §8). Interactive sorting and filtering is left to the tools (`list`) and, optionally, the docs site.
+The collection README's tables have fixed columns — Active: # | Initiative | Type | Status | Ready / blocked by | Open Qs | Owner; Completed: # | Initiative | Type | Updated (src/readme.ts:129, :147). Once initiatives carry scoring dimensions (initiatives#19), readers should see them there. Let the collection README's front-matter choose which columns each table shows and in what order — the built-in ones plus any dimension or computed score — with today's columns as the default. Rows keep their current order; sorting and filtered views are out of scope, and interactive sorting is left to the tools (`list`).
 
 ## Dependencies
 
-- [19 Rank initiatives by scoring dimensions](19-rank-initiatives-by-scoring-dimensions.md) — the views are mostly orderings by score, which #19 defines
+- [19 Scoring dimensions on initiatives](19-rank-initiatives-by-scoring-dimensions.md) — the dimensions these columns would show
 
 ## Related
 
-- [12 Themes overview and tag cloud in the collection README](12-themes-overview-and-tag-cloud-in-the-collection-readme.md) — another generated README section; a by-theme view overlaps its Themes section
-- [14 README front-matter controls what the dependency graph shows](14-readme-front-matter-controls-what-the-dependency-graph-shows.md) — the same kind of front-matter setting could choose which views appear
+- [12 Themes overview and tag cloud in the collection README](12-themes-overview-and-tag-cloud-in-the-collection-readme.md) — another front-matter-controlled section of the generated README
+- [14 README front-matter controls what the dependency graph shows](14-readme-front-matter-controls-what-the-dependency-graph-shows.md) — the graph setting and this columns setting should look alike in front-matter
+- [21 Computed scores such as WSJF](21-computed-scores-such-as-wsjf.md) — computed scores can be columns too, once they exist
+
+## Decisions
+
+- Descoped: no extra pre-sorted or filtered views. The README keeps one table per section, in number order; what changes is which columns it shows, chosen in front-matter.
+- Out of scope: no interactive table on the docs site. Sorting and filtering stay with the tools (`list`).
 
 ## Open questions
 
-- Which views, and who chooses? A fixed set (e.g. "by score" and "ready first"), or views declared in the collection README's front-matter — the same kind of setting as initiatives#14's graph controls? Each view repeats the table, so a long collection's README grows quickly.
-- Is an interactive sortable/filterable table on the VitePress docs site in scope (a Vue component reading the collections), or only the static README views? The site only helps repos that publish one.
+- What does the setting look like? E.g. per table:
+  ```yaml
+  columns:
+    active: [number, title, status, ready, priority, wsjf, owner]
+    completed: [number, title, type, updated]
+  ```
+  — a list of column keys (built-ins plus #19's dimensions and scores), replacing the defaults. Or one list for all tables, or just "extra columns to add" on top of today's? Is a column for an arbitrary front-matter field allowed, or only built-ins and declared dimensions?
 
 ## Acceptance criteria
 
