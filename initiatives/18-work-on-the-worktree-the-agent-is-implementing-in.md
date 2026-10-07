@@ -1,7 +1,11 @@
 ---
 type: feature
-status: designed
+status: done
 updated: 2026-10-07
+docs_impact:
+  - MCP-SERVER.md
+  - site/reference/mcp.md
+  - site/guide/workflow.md
 ---
 # Work on the worktree the agent is implementing in
 
@@ -26,6 +30,7 @@ _None._
 - The `implement` prompt describes the sequence for worktree-based workflows: create the worktree, `use_worktree("<path>")`; build and `complete`, so the initiative edits land in the worktree's commit; after merging, `use_worktree()` before removing the worktree.
 - A `use_worktree` switch held by the server, and no per-call `worktree` parameter. The switch lives in the server process, and each client session starts its own server, so agents in different sessions never share it. A per-call path would have to be passed to every tool, and forgetting it once would silently write to the main checkout — the bug this initiative fixes. Every result names the checkout it worked on.
 - No automatic following: MCP workspace roots aren't used. A session's roots are normally the checkout it started in and don't change when an agent moves into a worktree, and switching on them would be the unasked-for checkout change this initiative avoids. Switching is explicit (`use_worktree`), prompted by the `implement` brief. A server started inside a worktree already works there (the nearest git root of its start directory).
+- Implementation: the server keeps the checkout in use (src/server.ts); `use_worktree` is registered outside the usual tool wrapper so it still works after the current worktree is removed, when every other call is refused. Each result's checkout is a second text item after the JSON (`Checkout: …`), so clients that parse the first item are unaffected. Prompts and resources follow the switch too.
 
 ## Open questions
 

@@ -51,6 +51,10 @@ Finishing:
    alternatives to `## Appendix: Rejected alternatives`.
 3. **`complete`** it, stating which docs changed — or `none: <reason>`.
 
+If the agent builds in a git worktree, the brief tells it to call `use_worktree` with the
+worktree's path once it exists — so status changes and `complete` land in that branch — and
+`use_worktree()` to switch back after merging.
+
 If your repo has its own implementing-agent instructions (worktrees, build commands), point the
 collection's `agent:` field at them and the brief tells the agent to follow them.
 

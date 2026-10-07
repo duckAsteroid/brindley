@@ -1,4 +1,5 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync, realpathSync } from "node:fs";
+import { resolve } from "node:path";
 import { McpServer, ResourceTemplate } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { STATUSES, type Initiative, type Root } from "./model.js";
@@ -12,12 +13,13 @@ import {
   themeFor,
   loadRoot,
   lookup,
+  findRepoRoot,
   openRepo,
   resolveRef,
 } from "./repo.js";
 import { blockers, dependants, dependencyReport, displayRef, isActive, isReady, target, topoSort } from "./deps.js";
 import { collectionBlock, mermaid, regenerate, rootBlock } from "./readme.js";
-import { mergeInProgress } from "./git.js";
+import { mergeInProgress, otherWorktrees } from "./git.js";
 import { validate } from "./validate.js";
 import { checkDocs } from "./docs.js";
 import { dimensionReport, filterByDimensions, orderByDimensions } from "./dimensions.js";
@@ -175,8 +177,14 @@ function agentFile(root: Root, i: Initiative): string | undefined {
 export function createServer(opts: ServerOptions): McpServer {
   const server = new McpServer({ name: "brindley", version: VERSION }, { instructions: INSTRUCTIONS });
 
+  // The checkout the server works on: where it was started, unless use_worktree has switched it.
+  const started = findRepoRoot(opts.cwd);
+  let checkout = started;
+
   const open = (): { root: Root; notes: string[] } => {
-    let root = openRepo(opts.cwd);
+    if (checkout !== started && !existsSync(checkout))
+      throw new BrindleyError(`The worktree ${checkout} no longer exists. Call use_worktree() to return to ${started}, or name another worktree.`);
+    let root = openRepo(checkout);
     const notes: string[] = [];
     if (root.collections.length === 0)
       notes.push("No collections in this repository yet. Mark a folder as one with create_collection.");
@@ -192,7 +200,13 @@ export function createServer(opts: ServerOptions): McpServer {
     return { root, notes };
   };
 
-  const reply = (value: unknown) => ({ content: [{ type: "text" as const, text: JSON.stringify(value, null, 2) }] });
+  // Every result names the checkout it worked on, after the JSON.
+  const reply = (value: unknown) => ({
+    content: [
+      { type: "text" as const, text: JSON.stringify(value, null, 2) },
+      { type: "text" as const, text: `Checkout: ${checkout}` },
+    ],
+  });
   const fail = (e: unknown) => ({
     isError: true,
     content: [{ type: "text" as const, text: e instanceof Error ? e.message : String(e) }],
@@ -222,6 +236,32 @@ export function createServer(opts: ServerOptions): McpServer {
   };
 
   // --- Setup ------------------------------------------------------------------
+
+  // Not a `tool`: it must work even when the current worktree has gone, which `open` refuses.
+  server.registerTool(
+    "use_worktree",
+    {
+      description:
+        "Switch this server to another git worktree of the same repository, for the rest of this session: every later call reads and writes that checkout. Call it right after creating the worktree you will implement in, so initiative edits land in that branch's commit. With no `path` (or the original checkout's path), switch back — do that after merging, before removing the worktree. Returns the checkout now in use.",
+      inputSchema: { path: z.string().optional().describe("The worktree's folder; omit to return to the checkout the server started in.") },
+    },
+    (async (a: { path?: string }) => {
+      try {
+        const real = (p: string) => (existsSync(p) ? realpathSync(p) : resolve(p));
+        if (a.path === undefined || real(resolve(started, a.path)) === real(started)) checkout = started;
+        else {
+          const want = real(resolve(started, a.path));
+          const trees = otherWorktrees(started).filter(existsSync).map(real);
+          if (!trees.includes(want))
+            throw new BrindleyError(`${want} is not a worktree of the repository at ${started} (git worktree list: ${trees.join(", ") || "no others"}).`);
+          checkout = want;
+        }
+        return reply({ checkout, started, switched: checkout !== started });
+      } catch (e) {
+        return fail(e);
+      }
+    }) as never,
+  );
 
   const collectionFields = {
     title: z.string().optional(),
@@ -834,6 +874,7 @@ ${verifyStep(root, i)}
 
 - Ask about any product, data or API choice the initiative doesn't settle before writing code. \`(implementation)\` questions are yours to settle — record each decision in the initiative (\`resolve_question\`).
 - Set \`status\` to in-progress (\`set_status\`) when you begin.
+- If you work in a git worktree: once it exists, call \`use_worktree\` with its path, so every Brindley edit (status, questions, \`complete\`) lands in that worktree and its commit. After merging, call \`use_worktree()\` with no path before removing the worktree.
 
 ## While building
 

@@ -35,7 +35,10 @@
 - **Transport:** stdio.
 - **Install:** `npx -y brindley` — no global install, nothing added to the repo's build.
 - **Repo:** the nearest git root above the server's working directory. A server started inside a
-  worktree therefore operates on that worktree's files — which is what an implementing agent wants.
+  worktree therefore operates on that worktree's files. An agent that creates a worktree mid-session
+  calls `use_worktree` to switch the server to it; the switch lasts for the server process (one
+  client session) and every result names the checkout it worked on. If that worktree is removed,
+  calls are refused until `use_worktree()` switches back.
 - **Collections** are found on every call by scanning the repo for `README.md` files whose
   front-matter has `brindley` (FORMAT §2), using `git ls-files` so gitignored paths (including
   worktrees under ignored folders) are skipped. There is no repo-level config file. With no
@@ -76,6 +79,7 @@ All tools return structured JSON plus a short text rendering.
 
 | Tool | Params | Behaviour |
 |------|--------|-----------|
+| `use_worktree` | `path?` | Switches the server to another git worktree of the same repository for the rest of its process, so an implementing agent's edits land in the worktree it builds in; refuses a path that isn't one. No `path` (or the original checkout) switches back. Returns the checkout in use. Not affected by a removed worktree, unlike every other tool. |
 | `create_collection` | `path`, `name?`, `title?`, `summary?`, `owner?`, `link?`, `agent?`, `docs?`, `types?`, `tags?` | Marks a folder as a collection: adds `brindley: 1` and the given details to its README front-matter, creating the folder and README if needed and keeping any existing README text. Works on a folder already full of numbered initiatives. Refuses a name already used by another collection. For the repo's first collection, also returns the format-rules agent snippet (FORMAT §9) to add to `AGENTS.md`/`CLAUDE.md`. `create` given a new folder path does the same implicitly. |
 | `ignore` | `collection`, `add?`, `remove?`, `dry_run?` | Adds or removes the collection's `ignore:` patterns (`.gitignore` semantics, FORMAT §2) without rewriting the whole list. Returns the resulting patterns, every numbered file now ignored, and what changed; `dry_run` previews without writing. |
 | `update_collection` | `collection`, `status?`, `title?`, `summary?`, `owner?`, `link?`, `agent?`, `docs?`, `types?`, `tags?` | Edits the collection README's front-matter, including the changeset's status (`active` / `done` / `abandoned`; warns when marking `done` with unfinished initiatives). Refuses to change `name`, since references would break. |

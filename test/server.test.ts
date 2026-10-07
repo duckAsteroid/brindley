@@ -1,8 +1,10 @@
+import { readFileSync, rmSync } from "node:fs";
+import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { createServer } from "../src/server.js";
-import { C, fixture, lockExample, type Fixture } from "./helpers.js";
+import { C, fixture, git, lockExample, type Fixture } from "./helpers.js";
 
 let fx: Fixture;
 afterEach(() => fx?.cleanup());
@@ -146,5 +148,39 @@ describe("MCP server", () => {
     const res = json(await client.callTool({ name: "list", arguments: {} }));
     expect(res.result).toEqual([]);
     expect(res.notes.join(" ")).toMatch(/create_collection/);
+  });
+});
+
+describe("use_worktree", () => {
+  it("switches the server to another worktree, names the checkout, and switches back", async () => {
+    fx = fixture({ files: lockExample });
+    const wt = `${fx.repo}-wt`;
+    git(fx.repo, "worktree", "add", "-q", wt, "-b", "feature");
+    try {
+      const client = await connect(fx.repo);
+      const text = (r: unknown) => (r as { content: { text: string }[] }).content.map((c) => c.text);
+      // Not a worktree of this repo: refused.
+      const bad = await client.callTool({ name: "use_worktree", arguments: { path: "/tmp" } });
+      expect((bad as { isError?: boolean }).isError).toBe(true);
+      // Switch, then write: the edit lands in the worktree only.
+      const sw = json(await client.callTool({ name: "use_worktree", arguments: { path: wt } }));
+      expect(sw.switched).toBe(true);
+      const upd = await client.callTool({ name: "update", arguments: { ref: "sb#22", owner: "locks team" } });
+      expect(text(upd)[1]).toMatch(/^Checkout: .*-wt$/);
+      expect(readFileSync(join(wt, C, "22-opening-hours-change-impact.md"), "utf8")).toContain("owner: locks team");
+      expect(readFileSync(join(fx.repo, C, "22-opening-hours-change-impact.md"), "utf8")).not.toContain("owner: locks team");
+      // Back to where the server started.
+      const back = json(await client.callTool({ name: "use_worktree", arguments: {} }));
+      expect(back.switched).toBe(false);
+      // A removed worktree is refused loudly, and use_worktree() still works.
+      json(await client.callTool({ name: "use_worktree", arguments: { path: wt } }));
+      rmSync(wt, { recursive: true, force: true });
+      const gone = await client.callTool({ name: "list", arguments: {} });
+      expect((gone as { isError?: boolean }).isError).toBe(true);
+      expect(text(gone)[0]).toMatch(/no longer exists\. Call use_worktree\(\) to return to/);
+      expect(json(await client.callTool({ name: "use_worktree", arguments: {} })).switched).toBe(false);
+    } finally {
+      rmSync(wt, { recursive: true, force: true });
+    }
   });
 });
