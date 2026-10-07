@@ -466,7 +466,7 @@ export function createServer(opts: ServerOptions): McpServer {
       goal: z.string().optional(),
       depends_on: refList.optional().describe('Initiatives (e.g. "lgm#22", 23) or ticket URLs to link under ## Dependencies'),
       related: refList.optional().describe("Initiatives or URLs to link under ## Related (non-blocking)"),
-      why: z.string().optional().describe("Why the linked initiatives matter (appended to each new bullet)"),
+      why: z.string().optional().describe("Why the dependencies are needed (appended to each depends_on bullet; related links get no note — add one with set_dependencies)"),
       owner: z.string().optional(),
     },
     (root, a) => ops.create(root, a),

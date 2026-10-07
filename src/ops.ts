@@ -251,7 +251,7 @@ export interface CreateInput {
   goal?: string;
   depends_on?: (string | number)[];
   related?: (string | number)[];
-  /** Why the linked initiatives matter, appended to each new bullet. */
+  /** Why the dependencies are needed, appended to each `depends_on` bullet (not to related links). */
   why?: string;
   owner?: string;
 }
@@ -281,13 +281,10 @@ export function create(root: Root, input: CreateInput): OpResult<{ ref: string; 
   const { number, note } = nextNumber(root, c);
   const fileRel = `${c.path}/${number}-${slugify(input.title)}.md`;
   // A blocking link should say why it is needed, so dependencies get a prompt to fill in.
-  const why = input.why?.trim();
-  const bullets = (refs: (string | number)[] | undefined, placeholder?: string) =>
-    (refs ?? []).map((r) => {
-      const note = why || placeholder;
-      return `- ${linkTo(root, fileRel, c!.name, r)}${note ? ` — ${note}` : ""}`;
-    });
-  const deps = bullets(input.depends_on, "_why this is needed_");
+  // `why` explains the dependencies; related links have different reasons, so get none.
+  const bullets = (refs: (string | number)[] | undefined, note?: string) =>
+    (refs ?? []).map((r) => `- ${linkTo(root, fileRel, c!.name, r)}${note ? ` — ${note}` : ""}`);
+  const deps = bullets(input.depends_on, input.why?.trim() || "_why this is needed_");
   const related = bullets(input.related);
   const fm = editFrontMatter(null, {
     ...(input.type ? { type: input.type } : {}),

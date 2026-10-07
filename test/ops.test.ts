@@ -580,12 +580,13 @@ describe("dependencies from the ## Dependencies section", () => {
     expect(text).toContain("## Dependencies\n\n_None._\n\n## Open questions");
   });
 
-  it("create appends why to each link, and gives related links no placeholder", () => {
+  it("create appends why to dependencies only, and gives related links no note", () => {
     fx = fixture({ files: lockExample });
     let r = ops.create(fx.load(), { collection: "sb", title: "Tickets", related: ["https://github.com/example/issues/3"] });
     expect(read(r.result.path)).toContain("## Related\n\n- [https://github.com/example/issues/3](https://github.com/example/issues/3)\n");
-    r = ops.create(fx.load(), { collection: "sb", title: "Queues", depends_on: [20], why: "queues are per slot" });
+    r = ops.create(fx.load(), { collection: "sb", title: "Queues", depends_on: [20], related: [22], why: "queues are per slot" });
     expect(read(r.result.path)).toContain("(20-slot-calendar-and-read-model.md) — queues are per slot\n");
+    expect(read(r.result.path)).toContain("(22-opening-hours-change-impact.md)\n"); // why is for dependencies only
   });
 });
 
