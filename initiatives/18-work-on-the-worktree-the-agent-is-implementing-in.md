@@ -1,6 +1,6 @@
 ---
 type: feature
-status: draft
+status: designed
 updated: 2026-10-07
 ---
 # Work on the worktree the agent is implementing in
@@ -24,12 +24,19 @@ _None._
 - If the current worktree has been removed (`git worktree remove` after merging), the next call is refused rather than silently falling back — e.g. "the worktree ../brindley-wt-18 no longer exists; call `use_worktree()` to return to /…/brindley, or name another worktree" — since a silent fallback would write to the wrong checkout, the bug this initiative fixes.
 - The switch lasts only for the server process, i.e. the client session: a new session starts on the original checkout.
 - The `implement` prompt describes the sequence for worktree-based workflows: create the worktree, `use_worktree("<path>")`; build and `complete`, so the initiative edits land in the worktree's commit; after merging, `use_worktree()` before removing the worktree.
+- A `use_worktree` switch held by the server, and no per-call `worktree` parameter. The switch lives in the server process, and each client session starts its own server, so agents in different sessions never share it. A per-call path would have to be passed to every tool, and forgetting it once would silently write to the main checkout — the bug this initiative fixes. Every result names the checkout it worked on.
+- No automatic following: MCP workspace roots aren't used. A session's roots are normally the checkout it started in and don't change when an agent moves into a worktree, and switching on them would be the unasked-for checkout change this initiative avoids. Switching is explicit (`use_worktree`), prompted by the `implement` brief. A server started inside a worktree already works there (the nearest git root of its start directory).
 
 ## Open questions
 
-- Is a `use_worktree` switch (session state on the server) right, or should each tool take an optional `worktree` path instead? A switch is one call and can't be forgotten on a later call, but it is hidden state: a second agent sharing the same server would be switched too.
-- Can the server follow the agent without being told? MCP clients can report their workspace "roots", but an agent that `cd`s into a worktree mid-session doesn't change them. Worth using roots when they point inside a worktree, with `use_worktree` as the explicit fallback?
+_None._
 
 ## Acceptance criteria
 
-_What must be true when this is done._
+- A `use_worktree` MCP tool takes a path to another worktree of the same repository (`git worktree list`) and switches the server to it for the rest of its process: every later tool call reads and writes that checkout. It refuses a path that isn't a worktree of this repository.
+- `use_worktree()` with no argument, or with the original checkout's path, switches back. Every call returns the checkout now in use.
+- Every tool result names the checkout it worked on.
+- If the current worktree has been removed, the next tool call is refused with a message naming the missing worktree and saying to call `use_worktree()` to return, or to name another — never a silent fallback.
+- A new server process starts on the checkout it was started in; nothing persists between sessions. No per-call `worktree` parameter, and MCP roots aren't used.
+- The `implement` prompt describes the sequence for worktree workflows: create the worktree and `use_worktree("<path>")`; build and `complete`; after merging, `use_worktree()` before removing the worktree.
+- MCP-SERVER.md (runtime, §2, and the tool table) and the site's MCP reference and workflow guide describe it. Tests cover switching, writing to the worktree, switching back, refusing a non-worktree path, and a removed worktree.
