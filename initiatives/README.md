@@ -36,6 +36,7 @@ Planned work on Brindley itself: tools specified in MCP-SERVER.md but not yet bu
 | 14 | [README front-matter controls what the dependency graph shows](14-readme-front-matter-controls-what-the-dependency-graph-shows.md) | feature | draft | — | 2 | — |
 | 15 | [Show in-progress work blocked on an open question](15-show-in-progress-work-blocked-on-an-open-question.md) | feature | draft | — | 2 | — |
 | 16 | [Resolve settled questions in bulk](16-resolve-settled-questions-in-bulk.md) | feature | draft | — | 1 | — |
+| 17 | [Record why an initiative was abandoned](17-record-why-an-initiative-was-abandoned.md) | feature | draft | — | 2 | — |
 
 ### Dependencies
 
@@ -57,6 +58,7 @@ flowchart LR
   n14["14 README front-matter controls what the dependency graph shows"]:::draft
   n15["15 Show in-progress work blocked on an open question"]:::draft
   n16["16 Resolve settled questions in bulk"]:::draft
+  n17["17 Record why an initiative was abandoned"]:::draft
   n7 --> n1
   n13 --> n1
   n8 -.-> n1
