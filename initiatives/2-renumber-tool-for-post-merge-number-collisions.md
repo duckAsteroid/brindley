@@ -1,7 +1,7 @@
 ---
 type: feature
-status: draft
-updated: 2026-10-06
+status: designed
+updated: 2026-10-07
 ---
 # renumber tool for post-merge number collisions
 

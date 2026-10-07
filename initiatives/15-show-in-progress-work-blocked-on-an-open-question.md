@@ -20,7 +20,7 @@ _None._
 
 ## Open questions
 
-- How is "blocked" shown? Options: in the README's "Ready / blocked by" column (e.g. "⛔ question 2"), a separate `blocked` class/colour in the Mermaid graph, and a `blockedOnQuestions` field in `list`/`get`. All of them, or only some? And should a dependency that turns out to be unfinished mid-build (a blocker added after work started) show the same way?
+- How is "blocked" shown? Options: in the README's "Ready / blocked by" column (e.g. "⛔ question 2"), a mark in the Mermaid graph label (e.g. ⛔, alongside the status emoji — the graph uses no colours), and a `blockedOnQuestions` field in `list`/`get`. All of them, or only some? And should a dependency that turns out to be unfinished mid-build (a blocker added after work started) show the same way?
 - Should the `(implementation)` label be renamed to make its non-blocking meaning obvious (e.g. `(implementer's call)`), given the agent in GitHub #7 read it as "the kind of question for implementation time"? Renaming means still reading the old label in existing files.
 
 ## Acceptance criteria

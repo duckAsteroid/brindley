@@ -1,6 +1,6 @@
 ---
 type: feature
-status: draft
+status: designed
 updated: 2026-10-07
 tags: [adoption]
 ---

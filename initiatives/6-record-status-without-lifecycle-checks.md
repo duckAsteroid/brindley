@@ -1,14 +1,14 @@
 ---
 type: feature
-status: draft
-updated: 2026-10-06
+status: designed
+updated: 2026-10-07
 tags: [status-recording]
 ---
 # Record status without lifecycle checks
 
 ## Goal
 
-Give agents a way to write the `status` an initiative already has (backfilling front-matter on an adopted collection) without `set_status`'s lifecycle checks, which are for transitions. Also let a `done` initiative's body (e.g. `## Findings`, an appendix) be edited without forcing it to in-progress and back.
+Give agents a way to write the `status` an initiative already has (backfilling front-matter on an adopted collection) without `set_status`'s lifecycle checks, which are for transitions. Editing a `done` initiative's body (e.g. `## Findings`, an appendix) already works with `update` — no status change needed — but nothing says so, so agents force it to in-progress and back; document it.
 
 ## Dependencies
 

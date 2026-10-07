@@ -1,7 +1,7 @@
 ---
 type: feature
-status: draft
-updated: 2026-10-06
+status: designed
+updated: 2026-10-07
 tags: [dependency-links, adoption]
 ---
 # Cycle errors advise where back-references belong

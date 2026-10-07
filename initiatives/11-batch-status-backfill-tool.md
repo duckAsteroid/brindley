@@ -1,8 +1,8 @@
 ---
 type: feature
-status: draft
+status: designed
 tags: [status-recording, adoption]
-updated: 2026-10-06
+updated: 2026-10-07
 ---
 # batch_update tool
 

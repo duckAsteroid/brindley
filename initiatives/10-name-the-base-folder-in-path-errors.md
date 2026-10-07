@@ -1,7 +1,7 @@
 ---
 type: feature
-status: draft
-updated: 2026-10-06
+status: designed
+updated: 2026-10-07
 tags: [adoption]
 ---
 # Name the base folder in path errors
