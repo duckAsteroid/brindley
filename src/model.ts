@@ -132,6 +132,8 @@ export interface CollectionMeta {
   dimensions?: unknown;
   /** What the generated dependency graph shows, as written; read with `parseGraph` (graph.ts). */
   graph?: unknown;
+  /** README table columns, as written; read with `readmeColumns` (readme.ts). */
+  columns?: unknown;
 }
 
 export interface Collection {

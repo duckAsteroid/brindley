@@ -4,6 +4,7 @@ import type { Collection, Initiative, Root, Theme } from "./model.js";
 import { blockers, dependencyReport, displayRef, isActive, isReady, target } from "./deps.js";
 import { allInitiatives, declaredTags, initiativeKey, lookup, themeFor } from "./repo.js";
 import { DEFAULT_GRAPH, mermaidDirection, parseGraph, type GraphSettings } from "./graph.js";
+import { dimensionsOf, effectiveValue } from "./dimensions.js";
 
 export const BEGIN = "<!-- brindley:generated:begin — do not edit by hand; regenerate instead -->";
 export const END = "<!-- brindley:generated:end -->";
@@ -159,24 +160,97 @@ export function mermaid(root: Root, items: Initiative[], from: string, settings:
   return out.join("\n");
 }
 
+/** A README table column: its header and how a row's cell is written. */
+interface Column {
+  header: string;
+  cell: (i: Initiative) => string;
+}
+
+const TABLES = ["active", "completed"] as const;
+const DEFAULT_COLUMNS: Record<(typeof TABLES)[number], string[]> = {
+  active: ["number", "title", "type", "status", "ready", "questions", "owner"],
+  completed: ["number", "title", "type", "updated"],
+};
+
+/** Every column a collection's tables can show: the built-ins and its scoring dimensions. */
+function columnsFor(root: Root, c: Collection): Record<string, Column> {
+  const cols: Record<string, Column> = {
+    number: { header: "#", cell: (i) => String(i.number) },
+    title: { header: "Initiative", cell: (i) => link(i, c.path) },
+    type: { header: "Type", cell: (i) => esc(i.type ?? "—") },
+    status: {
+      header: "Status",
+      cell: (i) => (i.statusNote ? `${esc(statusLabel(i))}<br><sub>${esc(i.statusNote)}</sub>` : esc(statusLabel(i))),
+    },
+    ready: { header: "Ready / blocked by", cell: (i) => readiness(root, i) },
+    questions: { header: "Open Qs", cell: (i) => openQs(i) },
+    owner: { header: "Owner", cell: (i) => (i.owner ? `\`${esc(i.owner)}\`` : "—") },
+    tags: { header: "Tags", cell: (i) => (i.tags.length ? i.tags.map((t) => `\`${esc(t)}\``).join(", ") : "—") },
+    updated: { header: "Updated", cell: (i) => i.updated ?? "—" },
+  };
+  for (const d of dimensionsOf(c)) {
+    if (cols[d.name]) continue;
+    cols[d.name] = {
+      header: d.name.charAt(0).toUpperCase() + d.name.slice(1).replace(/_/g, " "),
+      cell: (i) => {
+        const e = effectiveValue(i, d);
+        return !e ? "—" : e.source === "default" ? `_${esc(String(e.value))}_` : esc(String(e.value));
+      },
+    };
+  }
+  return cols;
+}
+
+/**
+ * A collection README's `columns:` — an ordered list per table (`active`, `completed`) replacing
+ * that table's defaults — with anything unusable reported for `validate` and left out.
+ */
+export function readmeColumns(root: Root, c: Collection): { tables: Record<(typeof TABLES)[number], string[]>; problems: string[] } {
+  const tables = { active: [...DEFAULT_COLUMNS.active], completed: [...DEFAULT_COLUMNS.completed] };
+  const problems: string[] = [];
+  const raw = c.meta.columns;
+  if (raw === undefined || raw === null) return { tables, problems };
+  if (typeof raw !== "object" || Array.isArray(raw)) return { tables, problems: ["`columns` must map tables (active, completed) to lists of columns."] };
+  const known = columnsFor(root, c);
+  for (const [table, list] of Object.entries(raw as Record<string, unknown>)) {
+    if (!(TABLES as readonly string[]).includes(table)) {
+      problems.push(`Unknown table "${table}" under \`columns\` (tables: ${TABLES.join(", ")}).`);
+      continue;
+    }
+    if (!Array.isArray(list)) {
+      problems.push(`\`columns.${table}\` must be a list of columns.`);
+      continue;
+    }
+    const keys = list.map(String);
+    for (const k of keys) if (!known[k]) problems.push(`Unknown column "${k}" in \`columns.${table}\` (known: ${Object.keys(known).join(", ")}).`);
+    tables[table as (typeof TABLES)[number]] = keys.filter((k) => known[k]);
+  }
+  return { tables, problems };
+}
+
+/** A Markdown table of `items` with the given column keys. */
+function table(root: Root, c: Collection, keys: string[], items: Initiative[]): string[] {
+  const cols = columnsFor(root, c);
+  const use = keys.map((k) => cols[k]!).filter(Boolean);
+  return [
+    `| ${use.map((x) => x.header).join(" | ")} |`,
+    `|${use.map((x) => "-".repeat(x.header.length + 2)).join("|")}|`,
+    ...items.map((i) => `| ${use.map((x) => x.cell(i)).join(" | ")} |`),
+  ];
+}
+
 export function collectionBlock(root: Root, c: Collection): string {
   const out: string[] = [];
   const active = c.initiatives.filter(isActive);
   const done = c.initiatives.filter((i) => i.status === "done");
   const deferred = c.initiatives.filter((i) => i.status === "deferred");
   const closed = c.initiatives.filter((i) => i.status === "abandoned" || i.status === "superseded");
+  const columns = readmeColumns(root, c).tables;
 
   out.push("### Active", "");
   if (active.length === 0) out.push("_None._");
   else {
-    out.push("| # | Initiative | Type | Status | Ready / blocked by | Open Qs | Owner |");
-    out.push("|---|------------|------|--------|--------------------|---------|-------|");
-    for (const i of active) {
-      const status = i.statusNote ? `${esc(statusLabel(i))}<br><sub>${esc(i.statusNote)}</sub>` : esc(statusLabel(i));
-      out.push(
-        `| ${i.number} | ${link(i, c.path)} | ${esc(i.type ?? "—")} | ${status} | ${readiness(root, i)} | ${openQs(i)} | ${i.owner ? `\`${esc(i.owner)}\`` : "—"} |`,
-      );
-    }
+    out.push(...table(root, c, columns.active, active));
   }
   const settings = parseGraph(c.meta.graph, c.meta.statuses).settings;
   const graph = settings.enabled
@@ -190,8 +264,7 @@ export function collectionBlock(root: Root, c: Collection): string {
   out.push("", "### Completed", "");
   if (done.length === 0) out.push("_None._");
   else {
-    out.push("| # | Initiative | Type | Updated |", "|---|------------|------|---------|");
-    for (const i of done) out.push(`| ${i.number} | ${link(i, c.path)} | ${esc(i.type ?? "—")} | ${i.updated ?? "—"} |`);
+    out.push(...table(root, c, columns.completed, done));
   }
   if (closed.length > 0) {
     out.push("", "### Closed", "");

@@ -25,7 +25,6 @@ Planned work on Brindley itself: tools specified in MCP-SERVER.md but not yet bu
 | 15 | [Show in-progress work blocked on an open question](15-show-in-progress-work-blocked-on-an-open-question.md) | feature | draft | — | 2 | — |
 | 16 | [Resolve settled questions in bulk](16-resolve-settled-questions-in-bulk.md) | feature | draft | — | 1 | — |
 | 18 | [Work on the worktree the agent is implementing in](18-work-on-the-worktree-the-agent-is-implementing-in.md) | feature | designed | ✅ ready | 0 | — |
-| 20 | [Configurable columns in the generated README tables](20-sorted-and-filtered-views-in-the-generated-readme.md) | feature | designed | ✅ ready | 0 | — |
 | 21 | [Computed scores such as WSJF](21-computed-scores-such-as-wsjf.md) | feature | draft | — | 2 | — |
 | 24 | [Opt-in status folders that Brindley keeps in step](24-opt-in-status-folders-that-brindley-keeps-in-step.md) | feature | designed | ✅ ready | 0 | — |
 
@@ -37,11 +36,9 @@ flowchart RL
   n15["✏️ 15 Show in-progress work blocked on an open question"]
   n16["✏️ 16 Resolve settled questions in bulk"]
   n18["🟢 18 Work on the worktree the agent is implementing in"]
-  n20["🟢 20 Configurable columns in the generated README tables"]
   n21["✏️ 21 Computed scores such as WSJF"]
   n24["🟢 24 Opt-in status folders that Brindley keeps in step"]
   n19["✅ <s>19 Scoring dimensions on initiatives</s>"]
-  n20 --> n19
   n21 --> n19
 ```
 
@@ -67,6 +64,7 @@ flowchart RL
 | 14 | [README front-matter controls what the dependency graph shows](14-readme-front-matter-controls-what-the-dependency-graph-shows.md) | feature | 2026-10-07 |
 | 17 | [Record why an initiative was abandoned](17-record-why-an-initiative-was-abandoned.md) | feature | 2026-10-07 |
 | 19 | [Scoring dimensions on initiatives](19-rank-initiatives-by-scoring-dimensions.md) | feature | 2026-10-07 |
+| 20 | [Configurable columns in the generated README tables](20-sorted-and-filtered-views-in-the-generated-readme.md) | feature | 2026-10-07 |
 | 22 | [Release history and what's new on the docs site](22-release-history-and-what-s-new-on-the-docs-site.md) | docs | 2026-10-07 |
 | 23 | [Exclusions in docs globs](23-exclusions-in-docs-globs.md) | feature | 2026-10-07 |
 

@@ -1,7 +1,11 @@
 ---
 type: feature
-status: designed
+status: done
 updated: 2026-10-07
+docs_impact:
+  - FORMAT.md
+  - site/reference/front-matter.md
+  - site/reference/validation.md
 ---
 # Configurable columns in the generated README tables
 

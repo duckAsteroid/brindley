@@ -5,7 +5,7 @@ import { cycles, target } from "./deps.js";
 import { allInitiatives, declaredTags, elsewhereHint, findCollection, ignoreMatcher, initiativeKey, statusFromText, toPosix } from "./repo.js";
 import { stripCodeFences, withoutInlineCode } from "./markdown.js";
 import { FINDINGS, MEASURES, sectionIsBlank } from "./ops.js";
-import { regenerate } from "./readme.js";
+import { readmeColumns, regenerate } from "./readme.js";
 import { checkDocs } from "./docs.js";
 import { dimensionsOf, parseDimensions, sameValue } from "./dimensions.js";
 import { parseGraph } from "./graph.js";
@@ -50,6 +50,7 @@ export function validate(root: Root, opts: { collection?: string; docs?: boolean
       warn("nested-collection", rel(c.readme), "Collection is nested inside another collection's folder.");
     for (const p of parseDimensions(c.meta.dimensions).problems) err("dimension-declaration", rel(c.readme), p);
     for (const p of parseGraph(c.meta.graph, c.meta.statuses).problems) warn("graph-setting", rel(c.readme), p);
+    for (const p of readmeColumns(root, c).problems) warn("readme-columns", rel(c.readme), p);
     // Padding: every number at the width most files use, and room to grow.
     const width = collectionWidth(c);
     for (const i of c.initiatives) {

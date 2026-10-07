@@ -182,6 +182,7 @@ function collectionMeta(data: Record<string, unknown>, folder: string): Collecti
     ignore: data["ignore"] !== undefined ? strList(data["ignore"]) : undefined,
     dimensions: data["dimensions"],
     graph: data["graph"],
+    columns: data["columns"],
     aliases:
       data["aliases"] !== undefined || data["alias"] !== undefined
         ? [...strList(data["aliases"]), ...strList(data["alias"])]

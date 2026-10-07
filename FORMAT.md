@@ -582,6 +582,20 @@ Rules for the generated block:
 
    `status_note`, when present, is shown under the status.
 
+   A collection can choose the columns of its Active and Completed tables in its README — an
+   ordered list per table, replacing that table's defaults:
+
+   ```yaml
+   columns:
+     active: [number, title, status, ready, priority, risk, owner]
+     completed: [number, title, updated]
+   ```
+
+   Columns are `number`, `title`, `type`, `status`, `ready`, `questions`, `owner`, `tags`,
+   `updated`, and any of the collection's scoring dimensions (§4.3), whose value is shown — in
+   italics when it is the dimension's default — or `—`. Unknown names are validation warnings and
+   left out.
+
 2. **Dependency graph** (Mermaid) — see §8.3.
 
 3. **Completed** table — `done` initiatives (#, linked title, `updated`); then a short
@@ -738,6 +752,7 @@ Warnings:
 26. No status recorded (no front-matter `status`, not in a status folder), but the body states one in a
     `**Status:**` line or a `## Status` section that maps to a core status — record it.
 27. `status: abandoned` without a reason (`status_note`), unless the status comes from a status folder.
+28. A collection README's `columns:` with an unknown table or column, or a value that isn't a list.
 
 Broken-link warnings name the new location when the linked file has moved within the collection.
 
