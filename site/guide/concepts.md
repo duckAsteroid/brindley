@@ -80,6 +80,14 @@ Non-blocking links ("relates to", "informed by") go under `## Related`. An initi
 Undecided points are list items under `## Open questions`. A designed initiative has none left,
 except questions marked `(implementation)`, which are deliberately left to whoever builds it.
 
+## Scoring dimensions
+
+Initiatives can say how important, valuable or hard they are with fields like `priority: high` or
+`complexity: low`. Each takes a value from an ordered set — the first ranks first — and `list` can
+filter and order by them. Every collection has `priority`, `impact` and `complexity`; a README can
+declare its own, make one required, or give it a default. See
+[Scoring dimensions](/reference/front-matter#scoring-dimensions).
+
 ## Generated READMEs
 
 Each collection's README keeps its own introduction, plus a block Brindley regenerates on every

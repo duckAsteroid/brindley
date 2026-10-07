@@ -3,8 +3,6 @@ name: Docs site
 on:
   push:
     branches: [main]
-    # Release tags rebuild the site so the Releases page shows them (path filters don't apply to tags).
-    tags: ["v*"]
     paths: ["site/**", "scripts/changelog.mjs", ".github/workflows/pages.yml"]
   workflow_dispatch:
 

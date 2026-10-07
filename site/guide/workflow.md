@@ -21,7 +21,15 @@ Each decision is written into the initiative as it is made (by default under `##
 any section you name, such as `## Agreed direction`), and the question is removed. When none are
 left, mark it **designed**.
 
-## 2. Check it's ready
+## 2. Pick what's next
+
+> What's ready, highest priority first?
+
+`list` with `ready: true` and `order_by: [priority, complexity]` puts the most important, simplest
+work at the top; `where` narrows it (`{ priority: [critical, high] }`). See
+[Scoring dimensions](/reference/front-matter#scoring-dimensions).
+
+## 3. Check it's ready
 
 > Is sb#22 ready?
 
@@ -29,7 +37,7 @@ left, mark it **designed**.
 questions remain, that acceptance criteria exist, and that the file has no validation errors.
 The implement and spike briefs begin with the same check, and stop if it fails.
 
-## 3. Build it
+## 4. Build it
 
 > Implement sb#21.
 

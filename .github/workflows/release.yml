@@ -9,6 +9,7 @@ on:
 permissions:
   contents: write # create the GitHub Release
   id-token: write # npm trusted publishing + provenance
+  actions: write # start the docs-site build after a release
 
 jobs:
   publish:
@@ -61,5 +62,12 @@ jobs:
 
       - name: Create GitHub Release
         run: gh release create "$GITHUB_REF_NAME" --title "$GITHUB_REF_NAME" --notes-file release-notes.md --verify-tag
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+      # Rebuild the docs site so its Releases page shows this release. It runs on main: the
+      # github-pages environment only deploys from main, not from a tag.
+      - name: Rebuild the docs site
+        run: gh workflow run pages.yml --ref main
         env:
           GH_TOKEN: ${{ github.token }}
