@@ -28,7 +28,7 @@ accepts a name, an alias or a folder path.
 | `ready` | `collection?`, `type?` | What can be picked up now, prerequisites first. |
 | `check_ready` | `ref` | Whether one initiative is complete and ready to work on, check by check. |
 | `graph` | `collection?`, `ref?`, `tag?`, `include_done?`, and `related?`, `themes?`, `show?`, `external?`, `direction?`, `arrows?` to override the collection's [graph settings](/reference/front-matter#graph-settings) | Dependency graph as data and Mermaid. |
-| `questions` | `collection?`, `ref?`, `include_implementation?` | Unresolved open questions. |
+| `questions` | `collection?`, `ref?`, `include_implementation?` | Unresolved open questions — not those of abandoned or superseded work, unless asked for by `ref`. |
 | `next_question` | `ref`, `after?` | The next blocking question to discuss, and how many remain. |
 | `tags` | — | Every tag, with descriptions, counts and theme docs. |
 | `validate` | `collection?`, `rules?`, `docs?` | Problems with initiatives and collection structure. See [Validation rules](/reference/validation). |

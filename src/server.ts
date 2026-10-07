@@ -467,10 +467,15 @@ export function createServer(opts: ServerOptions): McpServer {
 
   tool(
     "questions",
-    "Unresolved open questions, grouped by initiative.",
+    "Unresolved open questions, grouped by initiative. Abandoned and superseded initiatives are left out — dropping the work settles them — unless asked for by `ref`.",
     { collection: z.string().optional(), ref: refArg.optional(), include_implementation: z.boolean().optional() },
     (root, a) => {
-      const items = a.ref !== undefined ? [resolveRef(root, a.ref, a.collection)] : allInitiatives(root).filter((i) => !a.collection || i.collection === canonicalCollection(root, a.collection));
+      const items =
+        a.ref !== undefined
+          ? [resolveRef(root, a.ref, a.collection)]
+          : allInitiatives(root).filter(
+              (i) => (!a.collection || i.collection === canonicalCollection(root, a.collection)) && i.status !== "abandoned" && i.status !== "superseded",
+            );
       return items
         .map((i) => ({
           ref: initiativeKey(i),

@@ -184,3 +184,23 @@ describe("use_worktree", () => {
     }
   });
 });
+
+describe("questions", () => {
+  it("leaves out abandoned and superseded work unless asked for by ref", async () => {
+    fx = fixture({
+      files: {
+        "plans/README.md": "---\nbrindley: 1\n---\n# Plans\n",
+        "plans/01-gates.md": "---\nstatus: draft\n---\n# Gates\n\n## Open questions\n\n- Steel or oak?\n",
+        "plans/02-cloud.md": "---\nstatus: abandoned\nstatus_note: Not needed\n---\n# Cloud\n\n## Open questions\n\n- Which renderer?\n",
+        "plans/03-old.md": "---\nstatus: superseded\nsuperseded_by: 1\n---\n# Old gates\n\n## Open questions\n\n- Hinges?\n",
+        "plans/04-later.md": "---\nstatus: deferred\n---\n# Later\n\n## Open questions\n\n- When?\n",
+      },
+    });
+    const client = await connect(fx.repo);
+    const res = json(await client.callTool({ name: "questions", arguments: {} }));
+    const all = res.result ?? res; // notes ride along when READMEs were regenerated
+    expect(all.map((x: { ref: string }) => x.ref)).toEqual(["plans#1", "plans#4"]);
+    const one = json(await client.callTool({ name: "questions", arguments: { ref: "plans#2" } }));
+    expect(one[0].questions[0].text).toBe("Which renderer?");
+  });
+});
