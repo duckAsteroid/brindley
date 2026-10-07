@@ -567,7 +567,7 @@ export function createServer(opts: ServerOptions): McpServer {
 
   tool(
     "set_dependencies",
-    "Add or remove dependency links. Dependencies are the links under an initiative's `## Dependencies` heading (blocking); `## Related` links are non-blocking. Adds a bullet with a relative link (and optional `why`); removes the bullet(s) linking to the target. Refuses unknown initiatives and cycles.",
+    "Add or remove dependency links. Dependencies are the links under an initiative's `## Dependencies` heading (blocking); `## Related` links are non-blocking. Adds a bullet with a relative link (and optional `why`); removes the bullet(s) linking to the target — bullets only: a link inside a paragraph is left in place and reported with its line, to edit by hand. Refuses unknown initiatives and cycles.",
     {
       ref: refArg,
       collection: z.string().optional(),

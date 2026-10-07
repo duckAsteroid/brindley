@@ -16,6 +16,7 @@ import {
   parseFrontMatter,
   parseQuestions,
   replaceLines,
+  sectionLinks,
   setH1,
   setSection,
   slugify,
@@ -525,6 +526,11 @@ function linkTo(root: Root, fromRel: string, fromCollection: string, ref: string
 }
 
 /** Does a link (as written in `i`) point at initiative `t` (or, for URLs, equal `url`)? */
+/** 1-based line in the file for a 0-based body line, counting the front-matter block. */
+function fileLine(i: Initiative, bodyLine: number): number {
+  return bodyLine + 1 + (i.fmText === null ? 0 : i.fmText.split("\n").length + 1);
+}
+
 function linkHits(i: Initiative, href: string, t: Initiative | null, url: string | null): boolean {
   if (url) return href === url;
   if (!t) return false;
@@ -554,8 +560,15 @@ export function setDependencies(
       const hits = items.filter((item) =>
         [...lines(body).slice(item.start, item.end).join("\n").matchAll(/\]\(\s*<?([^)\s>]+)/g)].some((m) => linkHits(i, m[1]!, t, url)),
       );
-      if (hits.length === 0) warnings.push(`${x} is not linked under "## ${section}".`);
       for (const item of [...hits].reverse()) body = replaceLines(body, item.start, item.end, []);
+      // Whatever still links to the target sits outside a bullet; say where, rather than "not linked".
+      const left = s ? sectionLinks(body, section).filter((l) => linkHits(i, l.href, t, url)) : [];
+      const name = t ? initiativeKey(t) : String(x);
+      for (const l of left)
+        warnings.push(
+          `${name} is linked in a paragraph under "## ${section}" (line ${fileLine(i, l.line)}), not a bullet, so it was not removed. Edit the text: delete the link, or move the sentence to ## Related or ## See also.`,
+        );
+      if (hits.length === 0 && left.length === 0) warnings.push(`${x} is not linked under "## ${section}".`);
       const after = findSection(body, section);
       // An emptied Dependencies says so; an emptied Related goes, as `create` omits it when empty.
       if (after && lines(body).slice(after.start, after.end).every((l) => l.trim() === ""))

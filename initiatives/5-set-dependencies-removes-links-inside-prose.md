@@ -1,8 +1,11 @@
 ---
 type: feature
-status: designed
+status: done
 updated: 2026-10-07
 tags: [dependency-links, text]
+docs_impact:
+  - MCP-SERVER.md
+  - site/reference/mcp.md
 ---
 # set_dependencies explains links it cannot remove
 

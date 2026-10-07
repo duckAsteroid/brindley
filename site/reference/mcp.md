@@ -41,7 +41,7 @@ README blocks — and reports every file it touched, ready to commit.
 | `set_status` | `ref`, `status`, `superseded_by?`, `force?` | Changes status within the lifecycle rules. Aliases like *parked* are accepted. |
 | `add_question` | `ref`, `text`, `implementation?` | Adds an open question; a blocking one sends a designed initiative back to draft. |
 | `resolve_question` | `ref`, `index` or `match`, `answer`, `record_in?`, `mode?` | Removes the question and records the decision (or ticks it, with `mode: tick`). |
-| `set_dependencies` | `ref`, `add?`, `remove?`, `related_add?`, `related_remove?`, `why?` | Adds or removes links under `## Dependencies` / `## Related`. Refuses cycles. |
+| `set_dependencies` | `ref`, `add?`, `remove?`, `related_add?`, `related_remove?`, `why?` | Adds or removes links under `## Dependencies` / `## Related`. Removes bullets only: a link in a paragraph stays, and the warning gives its line to edit by hand. Refuses cycles. |
 | `complete` | `ref`, `docs_impact` | Marks it done. `docs_impact` lists the project docs changed (paths from the repo root, not initiative files), or `none: <reason>` (spikes default to none). Reports what became ready. |
 | `regenerate_readmes` | `collection?`, `check?` | Rebuilds generated README blocks; `check` only reports stale ones. |
 

@@ -24,7 +24,6 @@ Planned work on Brindley itself: tools specified in MCP-SERVER.md but not yet bu
 | 1 | [migrate tool for numbered + completed/ collections](1-migrate-tool-for-numbered-completed-collections.md) | feature | designed | ⛔ 7, 13 | 0 | — |
 | 2 | [renumber tool for post-merge number collisions](2-renumber-tool-for-post-merge-number-collisions.md) | feature | designed | ✅ ready | 0 | — |
 | 3 | [rename_collection tool](3-rename-collection-tool.md) | feature | designed | ✅ ready | 0 | — |
-| 5 | [set_dependencies explains links it cannot remove](5-set-dependencies-removes-links-inside-prose.md) | feature | designed | ✅ ready | 0 | — |
 | 6 | [Record status without lifecycle checks](6-record-status-without-lifecycle-checks.md) | feature | designed | ✅ ready | 0 | — |
 | 7 | [Infer a missing status from the initiative's prose](7-infer-a-missing-status-from-the-initiative-s-prose.md) | feature | designed | ✅ ready | 0 | — |
 | 8 | [Fix mode for mechanical validate findings](8-fix-mode-for-mechanical-validate-findings.md) | feature | designed | ✅ ready | 0 | — |
@@ -48,7 +47,6 @@ flowchart RL
   n1["📐 1 migrate tool for numbered + completed/ collections"]
   n2["🟢 2 renumber tool for post-merge number collisions"]
   n3["🟢 3 rename_collection tool"]
-  n5["🟢 5 set_dependencies explains links it cannot remove"]
   n6["🟢 6 Record status without lifecycle checks"]
   n7["🟢 7 Infer a missing status from the initiative's prose"]
   n8["🟢 8 Fix mode for mechanical validate findings"]
@@ -78,6 +76,7 @@ flowchart RL
 | # | Initiative | Type | Updated |
 |---|------------|------|---------|
 | 4 | [Cycle errors advise where back-references belong](4-flag-reverse-direction-links-under-dependencies.md) | feature | 2026-10-07 |
+| 5 | [set_dependencies explains links it cannot remove](5-set-dependencies-removes-links-inside-prose.md) | feature | 2026-10-07 |
 | 14 | [README front-matter controls what the dependency graph shows](14-readme-front-matter-controls-what-the-dependency-graph-shows.md) | feature | 2026-10-07 |
 | 19 | [Scoring dimensions on initiatives](19-rank-initiatives-by-scoring-dimensions.md) | feature | 2026-10-07 |
 | 22 | [Release history and what's new on the docs site](22-release-history-and-what-s-new-on-the-docs-site.md) | docs | 2026-10-07 |

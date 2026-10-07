@@ -613,6 +613,40 @@ describe("dependencies from the ## Dependencies section", () => {
     expect(text()).toContain("LOCK-7");
   });
 
+  it("removes bullet links, and says where a paragraph link is instead of claiming it isn't linked", () => {
+    const paddles =
+      "---\nstatus: draft\n---\n# Paddles\n\n## Dependencies\n\n- [1 Gates](1-gates.md) — first\n\nNeeds the [sluice](3-sluice.md) to be rebuilt.\n\n## Related\n\nInformed by [gates](1-gates.md).\n";
+    fx = fixture({
+      files: {
+        "plans/README.md": "---\nbrindley: 1\n---\n# Plans\n",
+        "plans/1-gates.md": "---\nstatus: draft\n---\n# Gates\n",
+        "plans/2-paddles.md": paddles,
+        "plans/3-sluice.md": "---\nstatus: draft\n---\n# Sluice\n",
+        "plans/4-towpath.md": "---\nstatus: draft\n---\n# Towpath\n",
+      },
+    });
+    let root = fx.load();
+    // A bullet goes; nothing else to report.
+    let r = ops.setDependencies(root, resolveRef(root, "plans#2"), { remove: [1] });
+    expect(read("plans/2-paddles.md")).not.toContain("- [1 Gates]");
+    expect(r.warnings).toEqual([]);
+    // A paragraph link stays, and the warning says where (file line 10).
+    root = fx.load();
+    r = ops.setDependencies(root, resolveRef(root, "plans#2"), { remove: [3] });
+    expect(read("plans/2-paddles.md")).toContain("Needs the [sluice](3-sluice.md) to be rebuilt.");
+    expect(r.warnings).toEqual([
+      'plans#3 is linked in a paragraph under "## Dependencies" (line 10), not a bullet, so it was not removed. Edit the text: delete the link, or move the sentence to ## Related or ## See also.',
+    ]);
+    // The same under ## Related.
+    root = fx.load();
+    r = ops.setDependencies(root, resolveRef(root, "plans#2"), { related_remove: [1] });
+    expect(r.warnings[0]).toMatch(/^plans#1 is linked in a paragraph under "## Related" \(line 14\)/);
+    // Genuinely absent: "not linked", in both sections.
+    root = fx.load();
+    r = ops.setDependencies(root, resolveRef(root, "plans#2"), { remove: [4], related_remove: [4] });
+    expect(r.warnings).toEqual(['4 is not linked under "## Dependencies".', '4 is not linked under "## Related".']);
+  });
+
   it("create links dependencies and related initiatives in their sections", () => {
     fx = fixture({ files: lockExample });
     const r = ops.create(fx.load(), { collection: "sb", title: "Pairing", depends_on: [20], related: [22] });
