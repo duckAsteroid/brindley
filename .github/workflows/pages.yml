@@ -3,7 +3,9 @@ name: Docs site
 on:
   push:
     branches: [main]
-    paths: ["site/**", ".github/workflows/pages.yml"]
+    # Release tags rebuild the site so the Releases page shows them (path filters don't apply to tags).
+    tags: ["v*"]
+    paths: ["site/**", "scripts/changelog.mjs", ".github/workflows/pages.yml"]
   workflow_dispatch:
 
 permissions:
@@ -24,7 +26,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0 # lastUpdated timestamps come from git history
+          fetch-depth: 0 # lastUpdated timestamps and the Releases page come from git history
+      # checkout can leave annotated tags as plain ones; refetch them so tag messages (release highlights) are there.
+      - run: git fetch --force --tags origin
       - uses: actions/setup-node@v4
         with:
           node-version: 22

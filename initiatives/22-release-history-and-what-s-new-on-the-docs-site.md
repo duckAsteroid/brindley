@@ -1,7 +1,10 @@
 ---
 type: docs
-status: designed
+status: done
 updated: 2026-10-07
+docs_impact:
+  - README.md
+  - site/index.md
 ---
 # Release history and what's new on the docs site
 
@@ -20,6 +23,7 @@ There is no readable release history: GitHub Releases are created with `--genera
 - With a `!` exclusion in the collection's `docs:` globs (e.g. `"!site/releases.md"`), read with the same in-order, last-match-wins rules as `ignore:`. Exclusions are their own initiative, initiatives#23, which this depends on.
 - Each release shows optional hand-written highlights, then the generated details. The highlights come from the annotated tag's message (`git tag -a v1.2.0 -m "…"`), written once at release time and versioned with the release; a lightweight tag, or an empty message, shows just the details. "What's new" is the latest release's entry — highlights if any, then details — at the top of the Releases page, linked from the home page or nav.
 - Generated at site build time, never committed: a VitePress data loader reads the release tags, their messages and the commits between them. The Pages workflow (which already fetches full history, tags included) also runs on `v*` tag pushes, so each release rebuilds the site. One shared script (e.g. `scripts/changelog.mjs`) does the reading and formatting: the site's loader uses it for every release, and the release workflow runs it for the new tag and passes the result to `gh release create --notes-file` instead of `--generate-notes`, so each GitHub Release says the same as the site.
+- Implementation: `scripts/changelog.mjs` lists final `vX.Y.Z` tags only (pre-release tags such as `-rc.1` are skipped), takes highlights only from annotated tags, writes each entry with its scope in bold and a commit link, and ends each release with a compare link. Within a group, entries are newest first. Non-conventional commits are left out. The site's data loader (`site/releases.data.mts`) imports the script at run time rather than bundling it, because the script is also a runnable CLI with a shebang; it renders each release with VitePress's own Markdown renderer, so the page shows exactly the GitHub Release notes. Both workflows refetch tags after checkout, since checkout can leave an annotated tag as a plain one.
 
 ## Open questions
 

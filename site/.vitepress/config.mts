@@ -16,6 +16,7 @@ export default defineConfig({
     nav: [
       { text: "Guide", link: "/guide/getting-started" },
       { text: "Reference", link: "/reference/front-matter" },
+      { text: "Releases", link: "/releases" },
       { text: "Why Brindley?", link: "/story" },
     ],
     sidebar: [
@@ -43,6 +44,7 @@ export default defineConfig({
       {
         text: "More",
         items: [
+          { text: "Releases", link: "/releases" },
           { text: "Why Brindley?", link: "/story" },
           { text: "Format specification", link: "https://github.com/duckAsteroid/brindley/blob/main/FORMAT.md" },
           { text: "Server design", link: "https://github.com/duckAsteroid/brindley/blob/main/MCP-SERVER.md" },

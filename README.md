@@ -36,8 +36,11 @@ cd site && npm install && npm run dev   # the documentation site
 The version comes from git: the last `vX.Y.Z` tag, bumped by the Conventional Commits since it
 (`feat` → minor, `fix`/`perf` → patch, `!` → major), with `-SNAPSHOT` off-tag — the same rules as
 [gradle-versioning](https://github.com/duckAsteroid/gradle-versioning). Release by tagging —
-`git tag v1.0.0 && git push origin v1.0.0` — and the Release workflow tests, publishes to npm
-(with provenance) and creates a GitHub Release.
+`git tag -a v1.0.0 -m "<highlights>" && git push origin v1.0.0` — and the Release workflow tests,
+publishes to npm (with provenance) and creates a GitHub Release. Its notes, and the site's
+[Releases](https://duckasteroid.github.io/brindley/releases) page, come from
+`node scripts/changelog.mjs`: the annotated tag's message as highlights (optional — a plain tag
+gives none), then the `feat`, `fix`, `perf` and breaking commits since the previous release.
 
 Design documents: [FORMAT.md](FORMAT.md) (the file format) and [MCP-SERVER.md](MCP-SERVER.md)
 (the server). Documentation pages live in [`site/`](site/) and publish to GitHub Pages on push.

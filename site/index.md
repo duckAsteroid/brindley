@@ -18,6 +18,9 @@ hero:
     - theme: alt
       text: Why "Brindley"?
       link: /story
+    - theme: alt
+      text: What's new
+      link: /releases#whats-new
 
 features:
   - icon: 📄
