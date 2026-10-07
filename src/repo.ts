@@ -25,7 +25,7 @@ import {
   sectionLinks,
   splitFrontMatter,
 } from "./markdown.js";
-import { git } from "./git.js";
+import { git, otherWorktrees } from "./git.js";
 
 const SKIP_DIRS = new Set(["node_modules", ".git"]);
 
@@ -453,13 +453,25 @@ export function requireCollection(root: Root, nameOrPath: string): Collection {
     const known =
       root.collections.map((x) => (x.aliases.length ? `${x.name} (${x.aliases.join(", ")})` : x.name)).join(", ") ||
       "none — mark a folder with create_collection";
-    throw new BrindleyError(`No collection "${nameOrPath}". Known collections: ${known}.`);
+    const asPath = /[/\\]/.test(nameOrPath) ? ` No collection folder at ${toPosix(nameOrPath)} in ${root.repoRoot}.${elsewhereHint(root, `${toPosix(nameOrPath).replace(/\/+$/, "")}/README.md`)}` : "";
+    throw new BrindleyError(`No collection "${nameOrPath}". Known collections: ${known}.${asPath}`);
   }
   return c;
 }
 
 export function lookup(root: Root, collection: string, number: number): Initiative | undefined {
   return findCollection(root, collection)?.initiatives.find((i) => i.number === number);
+}
+
+/**
+ * " It exists in the worktree …" when another worktree of this repository has the repo-relative
+ * path — the surprising case, since the server works on one checkout. Empty otherwise.
+ */
+export function elsewhereHint(root: Root, relPath: string): string {
+  const found = otherWorktrees(root.repoRoot).filter((wt) => existsSync(join(wt, relPath)));
+  return found.length
+    ? ` It exists in the worktree ${found.join(", ")}: this server works on ${root.repoRoot}, so run it from the worktree you are changing.`
+    : "";
 }
 
 /**
@@ -491,7 +503,14 @@ export function resolveRef(root: Root, ref: string | number, collection?: string
   }
   const norm = toPosix(s).replace(/^\.?\//, "");
   const found = allInitiatives(root).find((i) => i.rel === norm || i.file === resolve(s));
-  if (!found) throw new BrindleyError(`No initiative matching "${s}".`);
+  if (!found) {
+    // A path: say where it was looked for.
+    if (/[/\\]|\.md$/i.test(s)) {
+      const rel = toPosix(relative(root.repoRoot, resolve(root.repoRoot, s)));
+      throw new BrindleyError(`No initiative at ${rel} in ${root.repoRoot}.${elsewhereHint(root, rel)}`);
+    }
+    throw new BrindleyError(`No initiative matching "${s}".`);
+  }
   return found;
 }
 

@@ -24,6 +24,7 @@ import {
 } from "./markdown.js";
 import {
   BrindleyError,
+  elsewhereHint,
   findCollection,
   initiativeKey,
   ignoreMatcher,
@@ -36,7 +37,7 @@ import {
   toPosix,
 } from "./repo.js";
 import { blockers, dependants, dependencyReport, isReady, wouldCycle } from "./deps.js";
-import { changedSinceHead, highestNumberElsewhere, otherWorktrees } from "./git.js";
+import { changedSinceHead, highestNumberElsewhere } from "./git.js";
 import { regenerate } from "./readme.js";
 import { checkDocs, docsGlobs, inCollection, isProjectDoc } from "./docs.js";
 import { dimensionsFor, sameValue, type DimensionValue } from "./dimensions.js";
@@ -74,10 +75,13 @@ function writeInitiative(i: Initiative, changes: Record<string, unknown>, body?:
 }
 
 /** Validate a repo-relative folder path for a collection. */
-function checkFolderPath(path: string): string {
+function checkFolderPath(root: Root, path: string): string {
   const p = toPosix(path).replace(/^\.\//, "").replace(/^\/+|\/+$/g, "");
   if (!p || p.split("/").some((seg) => seg === ".." || seg === "." || seg.startsWith(".")))
-    throw new BrindleyError(`Invalid collection folder "${path}" (use a path relative to the repo root).`);
+    throw new BrindleyError(`Invalid collection folder "${path}" (use a path relative to the repo root, ${root.repoRoot}).`);
+  // A folder that only another worktree has: creating it here would be in the wrong checkout.
+  if (!existsSync(join(root.repoRoot, p)) && elsewhereHint(root, p))
+    throw new BrindleyError(`${p} does not exist in ${root.repoRoot}.${elsewhereHint(root, p)}`);
   if (/^\d+-/.test(p.split("/").pop()!))
     throw new BrindleyError(`Collection folder names must not start with "<number>-" (reserved for asset directories): "${path}".`);
   return p;
@@ -153,7 +157,7 @@ function collectionFields(input: CollectionInput): Record<string, unknown> {
  * folder that already holds numbered initiative files.
  */
 function markCollection(root: Root, path: string, meta: CollectionInput): { path: string; name: string; readme: string } {
-  const p = checkFolderPath(path);
+  const p = checkFolderPath(root, path);
   const existing = root.collections.find((c) => c.path === p);
   if (existing) throw new BrindleyError(`${p} is already a collection ("${existing.name}").`);
   const name = meta.name ?? p.split("/").pop()!;
@@ -617,10 +621,7 @@ function docPath(root: Root, p: string): string {
 /** Says where the path was looked for, and whether another worktree has it (the server works on one). */
 function missingDocMessage(root: Root, p: string): string {
   if (p.startsWith("../")) return `docs_impact path ${p} is outside the repository at ${root.repoRoot}; give paths relative to its root.`;
-  const elsewhere = otherWorktrees(root.repoRoot).filter((wt) => existsSync(join(wt, p)));
-  const hint = elsewhere.length
-    ? ` It exists in the worktree ${elsewhere.join(", ")}: this server works on ${root.repoRoot}, so run it from the worktree you are changing.`
-    : " Give paths relative to the repository root.";
+  const hint = elsewhereHint(root, p) || " Give paths relative to the repository root.";
   return `docs_impact path does not exist in ${root.repoRoot}: ${p}.${hint}`;
 }
 

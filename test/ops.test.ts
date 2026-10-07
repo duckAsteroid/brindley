@@ -189,6 +189,34 @@ describe("complete", () => {
     expect(resolveRef(root, 23).docsImpact).toEqual(["services/locks/docs/LOCKS.md"]);
   });
 
+  it("names the checkout and the worktree that has a missing path", () => {
+    fx = fixture({
+      files: {
+        "plans/README.md": "---\nbrindley: 1\n---\n# Plans\n",
+        "plans/1-gates.md": "---\nstatus: draft\n---\n# Gates\n\nSee [paddles](2-paddles.md) and [the guide](../docs/guide.md).\n",
+      },
+    });
+    const wt = `${fx.repo}-wt`;
+    git(fx.repo, "worktree", "add", "-q", wt, "-b", "feature");
+    try {
+      write(wt, "plans/2-paddles.md", "---\nstatus: draft\n---\n# Paddles\n");
+      write(wt, "docs/guide.md", "# Guide\n");
+      write(wt, "lock-keepers/README.md", "# Lock keepers\n");
+      const root = fx.load();
+      const broken = validate(root).filter((f) => f.rule === "broken-link").map((f) => f.message);
+      // A sibling link needs no path; one that climbs out shows where it resolves. Both name the worktree.
+      expect(broken[0]).toMatch(/^Link target does not exist: 2-paddles\.md It exists in the worktree .*-wt: this server works on /);
+      expect(broken[1]).toMatch(/^Link target does not exist: \.\.\/docs\/guide\.md \(docs\/guide\.md\) It exists in the worktree .*-wt/);
+      expect(() => resolveRef(root, "plans/2-paddles.md")).toThrow(
+        new RegExp(`^No initiative at plans/2-paddles\\.md in ${fx.repo.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\. It exists in the worktree .*-wt`),
+      );
+      expect(() => ops.createCollection(root, "lock-keepers", {})).toThrow(/^lock-keepers does not exist in .*\. It exists in the worktree .*-wt/);
+      expect(() => resolveRef(root, "plans/9-nothing.md")).toThrow(/^No initiative at plans\/9-nothing\.md in [^.]*\.$/);
+    } finally {
+      rmSync(wt, { recursive: true, force: true });
+    }
+  });
+
   it("points at the worktree that has a doc path missing from this one", () => {
     fx = fixture({ files: lockExample });
     const wt = `${fx.repo}-wt`;
@@ -416,7 +444,7 @@ describe("status folders and aliases", () => {
     fx = fixture({ files: structure });
     const found = validate(fx.load());
     const msg = (rule: string, file: string) => found.find((f) => f.rule === rule && f.file.endsWith(file))?.message;
-    expect(msg("status-not-in-folder", "9-finished-but-here.md")).toMatch(/keeps done work in "completed\/" and this file is not in a status folder/);
+    expect(msg("status-not-in-folder", "9-finished-but-here.md")).toMatch(/keeps done work in "plans\/completed\/" and this file is directly in "plans\/"/);
     expect(msg("status-not-in-folder", "4-reopened.md")).toBeUndefined(); // draft has no status folder
     expect(msg("status-prose-mismatch", "3-done-thing.md")).toMatch(/body says "Proposed" \(draft\), but the status is done \(from "completed\/"\)/);
     expect(msg("broken-link", "2-spike.md")).toMatch(/it is now at completed\/3-done-thing\.md/);

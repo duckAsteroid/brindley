@@ -35,7 +35,7 @@
 | `status-folder-mismatch` | Front-matter says one status, the folder another. |
 | `status-not-in-folder` | The collection keeps this status in a folder (e.g. done in `completed/`), but this file is elsewhere. |
 | `status-prose-mismatch` | The body's "Status:" line disagrees with the actual status. |
-| `broken-link` | A link target doesn't exist — with where the file is now, if it moved. |
+| `broken-link` | A link target doesn't exist — with where the file is now, if it moved; the repo path a `../` link resolves to; and the worktree that has it, if another one does. |
 | `front-matter-dependencies` | `depends_on` / `related` in front-matter, which are ignored; use the sections. |
 | `number-padding` | A zero-padded number like `01-`. |
 | `orphan-assets` | An asset folder whose number matches no initiative. |
@@ -48,3 +48,10 @@
 | `nested-collection` | A collection inside another collection's folder. |
 
 With `docs: true`, project docs are linted too (see `check_docs`).
+
+## Paths and worktrees
+
+Brindley works on the git checkout it was started in. Errors about a path you give a tool (a
+reference by path, a collection folder, a `docs_impact` path) name that checkout. When another
+worktree of the repository has the missing file, the message says which one — usually the sign
+that the server was started in a different checkout from the one being changed.

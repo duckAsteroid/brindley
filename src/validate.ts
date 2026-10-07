@@ -2,7 +2,7 @@ import { existsSync, readdirSync, statSync } from "node:fs";
 import { dirname, join, relative, resolve } from "node:path";
 import { ASSET_DIR, COLLECTION_STATUSES, STATUSES, normaliseStatus, type Initiative, type Root } from "./model.js";
 import { cycles, target } from "./deps.js";
-import { allInitiatives, declaredTags, findCollection, ignoreMatcher, initiativeKey, toPosix } from "./repo.js";
+import { allInitiatives, declaredTags, elsewhereHint, findCollection, ignoreMatcher, initiativeKey, toPosix } from "./repo.js";
 import { stripCodeFences, withoutInlineCode } from "./markdown.js";
 import { FINDINGS, MEASURES, sectionIsBlank } from "./ops.js";
 import { regenerate } from "./readme.js";
@@ -167,7 +167,7 @@ function checkInitiative(
   if (collection && i.status) {
     const home = statusFolderFor(collection, i.status);
     if (home && i.folder !== home)
-      warn("status-not-in-folder", f, `Status ${i.status}, but this collection keeps ${i.status} work in "${home}/" and this file is ${i.folder ? `in "${i.folder}/"` : "not in a status folder"}.`);
+      warn("status-not-in-folder", f, `Status ${i.status}, but this collection keeps ${i.status} work in "${collection.path}/${home}/" and this file is ${i.folder ? `in "${collection.path}/${i.folder}/"` : `directly in "${collection.path}/"`}.`);
   }
   if (i.status && prose && prose !== i.status)
     warn("status-prose-mismatch", f, `The body says "${i.proseStatus}" (${prose}), but the status is ${i.status}${i.statusSource === "folder" ? ` (from "${i.folder}/")` : ""}.`);
@@ -222,11 +222,16 @@ function checkInitiative(
       const href = decodeURIComponent(m[1]!.split("#")[0]!);
       if (!href || /^[a-z]+:/i.test(href)) continue;
       const fmLines = i.fmText === null ? 0 : i.fmText.split("\n").length + 1;
-      if (!existsSync(resolve(dirname(i.file), href))) {
+      const abs = resolve(dirname(i.file), href);
+      if (!existsSync(abs)) {
         const base = href.split("/").pop()!;
         const moved = collection?.initiatives.find((o) => o.rel.split("/").pop() === base);
         const hint = moved ? ` — it is now at ${relative(dirname(i.file), moved.file).split("\\").join("/")}` : "";
-        warn("broken-link", f, `Link target does not exist: ${m[1]}${hint}`, line + 1 + fmLines);
+        // Where a relative link points, unless its text already says so; and another worktree that has it.
+        const repoRel = toPosix(relative(root.repoRoot, abs));
+        const where = repoRel.startsWith("../") ? " (outside the repository)" : href.includes("../") ? ` (${repoRel})` : "";
+        const elsewhere = repoRel.startsWith("../") ? "" : elsewhereHint(root, repoRel);
+        warn("broken-link", f, `Link target does not exist: ${m[1]}${where}${hint}${elsewhere}`, line + 1 + fmLines);
       }
     }
   }

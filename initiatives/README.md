@@ -27,7 +27,6 @@ Planned work on Brindley itself: tools specified in MCP-SERVER.md but not yet bu
 | 6 | [Record status without lifecycle checks](6-record-status-without-lifecycle-checks.md) | feature | designed | ✅ ready | 0 | — |
 | 7 | [Infer a missing status from the initiative's prose](7-infer-a-missing-status-from-the-initiative-s-prose.md) | feature | designed | ✅ ready | 0 | — |
 | 8 | [Fix mode for mechanical validate findings](8-fix-mode-for-mechanical-validate-findings.md) | feature | designed | ✅ ready | 0 | — |
-| 10 | [Name the base folder in path errors](10-name-the-base-folder-in-path-errors.md) | feature | designed | ✅ ready | 0 (+1 impl.) | — |
 | 11 | [batch_update tool](11-batch-status-backfill-tool.md) | feature | designed | ⛔ 6, 7 | 0 | — |
 | 12 | [Themes overview and tag cloud in the collection README](12-themes-overview-and-tag-cloud-in-the-collection-readme.md) | feature | draft | — | 3 | — |
 | 13 | [Consistent zero-padded numbering](13-consistent-zero-padded-numbering.md) | feature | designed | ✅ ready | 0 | — |
@@ -49,7 +48,6 @@ flowchart RL
   n6["🟢 6 Record status without lifecycle checks"]
   n7["🟢 7 Infer a missing status from the initiative's prose"]
   n8["🟢 8 Fix mode for mechanical validate findings"]
-  n10["🟢 10 Name the base folder in path errors"]
   n11["📐 11 batch_update tool"]
   n12["✏️ 12 Themes overview and tag cloud in the collection README"]
   n13["🟢 13 Consistent zero-padded numbering"]
@@ -76,6 +74,7 @@ flowchart RL
 | 4 | [Cycle errors advise where back-references belong](4-flag-reverse-direction-links-under-dependencies.md) | feature | 2026-10-07 |
 | 5 | [set_dependencies explains links it cannot remove](5-set-dependencies-removes-links-inside-prose.md) | feature | 2026-10-07 |
 | 9 | [Suggest a home for companion notes](9-suggest-an-ignore-pattern-for-companion-notes.md) | feature | 2026-10-07 |
+| 10 | [Name the base folder in path errors](10-name-the-base-folder-in-path-errors.md) | feature | 2026-10-07 |
 | 14 | [README front-matter controls what the dependency graph shows](14-readme-front-matter-controls-what-the-dependency-graph-shows.md) | feature | 2026-10-07 |
 | 19 | [Scoring dimensions on initiatives](19-rank-initiatives-by-scoring-dimensions.md) | feature | 2026-10-07 |
 | 22 | [Release history and what's new on the docs site](22-release-history-and-what-s-new-on-the-docs-site.md) | docs | 2026-10-07 |
