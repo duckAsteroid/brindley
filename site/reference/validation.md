@@ -29,6 +29,7 @@
 |------|---------|
 | `designed-open-questions` | Designed, but blocking questions remain. |
 | `dimension-missing` | A required scoring dimension has no value. |
+| `graph-setting` | A collection README's `graph:` has an unknown setting or a value it can't use. |
 | `open-questions` | In progress or done, with questions still open. |
 | `docs-impact` | Done, with no `docs_impact` recorded. |
 | `status-folder-mismatch` | Front-matter says one status, the folder another. |

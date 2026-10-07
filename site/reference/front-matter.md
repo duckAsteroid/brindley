@@ -70,7 +70,28 @@ dimensions:
 | `statuses` | This collection's own status words, mapped to core statuses. |
 | `ignore` | `.gitignore`-style patterns for numbered files that aren't initiatives. |
 | `dimensions` | This collection's [scoring dimensions](#scoring-dimensions). |
-| `graph` | What the README's dependency graph shows: `related: true` also draws `## Related` links (off by default). |
+| `graph` | What the README's dependency graph shows — see [Graph settings](#graph-settings). |
+
+## Graph settings
+
+The README's dependency graph has do-first work on the left, each edge pointing from an initiative
+to what it depends on, and only blocking dependencies drawn. A collection changes that under
+`graph:`:
+
+```yaml
+graph:
+  direction: left-to-right   # where the do-first work goes: left-to-right, right-to-left, top-to-bottom, bottom-to-top
+  arrows: from               # from: edges point at what an initiative needs; to: the reverse ("Y unblocks X")
+  related: true              # also draw ## Related links, dotted (default: false)
+  show: [done]               # also include initiatives in these statuses (default: none)
+  external: false            # leave out external dependencies and other collections' work (default: true)
+  themes: [box, icon]        # box: group by first theme; icon or label: mark each node's themes (default: off)
+  enabled: true              # false: no graph in this README (default: true)
+```
+
+A theme's icon comes from `icon:` in its [theme doc](#theme-doc); a theme without one shows as
+`[name]`. The settings also apply to the `graph` tool for this collection, which can override each
+one. Unknown settings and unusable values are `graph-setting` warnings.
 
 ## Scoring dimensions
 
@@ -95,7 +116,9 @@ with `update`'s `dimensions`; filter and order with `list`'s `where` and `order_
 ---
 theme: notifications
 summary: How captains hear about changes
+icon: 🔔
 ---
 ```
 
-Any non-numbered `.md` in a collection folder with `theme:` is that theme's overview.
+Any non-numbered `.md` in a collection folder with `theme:` is that theme's overview. Its optional
+`icon` marks the theme's initiatives in graphs that set `themes: icon`.

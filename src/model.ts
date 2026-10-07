@@ -130,13 +130,8 @@ export interface CollectionMeta {
   aliases?: string[];
   /** Scoring dimensions as declared in front-matter; read with `dimensionsOf` (dimensions.ts). */
   dimensions?: unknown;
-  /** What the generated dependency graph shows. */
-  graph?: GraphSettings;
-}
-
-export interface GraphSettings {
-  /** Draw `## Related` links as dotted edges (default: off — only blocking dependencies are drawn). */
-  related?: boolean;
+  /** What the generated dependency graph shows, as written; read with `parseGraph` (graph.ts). */
+  graph?: unknown;
 }
 
 export interface Collection {
@@ -166,6 +161,8 @@ export interface Theme {
   tag: string;
   title: string;
   summary?: string;
+  /** Shown for the theme in graphs (`graph: { themes: icon }`), from the doc's `icon:`. */
+  icon?: string;
   /** Absolute path. */
   file: string;
   /** Path relative to the repo root. */

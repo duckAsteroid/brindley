@@ -93,6 +93,7 @@ dimensions:                                 # scoring dimensions (§4.3)
   job_size: [1, 2, 3, 5, 8, 13]
 graph:                                      # what the generated dependency graph shows (§8.3)
   related: true                             # also draw ## Related links (default: off)
+  themes: [box, icon]                       # group and mark initiatives by theme (default: off)
 ---
 # LOCK-42 lock slot booking
 
@@ -248,6 +249,7 @@ usual.
 ---
 theme: freshness
 summary: Is this validation result still true, and how do I know cheaply?
+icon: 🕰️
 ---
 # Freshness and the validation report — orientation map
 ```
@@ -256,6 +258,7 @@ summary: Is this validation result still true, and how do I know cheaply?
   Tools keep a generated block in it listing every initiative tagged with the theme, across all
   collections, with status and readiness (§8).
 - Its `summary` (else its H1) becomes the tag's description; the doc declares the tag.
+- Its optional `icon` marks the theme's initiatives in dependency graphs that ask for it (§8.3).
 - Tools point to the doc wherever a tagged initiative is shown or handed to an agent.
 - At most one doc per theme (validation error otherwise).
 
@@ -581,25 +584,23 @@ GitHub renders ```` ```mermaid ```` blocks natively, so the graph is a plain fen
 
 ````markdown
 ```mermaid
-flowchart LR
+flowchart RL
   n19["✅ <s>19 Boat identity</s>"]
   n20["✅ <s>20 Slot calendar and read model</s>"]
   n21["🟢 21 Lock sensor CSV import"]
   n22["✏️ 22 Opening-hours change impact"]
   n23["📐 23 Passage recorded event"]
-  n44["✏️ 44 Timetable publication impact checks"]
   x1{{"🔗 lib:geo-coords"}}
-  n19 --> n21
-  n20 --> n21
-  x1 --> n21
-  n23 --> n22
-  n22 -.-> n44
+  n21 --> n19
+  n21 --> n20
+  n21 --> x1
+  n22 --> n23
 ```
 ````
 
-- Edges point **from prerequisite to dependant** (arrow = "unblocks"). Only dependencies are
-  drawn, as solid edges. `## Related` links are left out unless the collection README sets
-  `graph: { related: true }`; then they are drawn dotted, between initiatives already on the graph.
+- Each edge points **from an initiative to what it depends on** (`n22 --> n23`: 22 depends on 23),
+  and the do-first work is on the left: Mermaid places an edge's start before its end, so the graph
+  is drawn `flowchart RL`. Only dependencies are drawn, as solid edges.
 - Each node's label starts with an emoji for its derived state, and closed work is struck through:
 
   | Mark | State |
@@ -620,7 +621,22 @@ flowchart LR
   swamp the graph.
 - External dependencies are hexagon nodes; initiatives in other collections are labelled
   `<collection>#<n>`.
-- Graphs over ~40 nodes may be split into connected components, one block each.
+
+A collection README's `graph:` settings change what its graph shows; each defaults to the above.
+They apply to every graph drawn for the collection — its README and the `graph` tool — and not to
+other collections' graphs or the repo-wide overview, which use the defaults.
+
+| Setting | Values | Effect |
+|---------|--------|--------|
+| `direction` | `left-to-right` (default), `right-to-left`, `top-to-bottom`, `bottom-to-top` (or `LR`, `RL`, `TB`, `BT`) | Which side the do-first work is on. |
+| `arrows` | `from` (default), `to` | `from`: every edge points away from the initiative whose file holds the link, at what it needs. `to`: every edge points at that initiative ("Y unblocks X"). |
+| `related` | `true`, `false` (default) | Also draw `## Related` links, dotted, between initiatives already on the graph. |
+| `show` | list of statuses, default none | Also include every initiative in these statuses (core names or aliases), e.g. `[done]`. |
+| `external` | `true` (default), `false` | `false` leaves out external dependencies and other collections' initiatives, and their edges. |
+| `themes` | `box`, `icon`, `label`, `true`, or a list | `box` groups each initiative in a box for its first tag. `icon` puts each of its themes' icons (§4.2; `[name]` without one) before its title, with a legend under the graph. `label` — or `true` — puts the theme names after its title. `box` combines with `icon` or `label`; `icon` and `label` together mean `label`. |
+| `enabled` | `true` (default), `false` | `false` leaves the graph out of the README. |
+
+Unknown settings and unusable values are validation warnings (§10), and fall back to the default.
 
 ## 9. Agent instructions
 
@@ -694,6 +710,7 @@ Warnings:
 22. A status written in the body (`**Status:** …` or `## Status`) disagrees with the file's status.
 23. A zero-padded number (`01-…`).
 24. A required scoring dimension (§4.3) without a value.
+25. A collection README's `graph:` with an unknown setting or an unusable value (§8.3).
 
 Broken-link warnings name the new location when the linked file has moved within the collection.
 

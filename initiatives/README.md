@@ -33,7 +33,6 @@ Planned work on Brindley itself: tools specified in MCP-SERVER.md but not yet bu
 | 11 | [batch_update tool](11-batch-status-backfill-tool.md) | feature | designed | ⛔ 6, 7 | 0 | — |
 | 12 | [Themes overview and tag cloud in the collection README](12-themes-overview-and-tag-cloud-in-the-collection-readme.md) | feature | draft | — | 3 | — |
 | 13 | [Consistent zero-padded numbering](13-consistent-zero-padded-numbering.md) | feature | designed | ✅ ready | 0 | — |
-| 14 | [README front-matter controls what the dependency graph shows](14-readme-front-matter-controls-what-the-dependency-graph-shows.md) | feature | draft | — | 1 | — |
 | 15 | [Show in-progress work blocked on an open question](15-show-in-progress-work-blocked-on-an-open-question.md) | feature | draft | — | 2 | — |
 | 16 | [Resolve settled questions in bulk](16-resolve-settled-questions-in-bulk.md) | feature | draft | — | 1 | — |
 | 17 | [Record why an initiative was abandoned](17-record-why-an-initiative-was-abandoned.md) | feature | draft | — | 2 | — |
@@ -45,7 +44,7 @@ Planned work on Brindley itself: tools specified in MCP-SERVER.md but not yet bu
 ### Dependencies
 
 ```mermaid
-flowchart LR
+flowchart RL
   n1["📐 1 migrate tool for numbered + completed/ collections"]
   n2["🟢 2 renumber tool for post-merge number collisions"]
   n3["🟢 3 rename_collection tool"]
@@ -59,7 +58,6 @@ flowchart LR
   n11["📐 11 batch_update tool"]
   n12["✏️ 12 Themes overview and tag cloud in the collection README"]
   n13["🟢 13 Consistent zero-padded numbering"]
-  n14["✏️ 14 README front-matter controls what the dependency graph shows"]
   n15["✏️ 15 Show in-progress work blocked on an open question"]
   n16["✏️ 16 Resolve settled questions in bulk"]
   n17["✏️ 17 Record why an initiative was abandoned"]
@@ -68,18 +66,19 @@ flowchart LR
   n21["✏️ 21 Computed scores such as WSJF"]
   n24["✏️ 24 Opt-in status folders that Brindley keeps in step"]
   n19["✅ <s>19 Scoring dimensions on initiatives</s>"]
-  n7 --> n1
-  n13 --> n1
-  n6 --> n11
-  n7 --> n11
-  n19 --> n20
-  n19 --> n21
+  n1 --> n7
+  n1 --> n13
+  n11 --> n6
+  n11 --> n7
+  n20 --> n19
+  n21 --> n19
 ```
 
 ### Completed
 
 | # | Initiative | Type | Updated |
 |---|------------|------|---------|
+| 14 | [README front-matter controls what the dependency graph shows](14-readme-front-matter-controls-what-the-dependency-graph-shows.md) | feature | 2026-10-07 |
 | 19 | [Scoring dimensions on initiatives](19-rank-initiatives-by-scoring-dimensions.md) | feature | 2026-10-07 |
 | 22 | [Release history and what's new on the docs site](22-release-history-and-what-s-new-on-the-docs-site.md) | docs | 2026-10-07 |
 | 23 | [Exclusions in docs globs](23-exclusions-in-docs-globs.md) | feature | 2026-10-07 |

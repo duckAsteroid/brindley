@@ -21,6 +21,7 @@ import { mergeInProgress } from "./git.js";
 import { validate } from "./validate.js";
 import { checkDocs } from "./docs.js";
 import { dimensionReport, filterByDimensions, orderByDimensions } from "./dimensions.js";
+import { graphSettings } from "./graph.js";
 import * as ops from "./ops.js";
 import { MEASURES, sectionIsBlank } from "./ops.js";
 import { COMMIT, VERSION } from "./version.js";
@@ -366,11 +367,16 @@ export function createServer(opts: ServerOptions): McpServer {
       ref: refArg.optional(),
       tag: z.string().optional(),
       include_done: z.boolean().optional(),
-      related: z.boolean().optional().describe("Draw ## Related links as dotted edges. Default: the collection README's `graph.related`, else off."),
+      related: z.boolean().optional().describe("Draw ## Related links as dotted edges."),
+      themes: z.union([z.boolean(), z.string(), z.array(z.string())]).optional().describe('Show themes: "box", "icon", "label" (or true), or a list such as ["box", "icon"].'),
+      show: z.array(z.string()).optional().describe("Statuses to include as nodes beyond active work, e.g. [\"done\"]."),
+      external: z.boolean().optional().describe("false leaves out external dependencies and other collections' initiatives."),
+      direction: z.string().optional().describe("Where the do-first work goes: left-to-right, right-to-left, top-to-bottom, bottom-to-top."),
+      arrows: z.enum(["from", "to"]).optional().describe("from: edges point at what an initiative needs (X depends on Y → X --> Y); to: the reverse."),
     },
     (root, a) => {
       let items: Initiative[];
-      let from = a.collection ?? "";
+      let from = canonicalCollection(root, a.collection) ?? "";
       if (a.ref !== undefined) {
         const i = resolveRef(root, a.ref, a.collection);
         from = i.collection;
@@ -379,14 +385,21 @@ export function createServer(opts: ServerOptions): McpServer {
       } else if (a.tag) {
         items = allInitiatives(root).filter((i) => i.tags.includes(a.tag!));
       } else {
-        items = a.collection ? (findCollection(root, a.collection)?.initiatives ?? []) : allInitiatives(root);
+        items = a.collection ? (findCollection(root, from)?.initiatives ?? []) : allInitiatives(root);
       }
-      if (!a.include_done && a.ref === undefined) items = items.filter(isActive);
+      // The settings of the collection being drawn (a tag graph spans collections: defaults), with this call's overrides.
+      const own = a.tag && a.ref === undefined ? undefined : findCollection(root, from);
+      const settings = graphSettings(
+        own?.meta.graph,
+        { related: a.related, themes: a.themes, show: a.show, external: a.external, direction: a.direction, arrows: a.arrows },
+        own?.meta.statuses,
+      );
+      if (!a.include_done && a.ref === undefined) items = items.filter((i) => isActive(i) || settings.show.includes(i.status ?? ""));
       const unique = [...new Map(items.map((i) => [initiativeKey(i), i])).values()];
       return {
         nodes: unique.map((i) => ({ ref: initiativeKey(i), title: i.title, status: i.status, ready: isReady(root, i) })),
         edges: unique.flatMap((i) => i.dependsOn.map((r) => ({ from: r.kind === "initiative" ? `${r.collection}#${r.number}` : r.raw, to: initiativeKey(i) }))),
-        mermaid: mermaid(root, unique, from, { related: a.related ?? findCollection(root, from)?.meta.graph?.related === true }),
+        mermaid: mermaid(root, unique, from, settings),
       };
     },
     { readOnlyHint: true },

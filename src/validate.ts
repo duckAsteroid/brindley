@@ -8,6 +8,7 @@ import { FINDINGS, MEASURES, sectionIsBlank } from "./ops.js";
 import { regenerate } from "./readme.js";
 import { checkDocs } from "./docs.js";
 import { dimensionsOf, parseDimensions, sameValue } from "./dimensions.js";
+import { parseGraph } from "./graph.js";
 
 export interface Finding {
   level: "error" | "warning";
@@ -47,6 +48,7 @@ export function validate(root: Root, opts: { collection?: string; docs?: boolean
     if (root.collections.some((o) => o !== c && o.path !== "." && c.path.startsWith(o.path + "/") && c.initiatives.length && o.initiatives.length))
       warn("nested-collection", rel(c.readme), "Collection is nested inside another collection's folder.");
     for (const p of parseDimensions(c.meta.dimensions).problems) err("dimension-declaration", rel(c.readme), p);
+    for (const p of parseGraph(c.meta.graph, c.meta.statuses).problems) warn("graph-setting", rel(c.readme), p);
   }
 
   const themeOwners = new Map<string, string>();

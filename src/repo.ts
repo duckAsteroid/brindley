@@ -166,12 +166,6 @@ function tagMap(raw: unknown): Record<string, string> | undefined {
   return undefined;
 }
 
-function graphSettings(raw: unknown): CollectionMeta["graph"] {
-  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return undefined;
-  const g = raw as Record<string, unknown>;
-  return { ...(typeof g["related"] === "boolean" ? { related: g["related"] } : {}) };
-}
-
 function collectionMeta(data: Record<string, unknown>, folder: string): CollectionMeta {
   return {
     title: str(data["title"]) ?? humanise(folder),
@@ -186,7 +180,7 @@ function collectionMeta(data: Record<string, unknown>, folder: string): Collecti
     statuses: tagMap(data["statuses"]),
     ignore: data["ignore"] !== undefined ? strList(data["ignore"]) : undefined,
     dimensions: data["dimensions"],
-    graph: graphSettings(data["graph"]),
+    graph: data["graph"],
     aliases:
       data["aliases"] !== undefined || data["alias"] !== undefined
         ? [...strList(data["aliases"]), ...strList(data["alias"])]
@@ -391,6 +385,7 @@ export function findThemes(repoRoot: string, c: Collection): Theme[] {
         tag,
         title: h1(body) ?? e.replace(/\.md$/, ""),
         summary: str(data["summary"]),
+        ...(str(data["icon"]) ? { icon: str(data["icon"]) } : {}),
         file,
         rel: toPosix(relative(repoRoot, file)),
         collection: c.name,

@@ -254,7 +254,8 @@ describe("READMEs", () => {
     expect(readme).not.toContain("classDef");
     expect(readme).toContain('n19["✅ <s>19 Boat identity</s>"]'); // done, shown because 21 depends on it
     expect(readme).toMatch(/x1\{\{"🔗 [^"]*geo-coords"\}\}/);
-    expect(readme).toContain("n23 --> n22");
+    expect(readme).toContain("n22 --> n23"); // 22 depends on 23
+    expect(readme).toContain("flowchart RL"); // do-first work on the left
     expect(regenerate(fx.load())).toEqual([]); // second run: no diff
     const overview = rootBlock(fx.load());
     expect(overview).toContain("#### `notifications`");
@@ -271,12 +272,12 @@ describe("READMEs", () => {
     });
     fx = fixture({ files: files("") });
     regenerate(fx.load());
-    expect(read("plans/README.md")).toContain("n1 --> n2");
+    expect(read("plans/README.md")).toContain("n2 --> n1");
     expect(read("plans/README.md")).not.toContain("-.->");
     fx.cleanup();
     fx = fixture({ files: files("graph:\n  related: true\n") });
     regenerate(fx.load());
-    expect(read("plans/README.md")).toContain("n3 -.-> n2");
+    expect(read("plans/README.md")).toContain("n2 -.-> n3");
   });
 
   it("replaces a conflicted generated block outright", () => {

@@ -3,6 +3,7 @@ import { posix } from "node:path";
 import type { Collection, Initiative, Root, Theme } from "./model.js";
 import { blockers, dependencyReport, displayRef, isActive, isReady, target } from "./deps.js";
 import { allInitiatives, declaredTags, initiativeKey, lookup, themeFor } from "./repo.js";
+import { DEFAULT_GRAPH, mermaidDirection, parseGraph, type GraphSettings } from "./graph.js";
 
 export const BEGIN = "<!-- brindley:generated:begin — do not edit by hand; regenerate instead -->";
 export const END = "<!-- brindley:generated:end -->";
@@ -58,65 +59,104 @@ function nodeId(i: Initiative, from: string): string {
 }
 
 /**
- * A node's label: an emoji for its derived state, struck through once it is closed. No colours,
- * so the graph follows the viewer's Mermaid theme (light or dark).
+ * A node's label: an emoji for its derived state, struck through once it is closed, with optional
+ * theme marks (`icons` before the title, `names` after it). No colours, so the graph follows the
+ * viewer's Mermaid theme (light or dark).
  */
-function nodeLabel(root: Root, i: Initiative, text: string): string {
-  const t = text.replace(/</g, "#lt;").replace(/>/g, "#gt;");
-  const struck = (mark: string) => `${mark} <s>${t}</s>`;
+function nodeLabel(root: Root, i: Initiative, text: string, marks: { icons?: string; names?: string } = {}): string {
+  const esc = (x: string) => x.replace(/</g, "#lt;").replace(/>/g, "#gt;");
+  const t = esc(text);
+  const pre = marks.icons ? `${esc(marks.icons)} ` : "";
+  const post = marks.names ? ` · ${esc(marks.names)}` : "";
+  const plain = (mark: string) => `${mark} ${pre}${t}${post}`;
+  const struck = (mark: string) => `${mark} ${pre}<s>${t}</s>${post}`;
   if (i.status === "done") return struck("✅");
   if (i.status === "abandoned") return struck("🪦");
   if (i.status === "superseded") return struck("↪️");
-  if (i.status === "deferred") return `⏸️ ${t}`;
-  if (i.status === "in-progress") return `🚧 ${t}`;
-  if (isReady(root, i)) return `🟢 ${t}`;
-  if (i.status === "designed") return `📐 ${t}`;
-  return `✏️ ${t}`;
+  if (i.status === "deferred") return plain("⏸️");
+  if (i.status === "in-progress") return plain("🚧");
+  if (isReady(root, i)) return plain("🟢");
+  if (i.status === "designed") return plain("📐");
+  return plain("✏️");
+}
+
+/** A theme's mark in `icon` mode: its theme doc's icon, else its name in brackets. */
+function themeIcon(root: Root, tag: string): string {
+  return themeFor(root, tag)?.icon ?? `[${tag}]`;
 }
 
 /**
- * Mermaid graph of the given active initiatives plus whatever they depend on. `## Related` links are
- * drawn (dotted) only when `related` is set.
+ * Mermaid graph of the given initiatives plus whatever they depend on, shaped by `settings`
+ * (a collection README's `graph:`): do-first work on the `direction` side, edges pointing per
+ * `arrows`, `## Related` links only when `related`, outside nodes only when `external`, and theme
+ * boxes or marks per `themes`. In `icon` mode a legend line follows the block.
  */
-export function mermaid(root: Root, active: Initiative[], from: string, opts: { related?: boolean } = {}): string | null {
-  if (active.length === 0) return null;
-  const nodes = new Map<string, string>();
+export function mermaid(root: Root, items: Initiative[], from: string, settings: GraphSettings = DEFAULT_GRAPH): string | null {
+  const outside = (i: Initiative) => !settings.external && from !== "" && i.collection !== from;
+  const shown = items.filter((i) => !outside(i));
+  if (shown.length === 0) return null;
+  const nodes = new Map<string, Initiative>();
+  const lines = new Map<string, string>();
   const edges: string[] = [];
   const externals = new Map<string, string>();
+  const icons = new Set<string>();
   const addNode = (i: Initiative) => {
     const id = nodeId(i, from);
     if (nodes.has(id)) return id;
     const prefix = i.collection === from ? `${i.number}` : `${i.collection}#${i.number}`;
-    nodes.set(id, `  ${id}["${nodeLabel(root, i, label(`${prefix} ${titleOf(i)}`))}"]`);
+    const marks: { icons?: string; names?: string } = {};
+    if (settings.mark === "icon" && i.tags.length) {
+      marks.icons = i.tags.map((t) => themeIcon(root, t)).join("");
+      for (const t of i.tags) if (themeFor(root, t)?.icon) icons.add(t);
+    } else if (settings.mark === "label" && i.tags.length) marks.names = i.tags.join(", ");
+    nodes.set(id, i);
+    lines.set(id, `  ${id}["${nodeLabel(root, i, label(`${prefix} ${titleOf(i)}`), marks)}"]`);
     return id;
   };
-  const sorted = [...active].sort((a, b) => a.collection.localeCompare(b.collection) || a.number - b.number);
+  // An edge between the initiative whose file holds the link and the thing it links to.
+  const edge = (holder: string, other: string, style: "-->" | "-.->") =>
+    edges.push(settings.arrows === "from" ? `  ${holder} ${style} ${other}` : `  ${other} ${style} ${holder}`);
+  const sorted = [...shown].sort((a, b) => a.collection.localeCompare(b.collection) || a.number - b.number);
   for (const i of sorted) addNode(i);
   for (const i of sorted) {
-    const to = nodeId(i, from);
+    const id = nodeId(i, from);
     for (const r of i.dependsOn) {
       if (r.kind === "external") {
-        let id = externals.get(r.raw);
-        if (!id) {
-          id = `x${externals.size + 1}`;
-          externals.set(r.raw, id);
+        if (!settings.external) continue;
+        let x = externals.get(r.raw);
+        if (!x) {
+          x = `x${externals.size + 1}`;
+          externals.set(r.raw, x);
         }
-        edges.push(`  ${id} --> ${to}`);
+        edge(id, x, "-->");
         continue;
       }
       const t = target(root, r);
-      if (!t) continue;
-      edges.push(`  ${addNode(t)} --> ${to}`);
+      if (!t || outside(t)) continue;
+      edge(id, addNode(t), "-->");
     }
-    for (const r of opts.related ? i.related : []) {
+    for (const r of settings.related ? i.related : []) {
       if (r.kind !== "initiative") continue;
       const t = target(root, r);
       if (!t || !nodes.has(nodeId(t, from))) continue;
-      edges.push(`  ${nodeId(t, from)} -.-> ${to}`);
+      edge(id, nodeId(t, from), "-.->");
     }
   }
-  const ext = [...externals.entries()].map(([raw, id]) => `  ${id}{{"🔗 ${label(raw)}"}}`);
-  return ["```mermaid", "flowchart LR", ...nodes.values(), ...ext, ...edges, "```"].join("\n");
+  const out = ["```mermaid", `flowchart ${mermaidDirection(settings)}`];
+  if (settings.box) {
+    // A node can sit in one box only: its first theme's. The marks still show every theme.
+    const boxes = new Map<string, string[]>();
+    for (const [id, i] of nodes) if (i.tags.length) boxes.set(i.tags[0]!, [...(boxes.get(i.tags[0]!) ?? []), id]);
+    for (const [id] of nodes) if (!nodes.get(id)!.tags.length) out.push(lines.get(id)!);
+    for (const tag of [...boxes.keys()].sort()) {
+      out.push(`  subgraph t_${tag.replace(/[^A-Za-z0-9]/g, "_")}["${label(tag)}"]`);
+      for (const id of boxes.get(tag)!) out.push(`  ${lines.get(id)!}`);
+      out.push("  end");
+    }
+  } else out.push(...lines.values());
+  out.push(...[...externals.entries()].map(([raw, id]) => `  ${id}{{"🔗 ${label(raw)}"}}`), ...edges, "```");
+  if (icons.size) out.push("", `Themes: ${[...icons].sort().map((t) => `${themeFor(root, t)!.icon} ${t}`).join(" · ")}`);
+  return out.join("\n");
 }
 
 export function collectionBlock(root: Root, c: Collection): string {
@@ -138,7 +178,10 @@ export function collectionBlock(root: Root, c: Collection): string {
       );
     }
   }
-  const graph = mermaid(root, active, c.name, { related: c.meta.graph?.related === true });
+  const settings = parseGraph(c.meta.graph, c.meta.statuses).settings;
+  const graph = settings.enabled
+    ? mermaid(root, [...active, ...c.initiatives.filter((i) => !isActive(i) && settings.show.includes(i.status ?? ""))], c.name, settings)
+    : null;
   if (graph) out.push("", "### Dependencies", "", graph);
   if (deferred.length > 0) {
     out.push("", "### Deferred", "");
@@ -178,14 +221,15 @@ export function rootBlock(root: Root, fromDir = "."): string {
     }
   }
 
-  // Cross-collection dependency edges, collapsed to collection level.
+  // Cross-collection dependency edges, collapsed to collection level, drawn with the default graph
+  // settings (no collection owns this graph): each edge points from a collection to one it depends on.
   const edges = new Map<string, string[]>();
   for (const i of allInitiatives(root).filter(isActive)) {
     for (const r of i.dependsOn) {
       if (r.kind !== "initiative" || r.collection === i.collection) continue;
       if (!lookup(root, r.collection, r.number)) continue;
-      const key = `${r.collection}\u0000${i.collection}`;
-      edges.set(key, [...(edges.get(key) ?? []), `${r.number}→${i.number}`]);
+      const key = `${i.collection}\u0000${r.collection}`;
+      edges.set(key, [...(edges.get(key) ?? []), `${i.number}→${r.number}`]);
     }
   }
   if (edges.size > 0) {
@@ -199,7 +243,7 @@ export function rootBlock(root: Root, fromDir = "."): string {
       lines.push(`  ${id(from)} -->|"${v.sort().join(", ")}"| ${id(to)}`);
     }
     const nodes = [...used].sort().map((p) => `  ${id(p)}["${label(p)}"]`);
-    out.push("", "### Cross-collection dependencies", "", "```mermaid", "flowchart LR", ...nodes, ...lines, "```");
+    out.push("", "### Cross-collection dependencies", "", "```mermaid", `flowchart ${mermaidDirection(DEFAULT_GRAPH)}`, ...nodes, ...lines, "```");
   }
 
   const tagNames = new Set<string>(allInitiatives(root).flatMap((i) => i.tags));

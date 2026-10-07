@@ -27,6 +27,7 @@ front-matter names the tag:
 ---
 theme: notifications
 summary: How captains hear about changes
+icon: 🔔
 ---
 # Notifications — orientation map
 ```
@@ -40,3 +41,15 @@ Brindley then:
 
 Ask *"show me everything in the notifications theme"* to get the overview plus every member as
 one document.
+
+## Themes in the dependency graph
+
+A collection can show themes in its README graph with `graph: { themes: … }`:
+
+- `icon` — each initiative's theme icons (the doc's `icon:`, or `[name]` without one) before its
+  title, with a legend under the graph;
+- `label` — the theme names after its title;
+- `box` — initiatives grouped in a box for their first theme; combine it with `icon` or `label`
+  (`themes: [box, icon]`) so initiatives with several themes still show them all.
+
+See [Graph settings](/reference/front-matter#graph-settings).
