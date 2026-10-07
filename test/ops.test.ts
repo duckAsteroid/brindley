@@ -248,7 +248,10 @@ describe("READMEs", () => {
     expect(readme).toContain("Captains book slots to take boats up or down through the lock.");
     expect(readme).toContain("| 21 | [Lock sensor CSV import](21-lock-sensor-import.md) | feature | designed | ✅ ready · ext: [example.com/…/geo-coords](https://example.com/libs/geo-coords) |");
     expect(readme).toContain("```mermaid");
-    expect(readme).toContain('n23["23 Passage recorded event"]:::ready');
+    expect(readme).toContain('n23["🟢 23 Passage recorded event"]');
+    expect(readme).not.toContain("classDef");
+    expect(readme).toContain('n19["✅ <s>19 Boat identity</s>"]'); // done, shown because 21 depends on it
+    expect(readme).toMatch(/x1\{\{"🔗 [^"]*geo-coords"\}\}/);
     expect(readme).toContain("n23 --> n22");
     expect(regenerate(fx.load())).toEqual([]); // second run: no diff
     const overview = rootBlock(fx.load());

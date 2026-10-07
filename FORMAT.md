@@ -531,33 +531,41 @@ GitHub renders ```` ```mermaid ```` blocks natively, so the graph is a plain fen
 ````markdown
 ```mermaid
 flowchart LR
-  n19["19 Boat identity"]:::done
-  n20["20 Slot calendar and read model"]:::done
-  n21["21 Lock sensor CSV import"]:::ready
-  n22["22 Opening-hours change impact"]:::draft
-  n23["23 Passage recorded event"]:::designed
-  n44["44 Timetable publication impact checks"]:::draft
-  x1{{"lib:geo-coords"}}:::external
+  n19["✅ <s>19 Boat identity</s>"]
+  n20["✅ <s>20 Slot calendar and read model</s>"]
+  n21["🟢 21 Lock sensor CSV import"]
+  n22["✏️ 22 Opening-hours change impact"]
+  n23["📐 23 Passage recorded event"]
+  n44["✏️ 44 Timetable publication impact checks"]
+  x1{{"🔗 lib:geo-coords"}}
   n19 --> n21
   n20 --> n21
   x1 --> n21
   n23 --> n22
   n22 -.-> n44
-  classDef done fill:#e6e6e6,color:#777,stroke:#bbb
-  classDef draft fill:#fff,stroke:#999,stroke-dasharray:4 3
-  classDef designed fill:#e8f0fe,stroke:#4a7bd0
-  classDef ready fill:#d9f2e3,stroke:#2e8b57,stroke-width:2px
-  classDef inprogress fill:#fff4d6,stroke:#d49a00,stroke-width:2px
-  classDef external fill:#fafafa,stroke:#999
 ```
 ````
 
 - Edges point **from prerequisite to dependant** (arrow = "unblocks"). Dependencies are solid;
   related links are dotted.
-- Node class reflects derived state: `ready` (designed with nothing blocking) is shown distinctly
-  from merely `designed`.
-- **Scope:** all active initiatives, plus any `done` initiative that an active one depends on
-  (greyed, so the edge is visible). Other completed work is omitted — it would swamp the graph.
+- Each node's label starts with an emoji for its derived state, and closed work is struck through:
+
+  | Mark | State |
+  |------|-------|
+  | ✅ + struck through | `done` |
+  | 🟢 | ready: `designed` with nothing blocking |
+  | 📐 | `designed`, still blocked |
+  | 🚧 | `in-progress` |
+  | ✏️ | `draft` |
+  | ⏸️ | `deferred` |
+  | 🪦 + struck through | `abandoned` |
+  | ↪️ + struck through | `superseded` |
+  | 🔗 | external dependency |
+
+  There are no colours or styles, so the graph follows the viewer's Mermaid theme, light or dark.
+- **Scope:** all active initiatives, plus any initiative an active one depends on, whatever its
+  status (a `done` one shows the edge is satisfied). Other completed work is omitted — it would
+  swamp the graph.
 - External dependencies are hexagon nodes; initiatives in other collections are labelled
   `<collection>#<n>`.
 - Graphs over ~40 nodes may be split into connected components, one block each.

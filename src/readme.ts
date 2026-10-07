@@ -57,22 +57,22 @@ function nodeId(i: Initiative, from: string): string {
   return i.collection === from ? `n${i.number}` : `c_${i.collection.replace(/[^A-Za-z0-9]/g, "_")}_${i.number}`;
 }
 
-function nodeClass(root: Root, i: Initiative): string {
-  if (i.status === "done") return "done";
-  if (isReady(root, i)) return "ready";
-  if (i.status === "in-progress") return "inprogress";
-  if (i.status === "designed") return "designed";
-  return "draft";
+/**
+ * A node's label: an emoji for its derived state, struck through once it is closed. No colours,
+ * so the graph follows the viewer's Mermaid theme (light or dark).
+ */
+function nodeLabel(root: Root, i: Initiative, text: string): string {
+  const t = text.replace(/</g, "#lt;").replace(/>/g, "#gt;");
+  const struck = (mark: string) => `${mark} <s>${t}</s>`;
+  if (i.status === "done") return struck("✅");
+  if (i.status === "abandoned") return struck("🪦");
+  if (i.status === "superseded") return struck("↪️");
+  if (i.status === "deferred") return `⏸️ ${t}`;
+  if (i.status === "in-progress") return `🚧 ${t}`;
+  if (isReady(root, i)) return `🟢 ${t}`;
+  if (i.status === "designed") return `📐 ${t}`;
+  return `✏️ ${t}`;
 }
-
-const CLASS_DEFS = [
-  "  classDef done fill:#e6e6e6,color:#777,stroke:#bbb",
-  "  classDef draft fill:#fff,stroke:#999,stroke-dasharray:4 3",
-  "  classDef designed fill:#e8f0fe,stroke:#4a7bd0",
-  "  classDef ready fill:#d9f2e3,stroke:#2e8b57,stroke-width:2px",
-  "  classDef inprogress fill:#fff4d6,stroke:#d49a00,stroke-width:2px",
-  "  classDef external fill:#fafafa,stroke:#999",
-];
 
 /** Mermaid graph of the given active initiatives plus the done initiatives they depend on. */
 export function mermaid(root: Root, active: Initiative[], from: string): string | null {
@@ -84,7 +84,7 @@ export function mermaid(root: Root, active: Initiative[], from: string): string 
     const id = nodeId(i, from);
     if (nodes.has(id)) return id;
     const prefix = i.collection === from ? `${i.number}` : `${i.collection}#${i.number}`;
-    nodes.set(id, `  ${id}["${label(`${prefix} ${titleOf(i)}`)}"]:::${nodeClass(root, i)}`);
+    nodes.set(id, `  ${id}["${nodeLabel(root, i, label(`${prefix} ${titleOf(i)}`))}"]`);
     return id;
   };
   const sorted = [...active].sort((a, b) => a.collection.localeCompare(b.collection) || a.number - b.number);
@@ -112,8 +112,8 @@ export function mermaid(root: Root, active: Initiative[], from: string): string 
       edges.push(`  ${nodeId(t, from)} -.-> ${to}`);
     }
   }
-  const ext = [...externals.entries()].map(([raw, id]) => `  ${id}{{"${label(raw)}"}}:::external`);
-  return ["```mermaid", "flowchart LR", ...nodes.values(), ...ext, ...edges, ...CLASS_DEFS, "```"].join("\n");
+  const ext = [...externals.entries()].map(([raw, id]) => `  ${id}{{"🔗 ${label(raw)}"}}`);
+  return ["```mermaid", "flowchart LR", ...nodes.values(), ...ext, ...edges, "```"].join("\n");
 }
 
 export function collectionBlock(root: Root, c: Collection): string {

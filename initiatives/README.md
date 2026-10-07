@@ -42,23 +42,23 @@ Planned work on Brindley itself: tools specified in MCP-SERVER.md but not yet bu
 
 ```mermaid
 flowchart LR
-  n1["1 migrate tool for numbered + completed/ collections"]:::draft
-  n2["2 renumber tool for post-merge number collisions"]:::draft
-  n3["3 rename_collection tool"]:::draft
-  n4["4 Cycle errors advise where back-references belong"]:::draft
-  n5["5 set_dependencies explains links it cannot remove"]:::draft
-  n6["6 Record status without lifecycle checks"]:::draft
-  n7["7 Infer a missing status from the initiative's prose"]:::draft
-  n8["8 Fix mode for mechanical validate findings"]:::draft
-  n9["9 Suggest a home for companion notes"]:::draft
-  n10["10 Name the base folder in path errors"]:::draft
-  n11["11 batch_update tool"]:::draft
-  n12["12 Themes overview and tag cloud in the collection README"]:::draft
-  n13["13 Consistent zero-padded numbering"]:::draft
-  n14["14 README front-matter controls what the dependency graph shows"]:::draft
-  n15["15 Show in-progress work blocked on an open question"]:::draft
-  n16["16 Resolve settled questions in bulk"]:::draft
-  n17["17 Record why an initiative was abandoned"]:::draft
+  n1["✏️ 1 migrate tool for numbered + completed/ collections"]
+  n2["✏️ 2 renumber tool for post-merge number collisions"]
+  n3["✏️ 3 rename_collection tool"]
+  n4["✏️ 4 Cycle errors advise where back-references belong"]
+  n5["✏️ 5 set_dependencies explains links it cannot remove"]
+  n6["✏️ 6 Record status without lifecycle checks"]
+  n7["✏️ 7 Infer a missing status from the initiative's prose"]
+  n8["✏️ 8 Fix mode for mechanical validate findings"]
+  n9["✏️ 9 Suggest a home for companion notes"]
+  n10["✏️ 10 Name the base folder in path errors"]
+  n11["✏️ 11 batch_update tool"]
+  n12["✏️ 12 Themes overview and tag cloud in the collection README"]
+  n13["✏️ 13 Consistent zero-padded numbering"]
+  n14["✏️ 14 README front-matter controls what the dependency graph shows"]
+  n15["✏️ 15 Show in-progress work blocked on an open question"]
+  n16["✏️ 16 Resolve settled questions in bulk"]
+  n17["✏️ 17 Record why an initiative was abandoned"]
   n7 --> n1
   n13 --> n1
   n8 -.-> n1
@@ -73,12 +73,6 @@ flowchart LR
   n8 -.-> n13
   n12 -.-> n14
   n11 -.-> n16
-  classDef done fill:#e6e6e6,color:#777,stroke:#bbb
-  classDef draft fill:#fff,stroke:#999,stroke-dasharray:4 3
-  classDef designed fill:#e8f0fe,stroke:#4a7bd0
-  classDef ready fill:#d9f2e3,stroke:#2e8b57,stroke-width:2px
-  classDef inprogress fill:#fff4d6,stroke:#d49a00,stroke-width:2px
-  classDef external fill:#fafafa,stroke:#999
 ```
 
 ### Completed
