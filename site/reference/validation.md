@@ -19,6 +19,8 @@
 | `alias-clash` | A name or alias is used by more than one collection. |
 | `alias-format` | A name or alias contains characters that can't be used in references. |
 | `collection-status` | A collection status other than active, done or abandoned. |
+| `dimension-value` | A scoring dimension value that isn't one of its declared values. |
+| `dimension-declaration` | A `dimensions:` entry with no values, a repeated value, a `default` that isn't one of them, or a reserved name like `status`. |
 | `duplicate-theme` | Two overview docs claim the same theme. |
 
 ## Warnings
@@ -26,6 +28,7 @@
 | Rule | Meaning |
 |------|---------|
 | `designed-open-questions` | Designed, but blocking questions remain. |
+| `dimension-missing` | A required scoring dimension has no value. |
 | `open-questions` | In progress or done, with questions still open. |
 | `docs-impact` | Done, with no `docs_impact` recorded. |
 | `status-folder-mismatch` | Front-matter says one status, the folder another. |

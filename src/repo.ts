@@ -179,6 +179,7 @@ function collectionMeta(data: Record<string, unknown>, folder: string): Collecti
     tags: tagMap(data["tags"]),
     statuses: tagMap(data["statuses"]),
     ignore: data["ignore"] !== undefined ? strList(data["ignore"]) : undefined,
+    dimensions: data["dimensions"],
     aliases:
       data["aliases"] !== undefined || data["alias"] !== undefined
         ? [...strList(data["aliases"]), ...strList(data["alias"])]

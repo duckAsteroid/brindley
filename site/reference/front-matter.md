@@ -26,6 +26,7 @@ updated: 2026-10-06
 | `docs_impact` | Set on completion: the docs changed, or `none: <reason>`. |
 | `superseded_by` | Required when `status: superseded` — a reference like `sb#30`. |
 | `updated` | ISO date, maintained by the tools. |
+| `priority`, `impact`, `complexity`, … | [Scoring dimensions](#scoring-dimensions). |
 
 The title is the H1. Dependencies are links under `## Dependencies`, not front-matter.
 
@@ -50,6 +51,9 @@ statuses:
   spiked: designed
 ignore:
   - "*-rationale.md"
+dimensions:
+  priority: { values: [now, soon, later], default: soon, required: true }
+  job_size: [1, 2, 3, 5, 8, 13]
 ---
 ```
 
@@ -65,6 +69,24 @@ ignore:
 | `types`, `tags` | Declared values; others are flagged as likely typos. |
 | `statuses` | This collection's own status words, mapped to core statuses. |
 | `ignore` | `.gitignore`-style patterns for numbered files that aren't initiatives. |
+| `dimensions` | This collection's [scoring dimensions](#scoring-dimensions). |
+
+## Scoring dimensions
+
+Scoring dimensions say how important, valuable or hard an initiative is. Each is an ordinary
+front-matter field (`priority: high`) whose value comes from an ordered set, first value ranking
+first. Every collection has three, all optional:
+
+| Dimension | Values, first ranks first |
+|-----------|---------------------------|
+| `priority` | `critical`, `high`, `medium`, `low` |
+| `impact` | `high`, `medium`, `low` |
+| `complexity` | `low`, `medium`, `high` (simpler work ranks ahead) |
+
+A collection README adds its own, or replaces a default by using its name, under `dimensions:`:
+`values` (strings or numbers, in ranking order), and optionally `required: true` and a `default`
+that unset initiatives are treated as having. A bare list is shorthand for `values`. Set values
+with `update`'s `dimensions`; filter and order with `list`'s `where` and `order_by`.
 
 ## Theme doc
 

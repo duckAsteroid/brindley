@@ -128,6 +128,8 @@ export interface CollectionMeta {
   ignore?: string[];
   /** Explicit short names for references, e.g. [lgm] for "lgm#22". */
   aliases?: string[];
+  /** Scoring dimensions as declared in front-matter; read with `dimensionsOf` (dimensions.ts). */
+  dimensions?: unknown;
 }
 
 export interface Collection {

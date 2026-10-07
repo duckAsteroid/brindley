@@ -17,8 +17,8 @@ accepts a name, an alias or a folder path.
 
 | Tool | Parameters | Does |
 |------|------------|------|
-| `list` | `collection?`, `type?`, `status?`, `tag?`, `owner?`, `ready?` | Initiatives, filtered. |
-| `get` | `ref` | One initiative in full: dependency report, dependants, questions, acceptance criteria, themes. |
+| `list` | `collection?`, `type?`, `status?`, `tag?`, `owner?`, `ready?`, `where?`, `order_by?` | Initiatives, filtered — `where` by [scoring dimensions](/reference/front-matter#scoring-dimensions) (`{ priority: [critical, high] }`) — and ordered by them with `order_by` (`[priority, impact]`). |
+| `get` | `ref` | One initiative in full: dependency report, dependants, questions, acceptance criteria, themes, scoring dimensions. |
 | `ready` | `collection?`, `type?` | What can be picked up now, prerequisites first. |
 | `check_ready` | `ref` | Whether one initiative is complete and ready to work on, check by check. |
 | `graph` | `collection?`, `ref?`, `tag?`, `include_done?` | Dependency graph as data and Mermaid. |
@@ -37,7 +37,7 @@ README blocks — and reports every file it touched, ready to commit.
 | Tool | Parameters | Does |
 |------|------------|------|
 | `create` | `collection`, `title`, `type?`, `tags?`, `goal?`, `depends_on?`, `related?`, `why?`, `owner?` | Coins the next number and writes the skeleton; dependencies become links. A folder path that isn't a collection yet is marked as one. |
-| `update` | `ref`, `title?`, `type?`, `owner?`, `tags?`, `status_note?`, `docs?`, `section?`, `content?` | Edits front-matter or the H1, or replaces a body section. `content` is the section's body; a leading heading naming the section is dropped. |
+| `update` | `ref`, `title?`, `type?`, `owner?`, `tags?`, `status_note?`, `docs?`, `dimensions?`, `section?`, `content?` | Edits front-matter or the H1, or replaces a body section. `dimensions` sets scoring values (`{ priority: "high" }`, `null` clears). `content` is the section's body; a leading heading naming the section is dropped. |
 | `set_status` | `ref`, `status`, `superseded_by?`, `force?` | Changes status within the lifecycle rules. Aliases like *parked* are accepted. |
 | `add_question` | `ref`, `text`, `implementation?` | Adds an open question; a blocking one sends a designed initiative back to draft. |
 | `resolve_question` | `ref`, `index` or `match`, `answer`, `record_in?`, `mode?` | Removes the question and records the decision (or ticks it, with `mode: tick`). |

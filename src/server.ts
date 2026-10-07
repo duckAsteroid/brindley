@@ -20,6 +20,7 @@ import { collectionBlock, mermaid, regenerate, rootBlock } from "./readme.js";
 import { mergeInProgress } from "./git.js";
 import { validate } from "./validate.js";
 import { checkDocs } from "./docs.js";
+import { dimensionReport, filterByDimensions, orderByDimensions } from "./dimensions.js";
 import * as ops from "./ops.js";
 import { MEASURES, sectionIsBlank } from "./ops.js";
 import { COMMIT, VERSION } from "./version.js";
@@ -46,6 +47,7 @@ export interface ServerOptions {
   autoReadme?: boolean;
 }
 
+const dimensionValue = z.union([z.string(), z.number()]);
 const refArg = z.union([z.string(), z.number()]).describe('Initiative (ticket/issue): "collection#n" (e.g. "lgm#22"), a bare number, or a path.');
 const refList = z.array(z.union([z.string(), z.number()]));
 
@@ -63,6 +65,7 @@ function summary(root: Root, i: Initiative) {
     statusNote: i.statusNote ?? null,
     owner: i.owner ?? null,
     tags: i.tags,
+    dimensions: dimensionReport(root, i),
     ready: isReady(root, i),
     blockedBy: blockers(root, i).map((d) => d.ref),
     openQuestions: open.filter((q) => !q.implementation).length,
@@ -309,16 +312,27 @@ export function createServer(opts: ServerOptions): McpServer {
       tag: z.string().optional(),
       owner: z.string().optional(),
       ready: z.boolean().optional(),
+      where: z
+        .record(z.string(), z.array(dimensionValue))
+        .optional()
+        .describe('Scoring dimensions to filter by: permitted values per dimension, e.g. { "priority": ["critical", "high"] }. An unset value counts as the dimension\'s default, if it has one.'),
+      order_by: z
+        .array(z.string())
+        .optional()
+        .describe('Scoring dimensions to order by, e.g. ["priority", "impact"]: each by its declared order (first value first), later ones breaking ties, then by number. Unset values use the default, else sort last.'),
     },
-    (root, a) =>
-      allInitiatives(root)
+    (root, a) => {
+      let items = allInitiatives(root)
         .filter((i) => !a.collection || i.collection === canonicalCollection(root, a.collection))
         .filter((i) => !a.type || i.type === a.type)
         .filter((i) => !a.status || i.status === a.status)
         .filter((i) => !a.tag || i.tags.includes(a.tag))
         .filter((i) => !a.owner || i.owner === a.owner)
-        .filter((i) => a.ready === undefined || isReady(root, i) === a.ready)
-        .map((i) => summary(root, i)),
+        .filter((i) => a.ready === undefined || isReady(root, i) === a.ready);
+      if (a.where) items = filterByDimensions(root, items, a.where);
+      if (a.order_by?.length) items = orderByDimensions(root, items, a.order_by);
+      return items.map((i) => summary(root, i));
+    },
     { readOnlyHint: true },
   );
 
@@ -484,6 +498,10 @@ export function createServer(opts: ServerOptions): McpServer {
       tags: z.array(z.string()).optional(),
       status_note: z.string().optional(),
       docs: z.array(z.string()).optional(),
+      dimensions: z
+        .record(z.string(), dimensionValue.nullable())
+        .optional()
+        .describe('Scoring dimension values to set, e.g. { "priority": "high" }; each must be one of the dimension\'s values. null clears one.'),
       section: z.string().optional().describe('Name of the "## " section to replace, or add if missing.'),
       content: z
         .string()

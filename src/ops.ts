@@ -38,6 +38,7 @@ import { blockers, dependants, dependencyReport, isReady, wouldCycle } from "./d
 import { changedSinceHead, highestNumberElsewhere, otherWorktrees } from "./git.js";
 import { regenerate } from "./readme.js";
 import { checkDocs, docsGlobs, inCollection, isProjectDoc } from "./docs.js";
+import { dimensionsFor, sameValue, type DimensionValue } from "./dimensions.js";
 
 export function today(): string {
   return process.env["BRINDLEY_TODAY"] ?? new Date().toISOString().slice(0, 10);
@@ -366,6 +367,8 @@ export interface UpdateInput {
   docs?: string[];
   section?: string;
   content?: string;
+  /** Scoring dimension values to set; null clears one. */
+  dimensions?: Record<string, DimensionValue | null>;
 }
 
 export function update(root: Root, i: Initiative, input: UpdateInput): OpResult<{ ref: string }> {
@@ -382,6 +385,17 @@ export function update(root: Root, i: Initiative, input: UpdateInput): OpResult<
   }
   const changes: Record<string, unknown> = {};
   for (const k of ["type", "owner", "tags", "status_note", "docs"] as const) if (input[k] !== undefined) changes[k] = input[k];
+  if (input.dimensions) {
+    const dims = dimensionsFor(root, i);
+    for (const [name, value] of Object.entries(input.dimensions)) {
+      const d = dims.find((x) => x.name === name);
+      if (!d) throw new BrindleyError(`"${name}" is not a dimension in ${i.collection}; known: ${dims.map((x) => x.name).join(", ")}.`);
+      if (value !== null && !d.values.some((v) => sameValue(v, value)))
+        throw new BrindleyError(`\`${name}: ${value}\` is not one of ${d.values.join(", ")}.`);
+      // Store the declared spelling (a number stays a number); null removes the field.
+      changes[name] = value === null ? undefined : d.values.find((v) => sameValue(v, value));
+    }
+  }
   writeInitiative(i, changes, body);
   return finish(root, [i.collection], [i.file], { ref: initiativeKey(i) });
 }

@@ -88,6 +88,9 @@ tags:                                       # themes (§4.2)
 ignore:                                     # .gitignore-style, relative to this folder
   - code-review/
   - "*-rationale.md"
+dimensions:                                 # scoring dimensions (§4.3)
+  priority: { values: [now, soon, later], default: soon, required: true }
+  job_size: [1, 2, 3, 5, 8, 13]
 ---
 # LOCK-42 lock slot booking
 
@@ -188,6 +191,7 @@ updated: 2026-09-24
 | `tags`       | no       | list of strings | Themes this initiative belongs to, across collections (§4.2). |
 | `docs`       | no       | list of paths | Project docs this initiative is expected to change (§7.2). Filled in during design, corrected during implementation. |
 | `docs_impact` | on `done` | list of paths, or `none: <reason>` | Project docs actually updated, or an explicit statement that none were affected and why (§7.2). |
+| `priority`, `impact`, `complexity`, … | per collection | one of the dimension's values | Scoring dimensions (§4.3). |
 
 - The **title is the document's H1**, not a front-matter field — it is what people edit and what
   GitHub shows.
@@ -252,6 +256,42 @@ summary: Is this validation result still true, and how do I know cheaply?
 - Its `summary` (else its H1) becomes the tag's description; the doc declares the tag.
 - Tools point to the doc wherever a tagged initiative is shown or handed to an agent.
 - At most one doc per theme (validation error otherwise).
+
+### 4.3 Scoring dimensions
+
+Scoring dimensions say how important, valuable or hard an initiative is, so work can be filtered and
+ordered by them. Each is a plain front-matter field whose value comes from a fixed, ordered set:
+
+```yaml
+priority: high
+complexity: low
+```
+
+Every collection has these default dimensions, all optional:
+
+| Dimension | Values, first ranks first |
+|-----------|---------------------------|
+| `priority` | `critical`, `high`, `medium`, `low` |
+| `impact` | `high`, `medium`, `low` |
+| `complexity` | `low`, `medium`, `high` — simpler work ranks ahead |
+
+A collection declares its own under `dimensions:` in its README (§2). A declaration with a default's
+name replaces that default:
+
+```yaml
+dimensions:
+  priority: { values: [now, soon, later], default: soon, required: true }
+  job_size: [1, 2, 3, 5, 8, 13]      # shorthand: just the values
+```
+
+- **`values`** — strings or numbers, listed in ranking order: the first ranks first. "Ranks first"
+  means "do first", so a less-is-better dimension (size, effort, risk) is listed low to high.
+- **`required: true`** — an initiative without a value is a validation warning.
+- **`default`** — one of the values; an initiative without its own value is treated as having it
+  when filtering, ordering and displaying. It is never written into the file.
+
+Each initiative is checked against its own collection's dimensions, and ranked by them. A dimension
+may not reuse a field with its own meaning (`status`, `type`, `tags`, …).
 
 ## 5. Status lifecycle
 
@@ -619,26 +659,29 @@ Errors:
 4. The dependency graph across all collections is acyclic.
 5. `status: superseded` has `superseded_by`.
 6. Collection names are unique in the repo.
+7. A scoring dimension's value is one of its declared values; a `dimensions:` declaration has
+   values, no duplicates, a `default` among them, and doesn't reuse a reserved field name (§4.3).
 
 Warnings:
 
-7. `status: designed` with unresolved non-`(implementation)` open questions.
-8. `status: in-progress`/`done` with unresolved open questions.
-9. Relative links that do not resolve.
-10. Asset directories whose number matches no initiative.
-11. Missing H1.
-12. A collection README's generated block is out of date.
-13. Collection `status: done` while any of its initiatives is still `draft`/`designed`/`in-progress`.
-14. `status: done` without `docs_impact`.
-15. A project doc (per `docs:` globs) that links into a collection folder.
-16. History phrasing in a project doc (heuristic — see §7.2 list).
-17. `type` not in its collection's `types:` list, when one is declared.
-18. A tag not declared by any collection's `tags:`, when any are declared; or a tag that isn't kebab-case.
-19. Front-matter status contradicts the status folder the file is in.
-20. The collection files a status in a status folder (e.g. done in `completed/`), but this file
+8. `status: designed` with unresolved non-`(implementation)` open questions.
+9. `status: in-progress`/`done` with unresolved open questions.
+10. Relative links that do not resolve.
+11. Asset directories whose number matches no initiative.
+12. Missing H1.
+13. A collection README's generated block is out of date.
+14. Collection `status: done` while any of its initiatives is still `draft`/`designed`/`in-progress`.
+15. `status: done` without `docs_impact`.
+16. A project doc (per `docs:` globs) that links into a collection folder.
+17. History phrasing in a project doc (heuristic — see §7.2 list).
+18. `type` not in its collection's `types:` list, when one is declared.
+19. A tag not declared by any collection's `tags:`, when any are declared; or a tag that isn't kebab-case.
+20. Front-matter status contradicts the status folder the file is in.
+21. The collection files a status in a status folder (e.g. done in `completed/`), but this file
     with that status is elsewhere.
-21. A status written in the body (`**Status:** …` or `## Status`) disagrees with the file's status.
-22. A zero-padded number (`01-…`).
+22. A status written in the body (`**Status:** …` or `## Status`) disagrees with the file's status.
+23. A zero-padded number (`01-…`).
+24. A required scoring dimension (§4.3) without a value.
 
 Broken-link warnings name the new location when the linked file has moved within the collection.
 

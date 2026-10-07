@@ -7,6 +7,7 @@ import { stripCodeFences, withoutInlineCode } from "./markdown.js";
 import { FINDINGS, MEASURES, sectionIsBlank } from "./ops.js";
 import { regenerate } from "./readme.js";
 import { checkDocs } from "./docs.js";
+import { dimensionsOf, parseDimensions, sameValue } from "./dimensions.js";
 
 export interface Finding {
   level: "error" | "warning";
@@ -45,6 +46,7 @@ export function validate(root: Root, opts: { collection?: string; docs?: boolean
     else names.set(c.name.toLowerCase(), c.path);
     if (root.collections.some((o) => o !== c && o.path !== "." && c.path.startsWith(o.path + "/") && c.initiatives.length && o.initiatives.length))
       warn("nested-collection", rel(c.readme), "Collection is nested inside another collection's folder.");
+    for (const p of parseDimensions(c.meta.dimensions).problems) err("dimension-declaration", rel(c.readme), p);
   }
 
   const themeOwners = new Map<string, string>();
@@ -168,6 +170,13 @@ function checkInitiative(
   for (const t of i.tags) {
     if (!KEBAB.test(t)) warn("tag-format", f, `Tag "${t}" should be lowercase kebab-case.`);
     else if (tags && !(t in tags)) warn("tag-unknown", f, `Tag "${t}" is not declared in any collection's \`tags\`.`);
+  }
+  for (const d of dimensionsOf(collection)) {
+    const v = i.fm[d.name];
+    if (v === undefined || v === null) {
+      if (d.required) warn("dimension-missing", f, `\`${d.name}\` is required in this collection (one of ${d.values.join(", ")}).`);
+    } else if (!d.values.some((x) => sameValue(x, v as string | number)))
+      err("dimension-value", f, `\`${d.name}: ${String(v)}\` is not one of ${d.values.join(", ")}.`);
   }
 
   for (const { line, text } of stripCodeFences(i.body)) {

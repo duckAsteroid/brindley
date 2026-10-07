@@ -1,7 +1,13 @@
 ---
 type: feature
-status: designed
+status: done
 updated: 2026-10-07
+docs_impact:
+  - FORMAT.md
+  - MCP-SERVER.md
+  - site/reference/front-matter.md
+  - site/reference/validation.md
+  - site/reference/mcp.md
 ---
 # Scoring dimensions on initiatives
 
@@ -21,6 +27,7 @@ _None._
 - Moved out: computed scores (WSJF or otherwise) and using a ranking elsewhere — ordering `ready` results, "next to pick up" suggestions — belong to initiatives#21, which depends on this one. Here, ranking is `list`'s `order_by` over dimensions, and the README keeps number order (initiatives#20).
 - Missing values sort last by default, per field: with `order_by: [priority, impact]`, an initiative with a priority but no impact sorts after the others at the same priority. A dimension's declaration can name a `default` (one of its values, e.g. `priority: { values: [critical, high, medium, low], default: medium }`), which an initiative without a value is treated as having — for ordering, `where` filtering and README columns — without being written to its file, so changing the default changes every unset initiative at once. A required dimension is still flagged by `validate` when unset; its default only decides where it sorts meanwhile. Values are set through `update`, which accepts any declared dimension and checks the value against its set; `batch_update` (initiatives#11) accepts whatever `update` does, so it gets them for free.
 - Not now: a collection can replace a default dimension but not remove one. An unused optional default does no harm — it appears only when an initiative sets it, and `validate` only checks it if required. If being offered as a column (initiatives#20) or accepted by `update` proves a nuisance, add `<name>: false` under `dimensions:` later.
+- Implementation: dimensions live in `src/dimensions.ts`. `update` takes them as one `dimensions` object (`{ priority: "high" }`, `null` clears one) and stores the declared spelling, so a numeric value stays a number. A declaration may be a bare list as shorthand for `values`. A dimension may not reuse a front-matter field with its own meaning (`status`, `type`, `tags`, …): that declaration is reported and ignored, never applied. `list` refuses a `where`/`order_by` name no collection has. Findings are `dimension-value` and `dimension-declaration` (errors) and `dimension-missing` (warning).
 
 ## Open questions
 
