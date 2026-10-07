@@ -326,6 +326,21 @@ draft ──► designed ──► in-progress ──► done
 | `superseded`  | Replaced by another initiative (`superseded_by`). |
 | `deferred`    | Parked: not abandoned, not being worked on. Never ready; shown separately. |
 
+**Why work stopped.** Abandoned, superseded and deferred work says so at the top, in a callout
+directly under the H1 that tools write and keep in step with the status and `status_note` — a
+warning for abandoned work, a note for the others — and removes when the initiative is reopened:
+
+```markdown
+# Tag cloud in the collection README
+
+> [!WARNING]
+> **Abandoned** (2026-10-07): Mermaid can't draw a word cloud.
+```
+
+Abandoning requires a reason (kept as `status_note`); superseding and deferring take one
+optionally, and a superseded initiative's callout links its replacement. A fuller account goes in an
+`## Outcome` section, which belongs to the author: a reopen leaves it as the record.
+
 **Status words.** Besides the core names, tools accept common aliases — `proposed`,
 `exploratory`, `unresolved`, `design` (still designing) → `draft`; `ready`, `design complete`,
 `design settled` → `designed`; `in-review`, `wip` → `in-progress`;
@@ -570,7 +585,7 @@ Rules for the generated block:
 2. **Dependency graph** (Mermaid) — see §8.3.
 
 3. **Completed** table — `done` initiatives (#, linked title, `updated`); then a short
-   **Closed** list for `abandoned`/`superseded` (with `superseded_by`).
+   **Closed** list for `abandoned`/`superseded` (with `superseded_by`, and the reason from `status_note`).
 
 ### 8.2 Overview of all collections
 
@@ -722,6 +737,7 @@ Warnings:
 25. A collection README's `graph:` with an unknown setting or an unusable value (§8.3).
 26. No status recorded (no front-matter `status`, not in a status folder), but the body states one in a
     `**Status:**` line or a `## Status` section that maps to a core status — record it.
+27. `status: abandoned` without a reason (`status_note`), unless the status comes from a status folder.
 
 Broken-link warnings name the new location when the linked file has moved within the collection.
 

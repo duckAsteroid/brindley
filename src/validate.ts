@@ -221,6 +221,8 @@ function checkInitiative(
     warn("designed-open-questions", f, `Designed, but ${blocking.length} blocking open question(s) remain.`);
   if ((i.status === "in-progress" || i.status === "done") && open.length > 0)
     warn("open-questions", f, `${i.status}, but ${open.length} open question(s) remain.`);
+  if (i.status === "abandoned" && !i.statusNote && i.statusSource !== "folder")
+    warn("abandoned-reason", f, "Abandoned, but no reason recorded: set one with `update` (`status_note`), and it shows under the title and in the README.");
   // Work completed before Brindley (status from a legacy folder) can't be held to docs_impact.
   if (i.status === "done" && i.docsImpact === undefined && i.statusSource !== "folder")
     warn("docs-impact", f, "Done, but no `docs_impact` recorded.");

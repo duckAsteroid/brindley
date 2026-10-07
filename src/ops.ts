@@ -21,6 +21,7 @@ import {
   withoutInlineCode,
   setH1,
   setSection,
+  setStatusCallout,
   slugify,
   splitFrontMatter,
 } from "./markdown.js";
@@ -381,6 +382,8 @@ export interface UpdateInput {
   dimensions?: Record<string, DimensionValue | null>;
   /** Records the status an initiative already has, when front-matter has none (not a transition). */
   status?: string;
+  /** With `status`: why it was abandoned, superseded or deferred (optional here). */
+  reason?: string;
 }
 
 /** `docs_impact` written when `done` is recorded rather than reached through `complete`. */
@@ -420,17 +423,43 @@ export function update(root: Root, i: Initiative, input: UpdateInput): OpResult<
     if (!core) throw new BrindleyError(`Unknown status "${input.status}". Use one of ${STATUSES.join(", ")} or a known alias.`);
     changes["status"] = core;
     if (core === "done" && i.docsImpact === undefined) changes["docs_impact"] = PRE_BRINDLEY_DOCS_IMPACT;
+    if (input.reason?.trim()) changes["status_note"] = input.reason.trim();
+    if (CALLOUT_STATUSES.includes(core)) body = setStatusCallout(body, calloutFor(root, i, core, input.reason));
     if (i.folder) warnings.push(`The file stays in "${i.folder}/" (Brindley never moves files); its front-matter status now takes precedence over the folder.`);
   }
+  // A changed status_note on abandoned, superseded or deferred work rewrites the callout to match.
+  if (input.status === undefined && input.status_note !== undefined && CALLOUT_STATUSES.includes(i.status ?? ""))
+    body = setStatusCallout(body, calloutFor(root, i, i.status!, input.status_note));
   writeInitiative(i, changes, body);
   return finish(root, [i.collection], [i.file], { ref: initiativeKey(i) }, warnings);
+}
+
+/** Statuses that show a callout under the H1 saying so (and why). */
+const CALLOUT_STATUSES = ["abandoned", "superseded", "deferred"];
+
+/**
+ * The status callout for an initiative in `status` with reason `note`: a warning for abandoned work,
+ * a note for superseded (linking its replacement) and deferred work; null for any other status.
+ */
+function calloutFor(root: Root, i: Initiative, status: string, note: string | undefined, supersededBy?: string | number): string[] | null {
+  const why = note?.trim() ? `: ${note.trim()}` : "";
+  const date = `(${today()})`;
+  if (status === "abandoned") return ["> [!WARNING]", `> **Abandoned** ${date}${why}`];
+  if (status === "deferred") return ["> [!NOTE]", `> **Deferred** ${date}${why}`];
+  if (status === "superseded") {
+    const ref = supersededBy ?? (i.fm["superseded_by"] as string | number | undefined);
+    const t = ref !== undefined ? (() => { try { return resolveRef(root, refValue(ref), i.collection); } catch { return undefined; } })() : undefined;
+    const by = t ? ` by [${t.collection === i.collection ? `#${t.number}` : initiativeKey(t)} ${t.title ?? t.slug}](${posix.relative(posix.dirname(i.rel), t.rel)})` : "";
+    return ["> [!NOTE]", `> **Superseded**${by} ${date}${why}`];
+  }
+  return null;
 }
 
 export function setStatus(
   root: Root,
   i: Initiative,
   status: string,
-  opts: { force?: boolean; superseded_by?: string | number } = {},
+  opts: { force?: boolean; superseded_by?: string | number; reason?: string; outcome?: string } = {},
 ): OpResult<{ ref: string; status: string }> {
   const core = normaliseStatus(status, findCollection(root, i.collection)?.meta.statuses);
   if (!core) throw new BrindleyError(`Unknown status "${status}". Use one of ${STATUSES.join(", ")} or a known alias.`);
@@ -458,7 +487,20 @@ export function setStatus(
     if (r.kind !== "initiative" || !lookup(root, r.collection, r.number)) throw new BrindleyError(`No initiative ${r.raw}.`);
     changes["superseded_by"] = refValue(opts.superseded_by);
   }
-  writeInitiative(i, changes);
+  // Why it was abandoned (required), superseded or deferred: kept as status_note and shown under the H1.
+  if (status === "abandoned" && !opts.reason?.trim())
+    throw new BrindleyError("Say why with `reason` — it's shown at the top of the initiative and in the README's Closed list.");
+  let body = i.body;
+  if (CALLOUT_STATUSES.includes(status)) {
+    if (opts.reason?.trim()) changes["status_note"] = opts.reason.trim();
+    body = setStatusCallout(body, calloutFor(root, i, status, opts.reason, opts.superseded_by));
+  } else if (CALLOUT_STATUSES.includes(i.status ?? "")) {
+    // Reopened: the callout and the reason it gave no longer hold.
+    body = setStatusCallout(body, null);
+    changes["status_note"] = undefined;
+  }
+  if (opts.outcome?.trim()) body = setSection(body, "Outcome", opts.outcome, [OPEN_QUESTIONS, "Acceptance criteria"]);
+  writeInitiative(i, changes, body);
   return finish(root, [i.collection], [i.file], { ref: initiativeKey(i), status }, warnings);
 }
 

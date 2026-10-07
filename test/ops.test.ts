@@ -300,6 +300,61 @@ describe("status stated in the text", () => {
   });
 });
 
+describe("why work was closed or parked", () => {
+  const files = () => ({
+    "plans/README.md": "---\nbrindley: 1\n---\n# Plans\n",
+    "plans/1-cloud.md": "---\nstatus: draft\n---\n# Tag cloud\n\n## Goal\n\nA cloud.\n",
+    "plans/2-columns.md": "---\nstatus: draft\n---\n# Columns\n",
+  });
+
+  it("needs a reason to abandon, and shows it under the title, in Outcome and in the Closed list", () => {
+    fx = fixture({ files: files() });
+    let root = fx.load();
+    expect(() => ops.setStatus(root, resolveRef(root, "plans#1"), "abandoned")).toThrow(/Say why with `reason`/);
+    ops.setStatus(root, resolveRef(root, "plans#1"), "wontfix", { reason: "Mermaid can't draw a word cloud", outcome: "Tried pie charts; unreadable past six tags." });
+    const text = read("plans/1-cloud.md");
+    expect(text).toContain("status_note: Mermaid can't draw a word cloud");
+    expect(text).toContain("# Tag cloud\n\n> [!WARNING]\n> **Abandoned** (2026-10-06): Mermaid can't draw a word cloud\n\n## Goal");
+    expect(text).toContain("## Outcome\n\nTried pie charts; unreadable past six tags.");
+    expect(read("plans/README.md")).toContain("- 1 [Tag cloud](1-cloud.md) (abandoned — Mermaid can't draw a word cloud)");
+    // A changed note rewrites the callout; only Brindley's callout changes.
+    root = fx.load();
+    ops.update(root, resolveRef(root, "plans#1"), { status_note: "Superseded by tables" });
+    expect(read("plans/1-cloud.md").match(/\[!WARNING\]/g)).toHaveLength(1);
+    expect(read("plans/1-cloud.md")).toContain("> **Abandoned** (2026-10-06): Superseded by tables\n");
+    // Reopened: the callout and its reason go, Outcome stays.
+    root = fx.load();
+    ops.setStatus(root, resolveRef(root, "plans#1"), "draft");
+    const reopened = read("plans/1-cloud.md");
+    expect(reopened).not.toContain("[!WARNING]");
+    expect(reopened).not.toContain("status_note");
+    expect(reopened).toContain("# Tag cloud\n\n## Goal");
+    expect(reopened).toContain("## Outcome");
+  });
+
+  it("notes superseded and deferred work, with an optional reason", () => {
+    fx = fixture({ files: files() });
+    let root = fx.load();
+    ops.setStatus(root, resolveRef(root, "plans#1"), "superseded", { superseded_by: 2 });
+    expect(read("plans/1-cloud.md")).toContain("> [!NOTE]\n> **Superseded** by [#2 Columns](2-columns.md) (2026-10-06)\n");
+    root = fx.load();
+    ops.setStatus(root, resolveRef(root, "plans#2"), "parked", { reason: "After the scoring work" });
+    expect(read("plans/2-columns.md")).toContain("> [!NOTE]\n> **Deferred** (2026-10-06): After the scoring work\n");
+  });
+
+  it("warns about abandoned work with no reason, unless its status comes from a folder", () => {
+    fx = fixture({
+      files: {
+        ...files(),
+        "plans/3-old.md": "---\nstatus: abandoned\n---\n# Old\n",
+        "plans/abandoned/4-older.md": "# Older\n",
+      },
+    });
+    const warned = validate(fx.load()).filter((f) => f.rule === "abandoned-reason").map((f) => f.file);
+    expect(warned).toEqual(["plans/3-old.md"]);
+  });
+});
+
 describe("update", () => {
   it("records a status only where front-matter has none, and refuses to change one", () => {
     fx = fixture({
@@ -820,7 +875,7 @@ describe("theme overview docs", () => {
   it("updates the member list when a tagged initiative changes, and links it from the overview", () => {
     fx = fixture({ files });
     let root = fx.load();
-    ops.setStatus(root, resolveRef(root, "plans#1"), "abandoned");
+    ops.setStatus(root, resolveRef(root, "plans#1"), "abandoned", { reason: "Captains prefer the lock keeper's board" });
     expect(read(`${C}/NOTIFICATIONS.md`)).toContain("1 open, 1 closed or deferred");
     root = fx.load();
     expect(rootBlock(root)).toContain("Overview: [Notifications — orientation map](docs/initiatives/LOCK-42/slot-booking/NOTIFICATIONS.md) — How captains hear about changes");

@@ -213,6 +213,32 @@ export function setH1(body: string, title: string): string {
   return `# ${title}\n\n${body}`;
 }
 
+/** Brindley's status callout: a GitHub/VitePress alert whose first text line names the status. */
+const CALLOUT_HEAD = /^>\s*\[!(WARNING|NOTE)\]\s*$/;
+const CALLOUT_STATUS = /^>\s*\*\*(Abandoned|Superseded|Deferred)\*\*/;
+
+/**
+ * Set the status callout directly under the H1 — `lines` (e.g. ["> [!WARNING]", "> **Abandoned** …"])
+ * — or remove it (`null`). Only a callout Brindley wrote is replaced; nothing else in the body changes.
+ */
+export function setStatusCallout(body: string, callout: string[] | null): string {
+  const ls = lines(body);
+  const h = headings(body).find((x) => x.level === 1);
+  const at = h ? h.line + 1 : 0;
+  let k = at;
+  while (k < ls.length && ls[k]!.trim() === "") k++;
+  let end = k;
+  if (k + 1 < ls.length && CALLOUT_HEAD.test(ls[k]!) && CALLOUT_STATUS.test(ls[k + 1]!)) {
+    end = k;
+    while (end < ls.length && ls[end]!.startsWith(">")) end++;
+  }
+  const rest = ls.slice(end);
+  while (rest.length && rest[0]!.trim() === "") rest.shift();
+  const head = ls.slice(0, at);
+  const block = callout ? ["", ...callout] : [];
+  return [...head, ...block, ...(rest.length ? ["", ...rest] : [""])].join("\n");
+}
+
 /** Replace a section's content, or add the section at the end (before any appendix). */
 export function setSection(body: string, name: string, content: string, before?: string[]): string {
   content = withoutLeadingHeading(content, name);

@@ -518,6 +518,7 @@ export function createServer(opts: ServerOptions): McpServer {
       status_note: z.string().optional(),
       docs: z.array(z.string()).optional(),
       status: z.string().optional().describe("Record the status this initiative already has, when its front-matter has none (e.g. backfilling an adopted folder). Refused if a status is recorded: use set_status."),
+      reason: z.string().optional().describe("With `status`: why it was abandoned, superseded or deferred, if known."),
       dimensions: z
         .record(z.string(), dimensionValue.nullable())
         .optional()
@@ -570,13 +571,18 @@ export function createServer(opts: ServerOptions): McpServer {
 
   tool(
     "set_status",
-    "Change an initiative's (ticket's/issue's) status, enforcing the lifecycle: designed needs no blocking open questions; in-progress needs ready; done goes through `complete`.",
+    "Change an initiative's (ticket's/issue's) status, enforcing the lifecycle: designed needs no blocking open questions; in-progress needs ready; done goes through `complete`. Abandoning needs a `reason`; abandoned, superseded and deferred work gets a callout under its title saying so, which is removed when it is reopened.",
     {
       ref: refArg,
       collection: z.string().optional(),
       status: z.string().describe(`One of ${STATUSES.join(", ")} (common aliases and the collection's own status words are accepted)`),
       superseded_by: z.union([z.string(), z.number()]).optional(),
       force: z.boolean().optional(),
+      reason: z
+        .string()
+        .optional()
+        .describe("Why — required to abandon, optional to supersede or defer. Kept as status_note and shown in a callout under the initiative's title and in the README."),
+      outcome: z.string().optional().describe("The fuller account (what was learned, what replaced it), written into ## Outcome."),
     },
     (root, a) => ops.setStatus(root, resolveRef(root, a.ref, a.collection), a.status, a),
   );

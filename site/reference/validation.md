@@ -29,6 +29,7 @@
 |------|---------|
 | `designed-open-questions` | Designed, but blocking questions remain. |
 | `dimension-missing` | A required scoring dimension has no value. |
+| `abandoned-reason` | Abandoned, with no reason recorded (`status_note`) — unless the status comes from a status folder. |
 | `status-inferable` | No status recorded, but a `**Status:**` line or `## Status` section states one that maps to a core status — record it with `update` (`status: …`). Free text isn't read. |
 | `graph-setting` | A collection README's `graph:` has an unknown setting or a value it can't use. |
 | `open-questions` | In progress or done, with questions still open. |

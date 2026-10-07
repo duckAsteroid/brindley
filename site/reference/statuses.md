@@ -34,6 +34,20 @@ statuses:
   archive: done
 ```
 
+## Why work stopped
+
+Abandoned, superseded and deferred initiatives say so at the top, in a callout under their title
+that Brindley keeps in step and removes when the work is reopened:
+
+```markdown
+> [!WARNING]
+> **Abandoned** (2026-10-07): Mermaid can't draw a word cloud.
+```
+
+Give the reason with `set_status`'s `reason` — required to abandon, optional to supersede (the
+callout links the replacement) or defer. It is also kept as `status_note` and shown in the
+README's Closed list. Put the fuller story in `outcome`, which becomes an `## Outcome` section.
+
 ## Status folders
 
 In an existing layout, a file without a `status` takes it from the sub-folder it's in:

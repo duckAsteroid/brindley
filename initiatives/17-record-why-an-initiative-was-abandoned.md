@@ -1,7 +1,13 @@
 ---
 type: feature
-status: designed
+status: done
 updated: 2026-10-07
+docs_impact:
+  - FORMAT.md
+  - MCP-SERVER.md
+  - site/reference/mcp.md
+  - site/reference/statuses.md
+  - site/reference/validation.md
 ---
 # Record why an initiative was abandoned
 
@@ -28,6 +34,7 @@ _None._
 - The short reason is also kept as `status_note`, so the README's Closed list can show it: "17 Tag cloud (abandoned — Mermaid can't draw a word cloud…)".
 - `set_status` gains `reason` (short: written as `status_note` and as the warning callout under the H1) and `outcome` (the details, written into `## Outcome`), for `abandoned` — and for whichever other statuses Q2 extends this to. A reason is required to abandon: without one `set_status` refuses ("say why with `reason` — it's shown at the top of the initiative and in the README"); `outcome` is optional. `validate` warns `abandoned-reason` about an abandoned initiative with no reason, exempting status taken from a legacy folder, as `docs-impact` does. `update`'s status recording (initiatives#6) accepts the same `reason` but doesn't require it, since an adopted file's reason may be unknown.
 - The callout is Brindley-managed: the block directly under the H1, written from the status, its date and `status_note`. It is rewritten whenever the status or `status_note` changes (`set_status`, `update`) and removed when the initiative is reopened, so it never states something untrue; Brindley recognises its own callout by its first lines and touches nothing else. `## Outcome` belongs to the author once written: a reopen leaves it as the record. `superseded` and `deferred` get callouts too, as notes rather than warnings — `> [!NOTE]` `**Superseded** by [#N title](link) (date): reason` and `**Deferred** (date): reason` — with the reason optional for both; only `abandoned` requires one.
+- Implementation: `setStatusCallout` (src/markdown.ts) finds Brindley's callout by its first two lines — the alert marker and a bold Abandoned / Superseded / Deferred — and replaces or removes only that block. Reopening also clears `status_note`, since it gave the reason the work stopped. The callout's date is the day the status was set.
 
 ## Open questions
 

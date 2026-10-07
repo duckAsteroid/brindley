@@ -198,7 +198,7 @@ export function collectionBlock(root: Root, c: Collection): string {
     for (const i of closed) {
       const by =
         i.status === "superseded" && i.supersededBy ? ` — superseded by ${displayRef(i.supersededBy, c.name)}` : "";
-      out.push(`- ${i.number} ${link(i, c.path)} (${i.status}${by})`);
+      out.push(`- ${i.number} ${link(i, c.path)} (${i.status}${by}${i.statusNote ? ` — ${esc(i.statusNote)}` : ""})`);
     }
   }
   return out.join("\n");
