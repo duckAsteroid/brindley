@@ -8,7 +8,7 @@
 | Rule | Meaning |
 |------|---------|
 | `parse` | Front-matter doesn't parse, or an initiative outside a status folder has none. |
-| `status-missing` | No status — and no status folder to take it from. The message quotes what the body says, if anything. |
+| `status-missing` | No status — and no status folder to take it from. When the body states one, `status-inferable` says which; otherwise the message quotes what the body says, if anything. |
 | `status-invalid` | A status word that isn't a core status, an alias, or mapped with `statuses:`. |
 | `duplicate-number` | Two initiatives in one collection share a number. When one file's name is the other's plus a suffix (`24-booking-window-rationale.md`), it is treated as a companion note: the finding suggests moving it into the initiative's asset folder, or the `ignore` pattern that leaves it in place. |
 | `cycle` | Dependencies loop back on themselves. Often one link is a back-reference ("depended on by"): move it to `## Related`, or to `## See also` for a plain link. |
@@ -29,6 +29,7 @@
 |------|---------|
 | `designed-open-questions` | Designed, but blocking questions remain. |
 | `dimension-missing` | A required scoring dimension has no value. |
+| `status-inferable` | No status recorded, but a `**Status:**` line or `## Status` section states one that maps to a core status — record it with `update` (`status: …`). Free text isn't read. |
 | `graph-setting` | A collection README's `graph:` has an unknown setting or a value it can't use. |
 | `open-questions` | In progress or done, with questions still open. |
 | `docs-impact` | Done, with no `docs_impact` recorded. |

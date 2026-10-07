@@ -2,7 +2,7 @@ import { existsSync, readdirSync, statSync } from "node:fs";
 import { dirname, join, relative, resolve } from "node:path";
 import { ASSET_DIR, COLLECTION_STATUSES, STATUSES, normaliseStatus, type Initiative, type Root } from "./model.js";
 import { cycles, target } from "./deps.js";
-import { allInitiatives, declaredTags, elsewhereHint, findCollection, ignoreMatcher, initiativeKey, toPosix } from "./repo.js";
+import { allInitiatives, declaredTags, elsewhereHint, findCollection, ignoreMatcher, initiativeKey, statusFromText, toPosix } from "./repo.js";
 import { stripCodeFences, withoutInlineCode } from "./markdown.js";
 import { FINDINGS, MEASURES, sectionIsBlank } from "./ops.js";
 import { regenerate } from "./readme.js";
@@ -149,13 +149,19 @@ function checkInitiative(
   for (const p of i.problems) err("parse", f, p);
   const collection = findCollection(root, i.collection);
   const custom = collection?.meta.statuses;
-  const prose = normaliseStatus(i.proseStatus, custom);
-  if (!i.status)
+  const stated = statusFromText(i, custom);
+  const prose = stated.status;
+  if (!i.status) {
     err("status-missing", f, i.folder
       ? `No \`status\`, and folder "${i.folder}/" is not a known status (map it with \`statuses:\` in the collection README).`
-      : i.proseStatus
-        ? `No \`status\` in front-matter; the body says "${i.proseStatus}"${prose ? ` — add \`status: ${prose}\`` : ""}.`
-        : "Missing `status`.");
+      : stated.status
+        ? "No `status` in front-matter (see status-inferable)."
+        : i.proseStatus
+          ? `No \`status\` in front-matter. ${stated.reason}`
+          : "Missing `status`.");
+    if (stated.status && !i.folder)
+      warn("status-inferable", f, `No status recorded; the body says ${stated.word} (${stated.status}). Record it with \`update\` (\`status: ${stated.status}\`).`);
+  }
   else if (!(STATUSES as readonly string[]).includes(i.status))
     err("status-invalid", f, `Status "${i.statusRaw}" is not known: use one of ${STATUSES.join(", ")}, a common alias, or map it with \`statuses:\` in the collection README.`);
   if (i.folder && i.statusSource === "front-matter") {

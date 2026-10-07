@@ -712,6 +712,8 @@ Warnings:
 23. A zero-padded number (`01-…`).
 24. A required scoring dimension (§4.3) without a value.
 25. A collection README's `graph:` with an unknown setting or an unusable value (§8.3).
+26. No status recorded (no front-matter `status`, not in a status folder), but the body states one in a
+    `**Status:**` line or a `## Status` section that maps to a core status — record it.
 
 Broken-link warnings name the new location when the linked file has moved within the collection.
 

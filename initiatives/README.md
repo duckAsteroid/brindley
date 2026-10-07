@@ -21,12 +21,11 @@ Planned work on Brindley itself: tools specified in MCP-SERVER.md but not yet bu
 
 | # | Initiative | Type | Status | Ready / blocked by | Open Qs | Owner |
 |---|------------|------|--------|--------------------|---------|-------|
-| 1 | [migrate tool for numbered + completed/ collections](1-migrate-tool-for-numbered-completed-collections.md) | feature | designed | ⛔ 7, 13 | 0 | — |
+| 1 | [migrate tool for numbered + completed/ collections](1-migrate-tool-for-numbered-completed-collections.md) | feature | designed | ⛔ 13 | 0 | — |
 | 2 | [renumber tool for post-merge number collisions](2-renumber-tool-for-post-merge-number-collisions.md) | feature | designed | ✅ ready | 0 | — |
 | 3 | [rename_collection tool](3-rename-collection-tool.md) | feature | designed | ✅ ready | 0 | — |
-| 7 | [Infer a missing status from the initiative's prose](7-infer-a-missing-status-from-the-initiative-s-prose.md) | feature | designed | ✅ ready | 0 | — |
 | 8 | [Fix mode for mechanical validate findings](8-fix-mode-for-mechanical-validate-findings.md) | feature | designed | ✅ ready | 0 | — |
-| 11 | [batch_update tool](11-batch-status-backfill-tool.md) | feature | designed | ⛔ 7 | 0 | — |
+| 11 | [batch_update tool](11-batch-status-backfill-tool.md) | feature | designed | ✅ ready | 0 | — |
 | 12 | [Themes overview and tag cloud in the collection README](12-themes-overview-and-tag-cloud-in-the-collection-readme.md) | feature | draft | — | 3 | — |
 | 13 | [Consistent zero-padded numbering](13-consistent-zero-padded-numbering.md) | feature | designed | ✅ ready | 0 | — |
 | 15 | [Show in-progress work blocked on an open question](15-show-in-progress-work-blocked-on-an-open-question.md) | feature | draft | — | 2 | — |
@@ -44,9 +43,8 @@ flowchart RL
   n1["📐 1 migrate tool for numbered + completed/ collections"]
   n2["🟢 2 renumber tool for post-merge number collisions"]
   n3["🟢 3 rename_collection tool"]
-  n7["🟢 7 Infer a missing status from the initiative's prose"]
   n8["🟢 8 Fix mode for mechanical validate findings"]
-  n11["📐 11 batch_update tool"]
+  n11["🟢 11 batch_update tool"]
   n12["✏️ 12 Themes overview and tag cloud in the collection README"]
   n13["🟢 13 Consistent zero-padded numbering"]
   n15["✏️ 15 Show in-progress work blocked on an open question"]
@@ -56,6 +54,7 @@ flowchart RL
   n20["✏️ 20 Configurable columns in the generated README tables"]
   n21["✏️ 21 Computed scores such as WSJF"]
   n24["✏️ 24 Opt-in status folders that Brindley keeps in step"]
+  n7["✅ <s>7 Infer a missing status from the initiative's prose</s>"]
   n6["✅ <s>6 Record status without lifecycle checks</s>"]
   n19["✅ <s>19 Scoring dimensions on initiatives</s>"]
   n1 --> n7
@@ -73,6 +72,7 @@ flowchart RL
 | 4 | [Cycle errors advise where back-references belong](4-flag-reverse-direction-links-under-dependencies.md) | feature | 2026-10-07 |
 | 5 | [set_dependencies explains links it cannot remove](5-set-dependencies-removes-links-inside-prose.md) | feature | 2026-10-07 |
 | 6 | [Record status without lifecycle checks](6-record-status-without-lifecycle-checks.md) | feature | 2026-10-07 |
+| 7 | [Infer a missing status from the initiative's prose](7-infer-a-missing-status-from-the-initiative-s-prose.md) | feature | 2026-10-07 |
 | 9 | [Suggest a home for companion notes](9-suggest-an-ignore-pattern-for-companion-notes.md) | feature | 2026-10-07 |
 | 10 | [Name the base folder in path errors](10-name-the-base-folder-in-path-errors.md) | feature | 2026-10-07 |
 | 14 | [README front-matter controls what the dependency graph shows](14-readme-front-matter-controls-what-the-dependency-graph-shows.md) | feature | 2026-10-07 |

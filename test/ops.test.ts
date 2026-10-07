@@ -3,7 +3,8 @@ import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { C, fixture, git, lockExample, write, type Fixture } from "./helpers.js";
 import * as ops from "../src/ops.js";
-import { declaredTags, resolveRef } from "../src/repo.js";
+import { declaredTags, resolveRef, statusFromText } from "../src/repo.js";
+import { proseStatus } from "../src/markdown.js";
 import { dependants, dependencyReport, isReady } from "../src/deps.js";
 import { validate } from "../src/validate.js";
 import { regenerate, rootBlock } from "../src/readme.js";
@@ -270,6 +271,35 @@ describe("add_question", () => {
   });
 });
 
+describe("status stated in the text", () => {
+  it("reads only an explicit status line or section, mapping aliases and the collection's own words", () => {
+    const statuses = { spiked: "designed" };
+    expect(statusFromText({ proseStatus: proseStatus("# X\n\n**Status:** Proposed — design only.\n") })).toEqual({ status: "draft", word: "Proposed" });
+    expect(statusFromText({ proseStatus: proseStatus("# X\n\n## Status\n\nCompleted in March.\n") })).toEqual({ status: "done", word: "Completed" });
+    expect(statusFromText({ proseStatus: proseStatus("# X\n\n**Status:** spiked\n") }, statuses)).toEqual({ status: "designed", word: "spiked" });
+    expect(statusFromText({ proseStatus: proseStatus("# X\n\n**Status:** Blocked on vendor\n") })).toEqual({
+      status: undefined,
+      reason: 'The body says "Blocked", which isn\'t a status, an alias or one of the collection\'s `statuses:`.',
+    });
+    expect(statusFromText({ proseStatus: proseStatus("# X\n\nThis proposal is still exploratory.\n") }).status).toBeUndefined();
+  });
+
+  it("warns status-inferable only where nothing is recorded and the text states a status", () => {
+    fx = fixture({
+      files: {
+        "plans/README.md": "---\nbrindley: 1\n---\n# Plans\n",
+        "plans/1-gates.md": "# Gates\n\n**Status:** Exploratory.\n",
+        "plans/2-paddles.md": "# Paddles\n\nStill exploratory, really.\n",
+        "plans/3-sluice.md": "---\nstatus: designed\n---\n# Sluice\n\n**Status:** Proposed.\n",
+      },
+    });
+    const found = validate(fx.load());
+    const inferable = found.filter((f) => f.rule === "status-inferable").map((f) => `${f.file}: ${f.message}`);
+    expect(inferable).toEqual(["plans/1-gates.md: No status recorded; the body says Exploratory (draft). Record it with `update` (`status: draft`)."]);
+    expect(found.find((f) => f.rule === "status-prose-mismatch")?.message).toBe('The body says "Proposed" (draft), but the status is designed.');
+  });
+});
+
 describe("update", () => {
   it("records a status only where front-matter has none, and refuses to change one", () => {
     fx = fixture({
@@ -484,7 +514,8 @@ describe("status folders and aliases", () => {
     expect(msg("status-prose-mismatch", "3-done-thing.md")).toMatch(/body says "Proposed" \(draft\), but the status is done \(from "completed\/"\)/);
     expect(msg("broken-link", "2-spike.md")).toMatch(/it is now at completed\/3-done-thing\.md/);
     expect(msg("number-padding", "01-batch.md")).toMatch(/"1-…"/);
-    expect(msg("status-missing", "10-no-front-matter.md")).toMatch(/body says "draft" — add `status: draft`/);
+    expect(msg("status-missing", "10-no-front-matter.md")).toBe("No `status` in front-matter (see status-inferable).");
+    expect(msg("status-inferable", "10-no-front-matter.md")).toBe("No status recorded; the body says draft (draft). Record it with `update` (`status: draft`).");
   });
 
   it("reads statuses from front-matter, aliases, collection words and status folders", () => {

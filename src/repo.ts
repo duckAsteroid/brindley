@@ -11,6 +11,7 @@ import {
   type Initiative,
   type Ref,
   type Root,
+  type Status,
   type Theme,
 } from "./model.js";
 import {
@@ -461,6 +462,23 @@ export function requireCollection(root: Root, nameOrPath: string): Collection {
 
 export function lookup(root: Root, collection: string, number: number): Initiative | undefined {
   return findCollection(root, collection)?.initiatives.find((i) => i.number === number);
+}
+
+/**
+ * The status an initiative's text states — a `**Status:**` lead-in line or the first line under
+ * `## Status` — mapped to a core status (core names, the collection's `statuses:`, then aliases).
+ * Only those two explicit forms: a sentence such as "This is still exploratory." states nothing.
+ * Otherwise says why there is none, quoting a word it can't map.
+ */
+export function statusFromText(
+  i: Pick<Initiative, "proseStatus">,
+  statuses?: Record<string, string>,
+): { status: Status; word: string } | { status: undefined; reason: string } {
+  if (!i.proseStatus) return { status: undefined, reason: "The body has no **Status:** line or ## Status section." };
+  const status = normaliseStatus(i.proseStatus, statuses);
+  return status
+    ? { status, word: i.proseStatus }
+    : { status: undefined, reason: `The body says "${i.proseStatus}", which isn't a status, an alias or one of the collection's \`statuses:\`.` };
 }
 
 /**
