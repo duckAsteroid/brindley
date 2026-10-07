@@ -209,6 +209,7 @@ updated: 2026-09-24
 | `docs`       | no       | list of paths | Project docs this initiative is expected to change (§7.2). Filled in during design, corrected during implementation. |
 | `docs_impact` | on `done` | list of paths, or `none: <reason>` | Project docs actually updated, or an explicit statement that none were affected and why (§7.2). |
 | `priority`, `impact`, `complexity`, … | per collection | one of the dimension's values | Scoring dimensions (§4.3). |
+| `branch` | while `in-progress` | string | The branch the work is being built on. Tools set it when work starts and remove it when it stops. |
 
 - The **title is the document's H1**, not a front-matter field — it is what people edit and what
   GitHub shows.
@@ -765,6 +766,7 @@ Warnings:
 28. A collection README's `columns:` with an unknown table or column, or a value that isn't a list.
 29. A collection README's `folders:` listing something that isn't a status or alias, or a value that isn't a
     plain folder name.
+30. An in-progress initiative whose `branch` doesn't exist, locally or as a remote-tracking branch.
 
 Broken-link warnings name the new location when the linked file has moved within the collection.
 
@@ -805,8 +807,10 @@ Broken-link warnings name the new location when the linked file has moved within
 - [ ] Should `done` record the implementing merge commit or PR? (A commit can't contain its own
       SHA; the merge commit could be recorded by a follow-up, or a PR URL used.) — planned as
       initiatives#26.
-- [ ] Record who/what is implementing an `in-progress` item (branch/worktree name) to stop two
-      agents picking up the same one? — planned as initiatives#25.
+- [x] Record who/what is implementing an `in-progress` item (branch/worktree name) to stop two
+      agents picking up the same one? — Yes: the `branch` field, recorded when work starts; tools
+      also look across other worktrees and branches, and refuse to start work already in progress
+      elsewhere.
 - [x] What happens to rejected alternatives on completion? — they move into a final
       `## Appendix: Rejected alternatives` in the completed initiative (§7).
 - [x] Typed relations? One initiative may be "generalised by" another, or "hand over" a case to

@@ -180,7 +180,11 @@ function columnsFor(root: Root, c: Collection): Record<string, Column> {
     type: { header: "Type", cell: (i) => esc(i.type ?? "—") },
     status: {
       header: "Status",
-      cell: (i) => (i.statusNote ? `${esc(statusLabel(i))}<br><sub>${esc(i.statusNote)}</sub>` : esc(statusLabel(i))),
+      cell: (i) => {
+        // Under the status: its note, and for work in progress, the branch it is being built on.
+        const under = [i.statusNote, i.status === "in-progress" && i.branch ? `on ${i.branch}` : undefined].filter(Boolean).join(" · ");
+        return under ? `${esc(statusLabel(i))}<br><sub>${esc(under)}</sub>` : esc(statusLabel(i));
+      },
     },
     ready: { header: "Ready / blocked by", cell: (i) => readiness(root, i) },
     questions: { header: "Open Qs", cell: (i) => openQs(i) },

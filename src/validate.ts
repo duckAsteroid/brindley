@@ -10,6 +10,15 @@ import { checkDocs } from "./docs.js";
 import { dimensionsOf, parseDimensions, sameValue } from "./dimensions.js";
 import { parseGraph } from "./graph.js";
 import { homeFolder, parseFolders } from "./folders.js";
+import { branchNames } from "./elsewhere.js";
+
+// The repo's branch names, read once per loaded repo however many initiatives ask.
+const branchCache = new WeakMap<Root, Set<string>>();
+function branchExists(root: Root, branch: string): boolean {
+  let names = branchCache.get(root);
+  if (!names) branchCache.set(root, (names = branchNames(root.repoRoot)));
+  return names.has(branch) || [...names].some((n) => n.endsWith(`/${branch}`));
+}
 import { capacity, collectionWidth, fitsWidth, nearFull, numberPrefix, padNumber, roomFor } from "./numbering.js";
 
 export interface Finding {
@@ -234,6 +243,8 @@ function checkInitiative(
     warn("designed-open-questions", f, `Designed, but ${blocking.length} blocking open question(s) remain.`);
   if ((i.status === "in-progress" || i.status === "done") && open.length > 0)
     warn("open-questions", f, `${i.status}, but ${open.length} open question(s) remain.`);
+  if (i.status === "in-progress" && i.branch && !branchExists(root, i.branch))
+    warn("branch-missing", f, `In progress on branch ${i.branch}, which no longer exists here or as a remote-tracking branch: finish it with \`complete\`, or correct \`branch:\` to where it is built now.`);
   if (i.status === "abandoned" && !i.statusNote && i.statusSource !== "folder")
     warn("abandoned-reason", f, "Abandoned, but no reason recorded: set one with `update` (`status_note`), and it shows under the title and in the README.");
   // Work completed before Brindley (status from a legacy folder) can't be held to docs_impact.

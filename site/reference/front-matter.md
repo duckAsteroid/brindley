@@ -26,6 +26,7 @@ updated: 2026-10-06
 | `docs_impact` | Set on completion: the docs changed, or `none: <reason>`. |
 | `superseded_by` | Required when `status: superseded` — a reference like `sb#30`. |
 | `updated` | ISO date, maintained by the tools. |
+| `branch` | While in progress: the branch it's being built on. Set by `set_status` when work starts, removed when it stops. |
 | `priority`, `impact`, `complexity`, … | [Scoring dimensions](#scoring-dimensions). |
 
 The title is the H1. Dependencies are links under `## Dependencies`, not front-matter.

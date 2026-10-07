@@ -145,6 +145,7 @@ export function loadInitiative(
     proseStatus: proseStatus(body),
     folder: opts.folder,
     statusNote: str(fm["status_note"]),
+    branch: str(fm["branch"]),
     type: normaliseType(str(fm["type"])),
     tags: strList(fm["tags"]),
     owner: str(fm["owner"]),

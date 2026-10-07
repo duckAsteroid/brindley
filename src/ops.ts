@@ -42,7 +42,8 @@ import {
   toPosix,
 } from "./repo.js";
 import { blockers, dependants, dependencyReport, isReady, wouldCycle } from "./deps.js";
-import { changedSinceHead, highestNumberElsewhere } from "./git.js";
+import { changedSinceHead, currentBranch, highestNumberElsewhere } from "./git.js";
+import { describeElsewhere, elsewhereFor } from "./elsewhere.js";
 import { readmeColumns, regenerate } from "./readme.js";
 import { checkDocs, docsGlobs, inCollection, isProjectDoc } from "./docs.js";
 import { dimensionsFor, parseDimensions, sameValue, type DimensionValue } from "./dimensions.js";
@@ -583,8 +584,8 @@ export function setStatus(
   root: Root,
   i: Initiative,
   status: string,
-  opts: { force?: boolean; superseded_by?: string | number; reason?: string; outcome?: string } = {},
-): OpResult<{ ref: string; status: string; moved?: { moves: Move[]; rewrites: Rewrite[] } }> {
+  opts: { force?: boolean; superseded_by?: string | number; reason?: string; outcome?: string; branch?: string } = {},
+): OpResult<{ ref: string; status: string; branch?: string; moved?: { moves: Move[]; rewrites: Rewrite[] } }> {
   const core = normaliseStatus(status, findCollection(root, i.collection)?.meta.statuses);
   if (!core) throw new BrindleyError(`Unknown status "${status}". Use one of ${STATUSES.join(", ")} or a known alias.`);
   status = core;
@@ -602,9 +603,17 @@ export function setStatus(
     if (i.status !== "designed") refuse(`Only a designed initiative can start (currently ${i.status})`);
     const b = blockers(root, i);
     if (b.length) refuse(`Blocked by ${b.map((d) => d.ref).join(", ")}`);
+    const c = findCollection(root, i.collection);
+    const there = c ? elsewhereFor(root, c, i) : [];
+    if (there.length) refuse(`Already being built ${describeElsewhere(there)}`);
   }
   if (status === "done") refuse("Use `complete`, which records docs_impact");
   const changes: Record<string, unknown> = { status };
+  // Where the work is being built: recorded on starting, removed on leaving in-progress.
+  const branch = status === "in-progress" ? (opts.branch?.trim() || currentBranch(root.repoRoot) || undefined) : undefined;
+  if (status === "in-progress") {
+    if (branch) changes["branch"] = branch;
+  } else if (i.branch !== undefined) changes["branch"] = undefined;
   if (status === "superseded") {
     if (opts.superseded_by === undefined) throw new BrindleyError("`superseded_by` is required for status superseded.");
     const r = parseRef(refValue(opts.superseded_by), i.collection);
@@ -627,7 +636,7 @@ export function setStatus(
   const moves = plannedMoves(root, i, status);
   writeInitiative(i, changes, body);
   const { written, moved } = relocate(root, i, moves);
-  return finish(root, [i.collection], written, { ref: initiativeKey(i), status, ...(moved ? { moved } : {}) }, warnings);
+  return finish(root, [i.collection], written, { ref: initiativeKey(i), status, ...(branch ? { branch } : {}), ...(moved ? { moved } : {}) }, warnings);
 }
 
 export function addQuestion(root: Root, i: Initiative, text: string, implementation = false): OpResult<{ ref: string; index: number; status: string | undefined }> {
@@ -864,7 +873,7 @@ export function complete(
 
   const before = new Set(dependants(root, i).filter((d) => isReady(root, d)).map(initiativeKey));
   const moves = plannedMoves(root, i, "done");
-  writeInitiative(i, { status: "done", docs_impact: impact });
+  writeInitiative(i, { status: "done", docs_impact: impact, ...(i.branch !== undefined ? { branch: undefined } : {}) });
   const { written, moved } = relocate(root, i, moves);
   if (moved) warnings.push(`Moved into its status folder: ${moved.moves.map((m) => `${m.from} → ${m.to}`).join(", ")}.`);
   const out = finish(
@@ -1230,6 +1239,10 @@ export function preflight(root: Root, i: Initiative, problems: { level: string; 
       ? `${i.acceptance.length} criteria`
       : 'no "## Acceptance criteria" — the definition of done is missing');
   }
+
+  const c = findCollection(root, i.collection);
+  const there = c && i.status !== "in-progress" ? elsewhereFor(root, c, i) : [];
+  if (there.length) add("Elsewhere", false, `already being built ${describeElsewhere(there)}`);
 
   const errors = problems.filter((p) => p.level === "error");
   add("Validation", errors.length === 0, errors.length ? errors.map((e) => `[${e.rule}] ${e.message}`).join(" | ") : "no errors");

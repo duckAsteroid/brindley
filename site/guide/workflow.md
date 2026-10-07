@@ -34,8 +34,10 @@ work at the top; `where` narrows it (`{ priority: [critical, high] }`). See
 > Is sb#22 ready?
 
 `check_ready` confirms the status, that every linked dependency is done, that no blocking
-questions remain, that acceptance criteria exist, and that the file has no validation errors.
-The implement and spike briefs begin with the same check, and stop if it fails.
+questions remain, that acceptance criteria exist, that no one is already building it in another
+worktree or on another branch, and that the file has no validation errors. The implement and spike
+briefs begin with the same check, and stop if it fails. Starting work records its branch, so the
+next agent to look can see where it's being built.
 
 ## 4. Build it
 

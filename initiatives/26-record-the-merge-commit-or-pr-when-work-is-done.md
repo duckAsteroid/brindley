@@ -15,7 +15,7 @@ _None._
 
 ## Related
 
-- [25 Show where in-progress work is being built](25-show-where-in-progress-work-is-being-built.md) — records the branch while work is in progress; this records what landed
+- [25 Show where in-progress work is being built](done/25-show-where-in-progress-work-is-being-built.md) — records the branch while work is in progress; this records what landed
 
 ## Open questions
 

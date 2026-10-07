@@ -92,6 +92,8 @@ export interface Initiative {
   /** Sub-folder of the collection the file lives in (e.g. "completed"), if any. */
   folder?: string;
   statusNote?: string;
+  /** The branch an in-progress initiative is being built on (front-matter `branch`). */
+  branch?: string;
   type?: string;
   tags: string[];
   owner?: string;

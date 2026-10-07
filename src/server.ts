@@ -24,6 +24,7 @@ import { validate } from "./validate.js";
 import { checkDocs } from "./docs.js";
 import { dimensionReport, filterByDimensions, orderByDimensions } from "./dimensions.js";
 import { graphSettings } from "./graph.js";
+import { elsewhereFor, type Elsewhere } from "./elsewhere.js";
 import * as ops from "./ops.js";
 import { MEASURES, sectionIsBlank } from "./ops.js";
 import { COMMIT, VERSION } from "./version.js";
@@ -54,6 +55,12 @@ const dimensionValue = z.union([z.string(), z.number()]);
 const refArg = z.union([z.string(), z.number()]).describe('Initiative (ticket/issue): "collection#n" (e.g. "lgm#22"), a bare number, or a path.');
 const refList = z.array(z.union([z.string(), z.number()]));
 
+/** Where an initiative is in progress in another worktree or on another branch (none if it is here). */
+function elsewhereOf(root: Root, i: Initiative): Elsewhere[] {
+  const c = findCollection(root, i.collection);
+  return c && i.status !== "in-progress" ? elsewhereFor(root, c, i) : [];
+}
+
 function summary(root: Root, i: Initiative) {
   const open = i.questions.filter((q) => !q.resolved);
   return {
@@ -66,6 +73,8 @@ function summary(root: Root, i: Initiative) {
     statusAsWritten: i.statusRaw ?? null,
     statusFrom: i.statusSource ?? null,
     statusNote: i.statusNote ?? null,
+    branch: i.branch ?? null,
+    elsewhere: elsewhereOf(root, i),
     owner: i.owner ?? null,
     tags: i.tags,
     dimensions: dimensionReport(root, i),
@@ -412,7 +421,7 @@ export function createServer(opts: ServerOptions): McpServer {
         .filter((i) => !a.status || i.status === a.status)
         .filter((i) => !a.tag || i.tags.includes(a.tag))
         .filter((i) => !a.owner || i.owner === a.owner)
-        .filter((i) => a.ready === undefined || isReady(root, i) === a.ready);
+        .filter((i) => a.ready === undefined || (isReady(root, i) && !elsewhereOf(root, i).length) === a.ready);
       if (a.where) items = filterByDimensions(root, items, a.where);
       if (a.order_by?.length) items = orderByDimensions(root, items, a.order_by);
       return items.map((i) => summary(root, i));
@@ -436,7 +445,7 @@ export function createServer(opts: ServerOptions): McpServer {
       topoSort(
         root,
         allInitiatives(root).filter(
-          (i) => isReady(root, i) && (!a.collection || i.collection === canonicalCollection(root, a.collection)) && (!a.type || i.type === a.type),
+          (i) => isReady(root, i) && !elsewhereOf(root, i).length && (!a.collection || i.collection === canonicalCollection(root, a.collection)) && (!a.type || i.type === a.type),
         ),
       ).map((i) => ({ ...summary(root, i), external: dependencyReport(root, i).filter((d) => d.classification === "external").map((d) => d.ref) })),
     { readOnlyHint: true },
@@ -703,6 +712,7 @@ export function createServer(opts: ServerOptions): McpServer {
         .optional()
         .describe("Why — required to abandon, optional to supersede or defer. Kept as status_note and shown in a callout under the initiative's title and in the README."),
       outcome: z.string().optional().describe("The fuller account (what was learned, what replaced it), written into ## Outcome."),
+      branch: z.string().optional().describe("Starting work (in-progress): the branch it is built on, if not the one checked out here — recorded so others can see it."),
     },
     (root, a) => ops.setStatus(root, resolveRef(root, a.ref, a.collection), a.status, a),
   );
