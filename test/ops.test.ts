@@ -206,7 +206,7 @@ describe("complete", () => {
       const root = fx.load();
       const broken = validate(root).filter((f) => f.rule === "broken-link").map((f) => f.message);
       // A sibling link needs no path; one that climbs out shows where it resolves. Both name the worktree.
-      expect(broken[0]).toMatch(/^Link target does not exist: 2-paddles\.md It exists in the worktree .*-wt: this server works on /);
+      expect(broken[0]).toMatch(/^Link target does not exist: 2-paddles\.md It exists in the worktree .*-wt, but this server is working on .*\. If that worktree is where you are working, call use_worktree\(".*-wt"\) and try again\.$/);
       expect(broken[1]).toMatch(/^Link target does not exist: \.\.\/docs\/guide\.md \(docs\/guide\.md\) It exists in the worktree .*-wt/);
       expect(() => resolveRef(root, "plans/2-paddles.md")).toThrow(
         new RegExp(`^No initiative at plans/2-paddles\\.md in ${fx.repo.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\. It exists in the worktree .*-wt`),
@@ -225,7 +225,7 @@ describe("complete", () => {
     try {
       write(wt, "services/locks/docs/NEW.md", "# New\n");
       const root = fx.load();
-      expect(() => ops.complete(root, resolveRef(root, 23), ["services/locks/docs/NEW.md"])).toThrow(/exists in the worktree .*-wt/);
+      expect(() => ops.complete(root, resolveRef(root, 23), ["services/locks/docs/NEW.md"])).toThrow(/exists in the worktree .*-wt, but this server is working on .*call use_worktree\(".*-wt"\)/);
     } finally {
       rmSync(wt, { recursive: true, force: true });
     }

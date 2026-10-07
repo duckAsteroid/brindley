@@ -493,7 +493,7 @@ export function statusFromText(
 export function elsewhereHint(root: Root, relPath: string): string {
   const found = otherWorktrees(root.repoRoot).filter((wt) => existsSync(join(wt, relPath)));
   return found.length
-    ? ` It exists in the worktree ${found.join(", ")}: this server works on ${root.repoRoot}, so run it from the worktree you are changing.`
+    ? ` It exists in the worktree ${found.join(", ")}, but this server is working on ${root.repoRoot}. If that worktree is where you are working, call use_worktree("${found[0]}") and try again.`
     : "";
 }
 
