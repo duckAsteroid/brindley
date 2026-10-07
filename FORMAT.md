@@ -798,20 +798,24 @@ Broken-link warnings name the new location when the linked file has moved within
 - [x] **Name for a collection** — "collection": deliberately vague, so it fits themes, epics, tickets or changesets alike.
 - [x] Number scope — unique **per collection**. Each changeset counts from 1, existing numbering
       migrates unchanged, and `"<collection>#<n>"` disambiguates across collections.
-- [ ] Is a front-matter-free mode worth supporting (status as a `## Status` section, as today), or
-      is front-matter acceptable to adopters?
+- [x] Is a front-matter-free mode worth supporting (status as a `## Status` section, as today), or
+      is front-matter acceptable to adopters? — No: a status in the body is read (the
+      `status-inferable` finding) and tools record it in front-matter, rather than being a second
+      way to keep it.
 - [ ] Should `done` record the implementing merge commit or PR? (A commit can't contain its own
-      SHA; the merge commit could be recorded by a follow-up, or a PR URL used.)
+      SHA; the merge commit could be recorded by a follow-up, or a PR URL used.) — planned as
+      initiatives#26.
 - [ ] Record who/what is implementing an `in-progress` item (branch/worktree name) to stop two
-      agents picking up the same one?
+      agents picking up the same one? — planned as initiatives#25.
 - [x] What happens to rejected alternatives on completion? — they move into a final
       `## Appendix: Rejected alternatives` in the completed initiative (§7).
-- [ ] Typed relations? One initiative may be "generalised by" another, or "hand over" a case to
+- [x] Typed relations? One initiative may be "generalised by" another, or "hand over" a case to
       another. Plain `## Related` links lose the direction and kind; would a convention like
-      "generalised by: [44](…)" be worth recognising?
+      "generalised by: [44](…)" be worth recognising? — No: tools don't read meaning from wording.
+      `## Related` (non-blocking) and plain sections such as `## See also` carry it in prose.
       would let the index show it. Worth the extra syntax?
-- [ ] Should the format require the question list to be a task list (`- [ ]`) for reliable
-      parsing, or accept plain bullets as real-world files use? (Currently: accept both.)
+- [x] Should the format require the question list to be a task list (`- [ ]`) for reliable
+      parsing, or accept plain bullets as real-world files use? — Accept both.
 
 ## Appendix A — What real-world use showed
 

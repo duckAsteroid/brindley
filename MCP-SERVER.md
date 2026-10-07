@@ -260,15 +260,20 @@ server only ever rewrites between them.
 - [x] Package / server name — `brindley` on npm (unscoped name was free at time of writing); CLI command `brindley`.
 - [ ] v2 git helpers? E.g. `claim` (set `in-progress` and record the branch) — the same
       worktree/branch scan used for numbering could detect an initiative already `in-progress`
-      elsewhere. Or keep git writes entirely in repo agent files?
+      elsewhere. Or keep git writes entirely in repo agent files? — planned as initiatives#25
+      (recording and spotting the branch; still no git writes).
 - [x] Who coins numbers? — the server, via read-only repo scan across worktrees, branches and
       history (§6).
 - [ ] Should the `implement` prompt *inline* the resolved `agent:` file, or just tell the agent
-      to read it?
-- [ ] Should `create_collection` write the format-rules snippet into `AGENTS.md`/`CLAUDE.md`, or only return it?
-- [ ] `check_docs` heuristics: a fixed English phrase list, or configurable per repo? Should it
-      ever fail CI, or stay advisory?
-- [ ] A companion CLI over the same core library (for humans, and `validate` in CI)?
+      to read it? — planned as initiatives#27.
+- [ ] Should `create_collection` write the format-rules snippet into `AGENTS.md`/`CLAUDE.md`, or only return it? —
+      planned as initiatives#28, which also keeps the written copy current.
+- [x] `check_docs` heuristics: a fixed English phrase list, or configurable per repo? Should it
+      ever fail CI, or stay advisory? — A fixed English list, kept beside the other built-in
+      vocabularies; its findings are warnings, so `brindley validate --docs` doesn't fail CI on
+      them.
+- [x] A companion CLI over the same core library (for humans, and `validate` in CI)? — Yes: the
+      `brindley` command (`init`, `validate`, `validate --fix`, `readmes`, `repad`, `tidy`).
 
 ## Appendix A — Effect on a typical implementing agent
 

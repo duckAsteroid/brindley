@@ -26,6 +26,10 @@ Planned work on Brindley itself: tools specified in MCP-SERVER.md but not yet bu
 | 12 | [Themes overview and tag cloud in the collection README](12-themes-overview-and-tag-cloud-in-the-collection-readme.md) | feature | draft | — | 3 | — |
 | 16 | [Resolve settled questions in bulk](16-resolve-settled-questions-in-bulk.md) | feature | draft | — | 1 | — |
 | 21 | [Computed scores such as WSJF](21-computed-scores-such-as-wsjf.md) | feature | draft | — | 2 | — |
+| 25 | [Show where in-progress work is being built](25-show-where-in-progress-work-is-being-built.md) | feature | draft | — | 3 | — |
+| 26 | [Record the merge commit or PR when work is done](26-record-the-merge-commit-or-pr-when-work-is-done.md) | feature | draft | — | 1 | — |
+| 27 | [Inline the collection's agent file in the implement brief](27-inline-the-collection-s-agent-file-in-the-implement-brief.md) | feature | draft | — | 1 | — |
+| 28 | [Write and keep the agent rules in AGENTS.md / CLAUDE.md](28-write-and-keep-the-agent-rules-in-agents-md-claude-md.md) | feature | draft | — | 1 | — |
 
 ### Dependencies
 
@@ -34,6 +38,10 @@ flowchart RL
   n12["✏️ 12 Themes overview and tag cloud in the collection README"]
   n16["✏️ 16 Resolve settled questions in bulk"]
   n21["✏️ 21 Computed scores such as WSJF"]
+  n25["✏️ 25 Show where in-progress work is being built"]
+  n26["✏️ 26 Record the merge commit or PR when work is done"]
+  n27["✏️ 27 Inline the collection's agent file in the implement brief"]
+  n28["✏️ 28 Write and keep the agent rules in AGENTS.md / CLAUDE.md"]
   n19["✅ <s>19 Scoring dimensions on initiatives</s>"]
   n21 --> n19
 ```
