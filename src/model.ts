@@ -34,6 +34,9 @@ export const STATUS_ALIASES: Readonly<Record<string, Status>> = {
   canceled: "abandoned",
   rejected: "abandoned",
   dropped: "abandoned",
+  "wont-do": "abandoned",
+  "won't-do": "abandoned",
+  wontfix: "abandoned",
   replaced: "superseded",
 };
 

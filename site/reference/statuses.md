@@ -22,7 +22,7 @@ under its `## Dependencies` is `done`.
 | in-review, wip | `in-progress` |
 | parked, on-hold, backlog, future | `deferred` |
 | complete, completed, implemented | `done` |
-| cancelled, canceled, rejected, dropped | `abandoned` |
+| cancelled, canceled, rejected, dropped, won't do (wont-do), wontfix | `abandoned` |
 | replaced | `superseded` |
 
 The word you wrote is kept for display — *draft (Proposed)* — and behaviour follows the core

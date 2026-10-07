@@ -76,6 +76,9 @@ describe("status words", () => {
   it("maps aliases to core statuses", () => {
     expect(normaliseStatus("Future")).toBe("deferred");
     expect(normaliseStatus("Proposed")).toBe("draft");
+    expect(normaliseStatus("wont-do")).toBe("abandoned");
+    expect(normaliseStatus("Won't do")).toBe("abandoned");
+    expect(normaliseStatus("WontFix")).toBe("abandoned");
     expect(normaliseStatus("spiked", { spiked: "designed" })).toBe("designed");
     expect(normaliseStatus("Design")).toBe("draft");
     expect(normaliseStatus("design complete")).toBe("designed");
