@@ -70,6 +70,7 @@ dimensions:
 | `statuses` | This collection's own status words, mapped to core statuses. |
 | `ignore` | `.gitignore`-style patterns for numbered files that aren't initiatives. |
 | `dimensions` | This collection's [scoring dimensions](#scoring-dimensions). |
+| `graph` | What the README's dependency graph shows: `related: true` also draws `## Related` links (off by default). |
 
 ## Scoring dimensions
 

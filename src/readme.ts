@@ -74,8 +74,11 @@ function nodeLabel(root: Root, i: Initiative, text: string): string {
   return `✏️ ${t}`;
 }
 
-/** Mermaid graph of the given active initiatives plus the done initiatives they depend on. */
-export function mermaid(root: Root, active: Initiative[], from: string): string | null {
+/**
+ * Mermaid graph of the given active initiatives plus whatever they depend on. `## Related` links are
+ * drawn (dotted) only when `related` is set.
+ */
+export function mermaid(root: Root, active: Initiative[], from: string, opts: { related?: boolean } = {}): string | null {
   if (active.length === 0) return null;
   const nodes = new Map<string, string>();
   const edges: string[] = [];
@@ -105,7 +108,7 @@ export function mermaid(root: Root, active: Initiative[], from: string): string 
       if (!t) continue;
       edges.push(`  ${addNode(t)} --> ${to}`);
     }
-    for (const r of i.related) {
+    for (const r of opts.related ? i.related : []) {
       if (r.kind !== "initiative") continue;
       const t = target(root, r);
       if (!t || !nodes.has(nodeId(t, from))) continue;
@@ -135,7 +138,7 @@ export function collectionBlock(root: Root, c: Collection): string {
       );
     }
   }
-  const graph = mermaid(root, active, c.name);
+  const graph = mermaid(root, active, c.name, { related: c.meta.graph?.related === true });
   if (graph) out.push("", "### Dependencies", "", graph);
   if (deferred.length > 0) {
     out.push("", "### Deferred", "");

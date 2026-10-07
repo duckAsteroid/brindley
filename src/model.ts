@@ -130,6 +130,13 @@ export interface CollectionMeta {
   aliases?: string[];
   /** Scoring dimensions as declared in front-matter; read with `dimensionsOf` (dimensions.ts). */
   dimensions?: unknown;
+  /** What the generated dependency graph shows. */
+  graph?: GraphSettings;
+}
+
+export interface GraphSettings {
+  /** Draw `## Related` links as dotted edges (default: off — only blocking dependencies are drawn). */
+  related?: boolean;
 }
 
 export interface Collection {

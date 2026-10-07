@@ -91,6 +91,8 @@ ignore:                                     # .gitignore-style, relative to this
 dimensions:                                 # scoring dimensions (§4.3)
   priority: { values: [now, soon, later], default: soon, required: true }
   job_size: [1, 2, 3, 5, 8, 13]
+graph:                                      # what the generated dependency graph shows (§8.3)
+  related: true                             # also draw ## Related links (default: off)
 ---
 # LOCK-42 lock slot booking
 
@@ -595,8 +597,9 @@ flowchart LR
 ```
 ````
 
-- Edges point **from prerequisite to dependant** (arrow = "unblocks"). Dependencies are solid;
-  related links are dotted.
+- Edges point **from prerequisite to dependant** (arrow = "unblocks"). Only dependencies are
+  drawn, as solid edges. `## Related` links are left out unless the collection README sets
+  `graph: { related: true }`; then they are drawn dotted, between initiatives already on the graph.
 - Each node's label starts with an emoji for its derived state, and closed work is struck through:
 
   | Mark | State |

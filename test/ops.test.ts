@@ -262,6 +262,23 @@ describe("READMEs", () => {
     expect(overview).toContain("[slot-booking](docs/initiatives/LOCK-42/slot-booking/README.md)");
   });
 
+  it("draws ## Related links in the graph only when the README opts in", () => {
+    const files = (graph: string) => ({
+      "plans/README.md": `---\nbrindley: 1\n${graph}---\n# Plans\n`,
+      "plans/1-gates.md": "---\nstatus: draft\n---\n# Gates\n",
+      "plans/2-paddles.md": "---\nstatus: draft\n---\n# Paddles\n\n## Dependencies\n\n- [1](1-gates.md)\n\n## Related\n\n- [3](3-signs.md)\n",
+      "plans/3-signs.md": "---\nstatus: draft\n---\n# Signs\n",
+    });
+    fx = fixture({ files: files("") });
+    regenerate(fx.load());
+    expect(read("plans/README.md")).toContain("n1 --> n2");
+    expect(read("plans/README.md")).not.toContain("-.->");
+    fx.cleanup();
+    fx = fixture({ files: files("graph:\n  related: true\n") });
+    regenerate(fx.load());
+    expect(read("plans/README.md")).toContain("n3 -.-> n2");
+  });
+
   it("replaces a conflicted generated block outright", () => {
     fx = fixture({ files: lockExample });
     regenerate(fx.load());

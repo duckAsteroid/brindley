@@ -17,9 +17,12 @@ _None._
 
 - [12 Themes overview and tag cloud in the collection README](12-themes-overview-and-tag-cloud-in-the-collection-readme.md) — also adds a front-matter-controlled section to the generated README
 
+## Decisions
+
+- Separate settings under one `graph:` object in the collection README, not a single preset word. The first is built: `graph: { related: true }` draws `## Related` links as dotted edges; they are off by default, so the graph shows only blocking dependencies (the `graph` tool takes `related` too, defaulting to the collection's setting). Further settings — which statuses appear, external nodes, turning the graph off — join the same object.
+
 ## Open questions
 
-- What shape is the field? A single preset (`graph: active | all | none`, with today's behaviour as `active`), or separate settings, e.g. `graph: { statuses: [done, deferred], related: false, external: false }`? Presets are easy to read and hard to get wrong; settings cover cases presets don't.
 - Does the setting reach beyond the collection — e.g. hide other collections' initiatives that this one depends on, or apply to the repo-wide overview's cross-collection graph — or only this collection's README graph?
 
 ## Acceptance criteria

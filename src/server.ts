@@ -361,7 +361,13 @@ export function createServer(opts: ServerOptions): McpServer {
   tool(
     "graph",
     "Dependency graph as an adjacency list plus Mermaid: a collection's active work, one initiative's neighbourhood, or a tag (theme) across collections.",
-    { collection: z.string().optional(), ref: refArg.optional(), tag: z.string().optional(), include_done: z.boolean().optional() },
+    {
+      collection: z.string().optional(),
+      ref: refArg.optional(),
+      tag: z.string().optional(),
+      include_done: z.boolean().optional(),
+      related: z.boolean().optional().describe("Draw ## Related links as dotted edges. Default: the collection README's `graph.related`, else off."),
+    },
     (root, a) => {
       let items: Initiative[];
       let from = a.collection ?? "";
@@ -380,7 +386,7 @@ export function createServer(opts: ServerOptions): McpServer {
       return {
         nodes: unique.map((i) => ({ ref: initiativeKey(i), title: i.title, status: i.status, ready: isReady(root, i) })),
         edges: unique.flatMap((i) => i.dependsOn.map((r) => ({ from: r.kind === "initiative" ? `${r.collection}#${r.number}` : r.raw, to: initiativeKey(i) }))),
-        mermaid: mermaid(root, unique, from),
+        mermaid: mermaid(root, unique, from, { related: a.related ?? findCollection(root, from)?.meta.graph?.related === true }),
       };
     },
     { readOnlyHint: true },

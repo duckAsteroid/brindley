@@ -21,7 +21,7 @@ accepts a name, an alias or a folder path.
 | `get` | `ref` | One initiative in full: dependency report, dependants, questions, acceptance criteria, themes, scoring dimensions. |
 | `ready` | `collection?`, `type?` | What can be picked up now, prerequisites first. |
 | `check_ready` | `ref` | Whether one initiative is complete and ready to work on, check by check. |
-| `graph` | `collection?`, `ref?`, `tag?`, `include_done?` | Dependency graph as data and Mermaid. |
+| `graph` | `collection?`, `ref?`, `tag?`, `include_done?`, `related?` | Dependency graph as data and Mermaid. |
 | `questions` | `collection?`, `ref?`, `include_implementation?` | Unresolved open questions. |
 | `next_question` | `ref`, `after?` | The next blocking question to discuss, and how many remain. |
 | `tags` | — | Every tag, with descriptions, counts and theme docs. |
