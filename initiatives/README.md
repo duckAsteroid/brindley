@@ -8,6 +8,7 @@ tags:
   dependency-links: "Telling blocking dependencies from other cross-references, and editing them (GitHub #3)"
   status-recording: "Recording an initiative's status outside a lifecycle transition (GitHub #4)"
   adoption: "Bringing an existing hand-written folder under Brindley with less hand-editing (GitHub #5)"
+  questions: "Open questions during design and implementation, and tidying settled ones (GitHub #6, #7)"
 ---
 # Brindley roadmap
 
@@ -33,6 +34,8 @@ Planned work on Brindley itself: tools specified in MCP-SERVER.md but not yet bu
 | 12 | [Themes overview and tag cloud in the collection README](12-themes-overview-and-tag-cloud-in-the-collection-readme.md) | feature | draft | — | 3 | — |
 | 13 | [Consistent zero-padded numbering](13-consistent-zero-padded-numbering.md) | feature | draft | — | 2 | — |
 | 14 | [README front-matter controls what the dependency graph shows](14-readme-front-matter-controls-what-the-dependency-graph-shows.md) | feature | draft | — | 2 | — |
+| 15 | [Show in-progress work blocked on an open question](15-show-in-progress-work-blocked-on-an-open-question.md) | feature | draft | — | 2 | — |
+| 16 | [Resolve settled questions in bulk](16-resolve-settled-questions-in-bulk.md) | feature | draft | — | 1 | — |
 
 ### Dependencies
 
@@ -52,6 +55,8 @@ flowchart LR
   n12["12 Themes overview and tag cloud in the collection README"]:::draft
   n13["13 Consistent zero-padded numbering"]:::draft
   n14["14 README front-matter controls what the dependency graph shows"]:::draft
+  n15["15 Show in-progress work blocked on an open question"]:::draft
+  n16["16 Resolve settled questions in bulk"]:::draft
   n7 --> n1
   n13 --> n1
   n8 -.-> n1
@@ -65,6 +70,7 @@ flowchart LR
   n2 -.-> n13
   n8 -.-> n13
   n12 -.-> n14
+  n11 -.-> n16
   classDef done fill:#e6e6e6,color:#777,stroke:#bbb
   classDef draft fill:#fff,stroke:#999,stroke-dasharray:4 3
   classDef designed fill:#e8f0fe,stroke:#4a7bd0

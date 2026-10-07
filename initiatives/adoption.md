@@ -16,7 +16,7 @@ to make adoption one call plus a review rather than an afternoon of hand-editing
 
 ### Initiatives in this theme
 
-Tagged `adoption`: 8 open, 0 closed or deferred.
+Tagged `adoption`: 9 open, 0 closed or deferred.
 
 | Ref | Initiative | Type | Status | Ready / blocked by |
 |-----|------------|------|--------|--------------------|
@@ -28,5 +28,6 @@ Tagged `adoption`: 8 open, 0 closed or deferred.
 | `initiatives#10` | [Name the base folder in path errors](10-name-the-base-folder-in-path-errors.md) | feature | draft | — |
 | `initiatives#11` | [batch_update tool](11-batch-status-backfill-tool.md) | feature | draft | ⛔ 6, 7 |
 | `initiatives#13` | [Consistent zero-padded numbering](13-consistent-zero-padded-numbering.md) | feature | draft | — |
+| `initiatives#16` | [Resolve settled questions in bulk](16-resolve-settled-questions-in-bulk.md) | feature | draft | — |
 
 <!-- brindley:generated:end -->
