@@ -1,8 +1,12 @@
 ---
 type: feature
-status: designed
+status: done
 tags: [status-recording, adoption]
 updated: 2026-10-07
+docs_impact:
+  - MCP-SERVER.md
+  - site/reference/mcp.md
+  - site/reference/validation.md
 ---
 # batch_update tool
 
@@ -22,6 +26,7 @@ A `batch_update` tool that applies `update`-style changes — `status`, `type`, 
 ## Decisions
 
 - All or nothing: every entry is checked before anything is written (unknown ref, a status that would be a transition for `set_status`, no status in the text when asked to take it from there). If any fail, nothing is written and every failure is reported, not just the first. Entries set values rather than toggle them, so the caller corrects the batch and resends the whole of it safely. `dry_run` is supported, default false — the caller states the changes, unlike `migrate` — and returns what each file would get, notably statuses taken from the text ("22 → draft, from 'Proposed'"), without writing.
+- Implementation: `batchUpdate` in src/ops.ts shares `planUpdate` with `update`, so every entry is checked by the same rules before anything is written. An initiative listed twice is a failure (combine its changes into one entry). Entries also take `reason` and `dimensions`, as `update` does. `dry_run` defaults to false, as decided.
 
 ## Open questions
 

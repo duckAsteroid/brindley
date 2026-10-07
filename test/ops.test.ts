@@ -295,7 +295,7 @@ describe("status stated in the text", () => {
     });
     const found = validate(fx.load());
     const inferable = found.filter((f) => f.rule === "status-inferable").map((f) => `${f.file}: ${f.message}`);
-    expect(inferable).toEqual(["plans/1-gates.md: No status recorded; the body says Exploratory (draft). Record it with `update` (`status: draft`)."]);
+    expect(inferable).toEqual(["plans/1-gates.md: No status recorded; the body says Exploratory (draft). Record it with `update` (`status: draft`), or many at once with `batch_update` (`status: \"from-text\"`)."]);
     expect(found.find((f) => f.rule === "status-prose-mismatch")?.message).toBe('The body says "Proposed" (draft), but the status is designed.');
   });
 });
@@ -352,6 +352,59 @@ describe("why work was closed or parked", () => {
     });
     const warned = validate(fx.load()).filter((f) => f.rule === "abandoned-reason").map((f) => f.file);
     expect(warned).toEqual(["plans/3-old.md"]);
+  });
+});
+
+describe("batch_update", () => {
+  const files = () => ({
+    "plans/README.md": "---\nbrindley: 1\n---\n# Plans\n",
+    "plans/1-gates.md": "# Gates\n\n**Status:** Proposed.\n",
+    "plans/2-paddles.md": "# Paddles\n\n## Status\n\nCompleted in March.\n",
+    "plans/3-sluice.md": "# Sluice\n\nNothing says.\n",
+    "plans/4-weir.md": "---\nstatus: designed\n---\n# Weir\n",
+  });
+
+  it("previews statuses from the text and other fields, writing nothing", () => {
+    fx = fixture({ files: files() });
+    const before = read("plans/1-gates.md");
+    const r = ops.batchUpdate(fx.load(), [
+      { ref: "plans#1", status: "from-text", owner: "locks team" },
+      { ref: "plans#2", status: "from-text" },
+      { ref: "plans#3", status: "deferred", reason: "After the paddles" },
+    ], { dry_run: true });
+    expect(r.result.ok).toBe(true);
+    expect(r.result.entries.map((e) => [e.ref, e.changes, e.statusFrom])).toEqual([
+      ["plans#1", { owner: "locks team", status: "draft" }, "Proposed"],
+      ["plans#2", { status: "done", docs_impact: "none: completed before Brindley" }, "Completed"],
+      ["plans#3", { status: "deferred", status_note: "After the paddles" }, undefined],
+    ]);
+    expect(read("plans/1-gates.md")).toBe(before);
+  });
+
+  it("writes every entry, or nothing if any fails — reporting every failure", () => {
+    fx = fixture({ files: files() });
+    const bad = ops.batchUpdate(fx.load(), [
+      { ref: "plans#1", status: "from-text" },
+      { ref: "plans#3", status: "from-text" },
+      { ref: "plans#4", status: "done" },
+      { ref: "plans#9", owner: "x" },
+    ]);
+    expect(bad.result.ok).toBe(false);
+    expect(bad.result.failures.map((f) => `${f.entry.ref}: ${f.error.slice(0, 40)}`)).toEqual([
+      "plans#3: No status to take from the text: The bod",
+      "plans#4: plans#4 already records status: designed",
+      "plans#9: No initiative plans#9.",
+    ]);
+    expect(read("plans/1-gates.md")).not.toContain("status:");
+    const good = ops.batchUpdate(fx.load(), [
+      { ref: "plans#1", status: "from-text" },
+      { ref: "plans#2", status: "from-text" },
+      { ref: "plans#4", tags: ["adoption"] },
+    ]);
+    expect(good.result.ok).toBe(true);
+    const root = fx.load();
+    expect([1, 2, 4].map((n) => resolveRef(root, `plans#${n}`).status)).toEqual(["draft", "done", "designed"]);
+    expect(resolveRef(root, "plans#4").tags).toEqual(["adoption"]);
   });
 });
 
@@ -570,7 +623,7 @@ describe("status folders and aliases", () => {
     expect(msg("broken-link", "2-spike.md")).toMatch(/it is now at completed\/3-done-thing\.md/);
     expect(msg("number-padding", "01-batch.md")).toBe("01-batch.md is padded to 2 digits; this collection doesn't pad its numbers (1-). `repad` makes them consistent.");
     expect(msg("status-missing", "10-no-front-matter.md")).toBe("No `status` in front-matter (see status-inferable).");
-    expect(msg("status-inferable", "10-no-front-matter.md")).toBe("No status recorded; the body says draft (draft). Record it with `update` (`status: draft`).");
+    expect(msg("status-inferable", "10-no-front-matter.md")).toBe("No status recorded; the body says draft (draft). Record it with `update` (`status: draft`), or many at once with `batch_update` (`status: \"from-text\"`).");
   });
 
   it("reads statuses from front-matter, aliases, collection words and status folders", () => {

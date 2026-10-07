@@ -38,6 +38,7 @@ import {
   readFrontMatterOf,
   requireCollection,
   resolveRef,
+  statusFromText,
   toPosix,
 } from "./repo.js";
 import { blockers, dependants, dependencyReport, isReady, wouldCycle } from "./deps.js";
@@ -389,7 +390,8 @@ export interface UpdateInput {
 /** `docs_impact` written when `done` is recorded rather than reached through `complete`. */
 export const PRE_BRINDLEY_DOCS_IMPACT = "none: completed before Brindley";
 
-export function update(root: Root, i: Initiative, input: UpdateInput): OpResult<{ ref: string }> {
+/** What an `update` would write — front-matter changes, body and warnings — without writing it. Throws on anything refused. */
+function planUpdate(root: Root, i: Initiative, input: UpdateInput): { changes: Record<string, unknown>; body: string; warnings: string[] } {
   let body = i.body;
   if (input.title) body = setH1(body, input.title);
   if (input.section !== undefined) {
@@ -430,8 +432,71 @@ export function update(root: Root, i: Initiative, input: UpdateInput): OpResult<
   // A changed status_note on abandoned, superseded or deferred work rewrites the callout to match.
   if (input.status === undefined && input.status_note !== undefined && CALLOUT_STATUSES.includes(i.status ?? ""))
     body = setStatusCallout(body, calloutFor(root, i, i.status!, input.status_note));
+  return { changes, body, warnings };
+}
+
+export function update(root: Root, i: Initiative, input: UpdateInput): OpResult<{ ref: string }> {
+  const { changes, body, warnings } = planUpdate(root, i, input);
   writeInitiative(i, changes, body);
   return finish(root, [i.collection], [i.file], { ref: initiativeKey(i) }, warnings);
+}
+
+/** One entry of a batch_update: an initiative and the `update` fields for it; `status: "from-text"` reads it from the text. */
+export interface BatchEntry extends Omit<UpdateInput, "section" | "content" | "title"> {
+  ref: string | number;
+  collection?: string;
+}
+
+export interface BatchEntryResult {
+  ref: string;
+  path: string;
+  /** Front-matter fields written (or to be written, in a dry run). */
+  changes: Record<string, unknown>;
+  /** For `status: "from-text"`: the word the status was read from. */
+  statusFrom?: string;
+  warnings: string[];
+}
+
+/**
+ * Apply `update`-style changes to many initiatives in one call. Every entry is checked first; if any
+ * fails nothing is written and every failure is returned. Otherwise each file is written once and
+ * the READMEs are regenerated once. `dry_run` returns the same per-entry result without writing.
+ */
+export function batchUpdate(
+  root: Root,
+  entries: BatchEntry[],
+  opts: { dry_run?: boolean } = {},
+): OpResult<{ dryRun: boolean; ok: boolean; entries: BatchEntryResult[]; failures: { entry: BatchEntry; error: string }[] }> {
+  const planned: { i: Initiative; plan: ReturnType<typeof planUpdate>; result: BatchEntryResult }[] = [];
+  const failures: { entry: BatchEntry; error: string }[] = [];
+  const seen = new Set<string>();
+  for (const entry of entries) {
+    try {
+      const i = resolveRef(root, entry.ref, entry.collection);
+      const key = initiativeKey(i);
+      if (seen.has(key)) throw new BrindleyError(`${key} is listed more than once; combine its changes into one entry.`);
+      seen.add(key);
+      const { ref: _ref, collection: _collection, ...fields } = entry;
+      let statusFrom: string | undefined;
+      if (fields.status === "from-text") {
+        const stated = statusFromText(i, findCollection(root, i.collection)?.meta.statuses);
+        if (!stated.status) throw new BrindleyError(`No status to take from the text: ${stated.reason}`);
+        fields.status = stated.status;
+        statusFrom = stated.word;
+      }
+      const plan = planUpdate(root, i, fields);
+      const changes = Object.fromEntries(Object.entries(plan.changes).filter(([k]) => k !== "updated"));
+      planned.push({ i, plan, result: { ref: key, path: i.rel, changes, ...(statusFrom ? { statusFrom } : {}), warnings: plan.warnings } });
+    } catch (e) {
+      failures.push({ entry, error: (e as Error).message });
+    }
+  }
+  const dryRun = opts.dry_run === true;
+  const result = { dryRun, ok: failures.length === 0, entries: planned.map((p) => p.result), failures };
+  if (failures.length) return { result: { ...result, entries: [] }, touched: [], warnings: [`Nothing written: ${failures.length} of ${entries.length} entries failed.`] };
+  if (dryRun) return { result, touched: [], warnings: [] };
+  for (const p of planned) writeInitiative(p.i, p.plan.changes, p.plan.body);
+  return finish(root, [...new Set(planned.map((p) => p.i.collection))], planned.map((p) => p.i.file), result);
 }
 
 /** Statuses that show a callout under the H1 saying so (and why). */

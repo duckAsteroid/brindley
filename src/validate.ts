@@ -179,7 +179,7 @@ function checkInitiative(
           ? `No \`status\` in front-matter. ${stated.reason}`
           : "Missing `status`.");
     if (stated.status && !i.folder)
-      warn("status-inferable", f, `No status recorded; the body says ${stated.word} (${stated.status}). Record it with \`update\` (\`status: ${stated.status}\`).`);
+      warn("status-inferable", f, `No status recorded; the body says ${stated.word} (${stated.status}). Record it with \`update\` (\`status: ${stated.status}\`), or many at once with \`batch_update\` (\`status: "from-text"\`).`);
   }
   else if (!(STATUSES as readonly string[]).includes(i.status))
     err("status-invalid", f, `Status "${i.statusRaw}" is not known: use one of ${STATUSES.join(", ")}, a common alias, or map it with \`statuses:\` in the collection README.`);

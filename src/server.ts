@@ -570,6 +570,31 @@ export function createServer(opts: ServerOptions): McpServer {
   );
 
   tool(
+    "batch_update",
+    "Apply update-style changes to many initiatives (tickets/issues) in one call — e.g. recording statuses across an adopted folder. Each entry is a ref plus any of status, reason, type, owner, tags, status_note, docs, dimensions; `status: \"from-text\"` takes the status from the initiative's **Status:** line or ## Status section. Every entry is checked first: if any fails, nothing is written and every failure is returned. `dry_run: true` shows what each file would get.",
+    {
+      entries: z
+        .array(
+          z.object({
+            ref: refArg,
+            collection: z.string().optional(),
+            status: z.string().optional(),
+            reason: z.string().optional(),
+            type: z.string().optional(),
+            owner: z.string().optional(),
+            tags: z.array(z.string()).optional(),
+            status_note: z.string().optional(),
+            docs: z.array(z.string()).optional(),
+            dimensions: z.record(z.string(), dimensionValue.nullable()).optional(),
+          }),
+        )
+        .min(1),
+      dry_run: z.boolean().optional(),
+    },
+    (root, a) => ops.batchUpdate(root, a.entries, { dry_run: a.dry_run }),
+  );
+
+  tool(
     "set_status",
     "Change an initiative's (ticket's/issue's) status, enforcing the lifecycle: designed needs no blocking open questions; in-progress needs ready; done goes through `complete`. Abandoning needs a `reason`; abandoned, superseded and deferred work gets a callout under its title saying so, which is removed when it is reopened.",
     {
