@@ -1,8 +1,11 @@
 ---
 type: feature
-status: designed
+status: done
 updated: 2026-10-07
 tags: [adoption, text]
+docs_impact:
+  - site/reference/validation.md
+  - site/guide/adopting.md
 ---
 # Suggest a home for companion notes
 

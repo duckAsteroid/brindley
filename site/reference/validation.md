@@ -10,7 +10,7 @@
 | `parse` | Front-matter doesn't parse, or an initiative outside a status folder has none. |
 | `status-missing` | No status — and no status folder to take it from. The message quotes what the body says, if anything. |
 | `status-invalid` | A status word that isn't a core status, an alias, or mapped with `statuses:`. |
-| `duplicate-number` | Two initiatives in one collection share a number. |
+| `duplicate-number` | Two initiatives in one collection share a number. When one file's name is the other's plus a suffix (`24-booking-window-rationale.md`), it is treated as a companion note: the finding suggests moving it into the initiative's asset folder, or the `ignore` pattern that leaves it in place. |
 | `cycle` | Dependencies loop back on themselves. Often one link is a back-reference ("depended on by"): move it to `## Related`, or to `## See also` for a plain link. |
 | `dangling-ref` | `superseded_by` refers to an initiative that doesn't exist. |
 | `date` | `updated` isn't an ISO date. |

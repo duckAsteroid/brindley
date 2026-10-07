@@ -67,9 +67,12 @@ export function validate(root: Root, opts: { collection?: string; docs?: boolean
     const seen = new Map<number, Initiative>();
     for (const i of c.initiatives) {
       const prev = seen.get(i.number);
-      if (prev)
-        err("duplicate-number", rel(i.file), `Number ${i.number} is also used by ${prev.rel}; renumber one of them, or if one isn't an initiative (e.g. companion notes), exclude it with the \`ignore\` tool / an \`ignore:\` pattern in the collection README.`);
-      else seen.set(i.number, i);
+      if (prev) {
+        const companion = companionOf(prev, i);
+        if (companion) err("duplicate-number", rel(companion.file.file), companionAdvice(c.dir, companion));
+        else
+          err("duplicate-number", rel(i.file), `Number ${i.number} is also used by ${prev.rel}; renumber one of them, or if one isn't an initiative (e.g. companion notes), exclude it with the \`ignore\` tool / an \`ignore:\` pattern in the collection README.`);
+      } else seen.set(i.number, i);
       checkInitiative(root, i, err, warn, rel);
     }
 
@@ -104,6 +107,35 @@ export function validate(root: Root, opts: { collection?: string; docs?: boolean
     }
   }
   return out;
+}
+
+/** Suffixes common enough to suggest a pattern for every file that has them. */
+const COMMON_COMPANIONS = ["rationale", "notes", "design"];
+
+/**
+ * Of two files sharing a number, the one whose name is the other's plus a suffix
+ * (`24-booking-window-rationale.md` beside `24-booking-window.md`): likely companion notes.
+ */
+function companionOf(a: Initiative, b: Initiative): { file: Initiative; of: Initiative; suffix: string } | null {
+  const stem = (i: Initiative) => i.rel.split("/").pop()!.replace(/\.md$/, "");
+  for (const [file, of] of [[b, a], [a, b]] as const) {
+    if (stem(file).startsWith(`${stem(of)}-`)) return { file, of, suffix: stem(file).slice(stem(of).length + 1) };
+  }
+  return null;
+}
+
+/** The duplicate-number finding for a likely companion: where it belongs, or how to ignore it. */
+function companionAdvice(collectionDir: string, x: { file: Initiative; of: Initiative; suffix: string }): string {
+  const name = x.file.rel.split("/").pop()!;
+  const ofName = x.of.rel.split("/").pop()!;
+  const assets = `${toPosix(relative(collectionDir, x.of.file)).replace(/\.md$/, "")}/${x.suffix}.md`;
+  const pattern = COMMON_COMPANIONS.includes(x.suffix.toLowerCase()) ? `*-${x.suffix}.md` : toPosix(relative(collectionDir, x.file.file));
+  return (
+    `${name} shares number ${x.file.number} with ${ofName} and looks like a companion to it, not an initiative. ` +
+    `Move it into the initiative's asset folder (e.g. ${assets}) and link it from the initiative, ` +
+    `or, to leave it in place, add \`${pattern}\` to the collection's \`ignore\` (the \`ignore\` tool previews it). ` +
+    `Links to a moved file need updating; Brindley moves nothing.`
+  );
 }
 
 function checkInitiative(

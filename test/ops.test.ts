@@ -481,6 +481,32 @@ describe("ignore", () => {
   });
   const numbersOf = (fx: Fixture) => fx.load().collections[0]!.initiatives.map((i) => i.rel.replace("plans/", ""));
 
+  it("recognises a companion note sharing a number, and says where it belongs", () => {
+    fx = fixture({
+      files: {
+        "plans/README.md": "---\nbrindley: 1\n---\n# Plans\n",
+        "plans/24-booking-window.md": "---\nstatus: draft\n---\n# Booking window\n",
+        "plans/24-booking-window-rationale.md": "# Why the window is 48 hours\n",
+        "plans/completed/30-gates.md": "---\nstatus: done\n---\n# Gates\n",
+        "plans/completed/30-gates-old-sketch.md": "# Sketch\n",
+        "plans/31-sluice.md": "---\nstatus: draft\n---\n# Sluice\n",
+        "plans/31-towpath.md": "---\nstatus: draft\n---\n# Towpath\n",
+      },
+    });
+    const dups = validate(fx.load()).filter((f) => f.rule === "duplicate-number");
+    const by = (file: string) => dups.find((d) => d.file === file)?.message;
+    expect(by("plans/24-booking-window-rationale.md")).toBe(
+      "24-booking-window-rationale.md shares number 24 with 24-booking-window.md and looks like a companion to it, not an initiative. " +
+        "Move it into the initiative's asset folder (e.g. 24-booking-window/rationale.md) and link it from the initiative, " +
+        "or, to leave it in place, add `*-rationale.md` to the collection's `ignore` (the `ignore` tool previews it). " +
+        "Links to a moved file need updating; Brindley moves nothing.",
+    );
+    // An unusual suffix gets its exact path; the asset folder sits beside the initiative.
+    expect(by("plans/completed/30-gates-old-sketch.md")).toMatch(/asset folder \(e\.g\. completed\/30-gates\/old-sketch\.md\).*add `completed\/30-gates-old-sketch\.md`/);
+    // Unrelated names keep the general advice.
+    expect(by("plans/31-towpath.md")).toMatch(/^Number 31 is also used by plans\/31-sluice\.md; renumber one of them/);
+  });
+
   it("ignores files and folders with .gitignore-style patterns", () => {
     fx = fixture({ files: files('  - "# comment"\n  - "*-rationale.md"\n  - /2-scratch.md\n  - code-review/\n') });
     expect(numbersOf(fx)).toEqual(["1-one.md", "completed/3-three.md"]);

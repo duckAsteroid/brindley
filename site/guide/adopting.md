@@ -29,7 +29,7 @@ Typical findings, each with a suggested fix:
 |---------|-----|
 | No `status` — "the body says *Proposed*" | add `status: draft` to the front-matter |
 | Status says one thing, the folder another | correct the front-matter, or the folder |
-| Two files with the same number | if one isn't an initiative (companion notes), `ignore` it |
+| Two files with the same number | if one is a companion note (`24-x-rationale.md` beside `24-x.md`), move it into the initiative's asset folder (`24-x/rationale.md`) or `ignore` it — the finding suggests both |
 | A broken link — "it is now at `completed/50-…`" | update the link |
 
 ## Ignoring files
