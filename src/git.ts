@@ -41,6 +41,26 @@ export function otherWorktrees(repoRoot: string): string[] {
     .filter((p) => p !== self);
 }
 
+/** Every worktree of this repository (including this one), with the branch it has checked out, if any. */
+export function worktrees(repoRoot: string): { path: string; branch: string | null }[] {
+  const out = git(repoRoot, ["worktree", "list", "--porcelain"]);
+  if (!out) return [];
+  const list: { path: string; branch: string | null }[] = [];
+  for (const block of out.split("\n\n")) {
+    const path = /^worktree (.+)$/m.exec(block)?.[1];
+    if (!path) continue;
+    const branch = /^branch refs\/heads\/(.+)$/m.exec(block)?.[1] ?? null;
+    list.push({ path: resolve(path), branch });
+  }
+  return list;
+}
+
+/** The branch checked out in this checkout, or null when detached or outside git. */
+export function currentBranch(repoRoot: string): string | null {
+  const b = git(repoRoot, ["rev-parse", "--abbrev-ref", "HEAD"])?.trim();
+  return b && b !== "HEAD" ? b : null;
+}
+
 const NUMBERED = /(?:^|\/)(\d+)-[^/]+\.md$/;
 
 /**

@@ -19,7 +19,7 @@ import {
 } from "./repo.js";
 import { blockers, dependants, dependencyReport, displayRef, isActive, isReady, target, topoSort } from "./deps.js";
 import { collectionBlock, mermaid, regenerate, rootBlock } from "./readme.js";
-import { mergeInProgress, otherWorktrees } from "./git.js";
+import { currentBranch, mergeInProgress, otherWorktrees, worktrees } from "./git.js";
 import { validate } from "./validate.js";
 import { checkDocs } from "./docs.js";
 import { dimensionReport, filterByDimensions, orderByDimensions } from "./dimensions.js";
@@ -200,11 +200,27 @@ export function createServer(opts: ServerOptions): McpServer {
     return { root, notes };
   };
 
-  // Every result names the checkout it worked on, after the JSON.
+  /** Other worktrees, when the server is still on the checkout it started in (the case to nudge about). */
+  const unswitchedOthers = () =>
+    checkout === started ? worktrees(started).filter((w) => w.path !== resolve(started) && existsSync(w.path)) : [];
+  const describe = (w: { path: string; branch: string | null }) => `${w.path}${w.branch ? ` on ${w.branch}` : ""}`;
+
+  /**
+   * Every result names the checkout it worked on, after the JSON — and, when the server hasn't
+   * switched but other worktrees exist, names them and how to switch, since that is how edits
+   * end up in the wrong checkout.
+   */
+  const checkoutLine = () => {
+    const branch = currentBranch(checkout);
+    if (checkout !== started) return `Checkout: ${checkout} (worktree${branch ? `, ${branch}` : ""})`;
+    const others = unswitchedOthers();
+    if (!others.length) return `Checkout: ${checkout}${branch ? ` (${branch})` : ""}`;
+    return `Checkout: ${checkout} (where this server started${branch ? `, ${branch}` : ""}). Other worktrees: ${others.map(describe).join("; ")} — if you are working in one, call use_worktree with its path.`;
+  };
   const reply = (value: unknown) => ({
     content: [
       { type: "text" as const, text: JSON.stringify(value, null, 2) },
-      { type: "text" as const, text: `Checkout: ${checkout}` },
+      { type: "text" as const, text: checkoutLine() },
     ],
   });
   const fail = (e: unknown) => ({
@@ -226,6 +242,13 @@ export function createServer(opts: ServerOptions): McpServer {
         const out = handler(root, args) as Record<string, unknown> | unknown;
         if (out && typeof out === "object" && "touched" in (out as object) && "result" in (out as object)) {
           const r = out as ops.OpResult;
+          // Writing to the starting checkout while worktrees exist: the edits may belong in one of them.
+          const others = r.touched.length ? unswitchedOthers() : [];
+          if (others.length)
+            r.warnings = [
+              ...r.warnings,
+              `Written to ${checkout}, where this server started, but other worktrees exist (${others.map(describe).join("; ")}). If you are implementing in one, call use_worktree with its path first — these edits are here, not there.`,
+            ];
           return reply({ ...(r.result as object), touched: r.touched, warnings: r.warnings, ...(notes.length ? { notes } : {}) });
         }
         return reply(notes.length ? { result: out, notes } : out);

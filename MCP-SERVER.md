@@ -37,8 +37,11 @@
 - **Repo:** the nearest git root above the server's working directory. A server started inside a
   worktree therefore operates on that worktree's files. An agent that creates a worktree mid-session
   calls `use_worktree` to switch the server to it; the switch lasts for the server process (one
-  client session) and every result names the checkout it worked on. If that worktree is removed,
-  calls are refused until `use_worktree()` switches back.
+  client session) and every result names the checkout it worked on, with its branch. While the
+  server is still on the checkout it started in and other worktrees exist, that line names them
+  and how to switch, and any call that writes files there warns that the edits may belong in a
+  worktree. If the current worktree is removed, calls are refused until `use_worktree()` switches
+  back.
 - **Collections** are found on every call by scanning the repo for `README.md` files whose
   front-matter has `brindley` (FORMAT §2), using `git ls-files` so gitignored paths (including
   worktrees under ignored folders) are skipped. There is no repo-level config file. With no

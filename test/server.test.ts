@@ -162,11 +162,16 @@ describe("use_worktree", () => {
       // Not a worktree of this repo: refused.
       const bad = await client.callTool({ name: "use_worktree", arguments: { path: "/tmp" } });
       expect((bad as { isError?: boolean }).isError).toBe(true);
+      // Before switching, with a worktree around: every reply names it, and a write warns.
+      const early = await client.callTool({ name: "update", arguments: { ref: "sb#23", owner: "gates team" } });
+      expect(text(early)[1]).toMatch(/^Checkout: .* \(where this server started, main\)\. Other worktrees: .*-wt on feature — if you are working in one, call use_worktree with its path\.$/);
+      expect(json(early).warnings.at(-1)).toMatch(/^Written to .*, where this server started, but other worktrees exist \(.*-wt on feature\)\. If you are implementing in one, call use_worktree with its path first/);
       // Switch, then write: the edit lands in the worktree only.
       const sw = json(await client.callTool({ name: "use_worktree", arguments: { path: wt } }));
       expect(sw.switched).toBe(true);
       const upd = await client.callTool({ name: "update", arguments: { ref: "sb#22", owner: "locks team" } });
-      expect(text(upd)[1]).toMatch(/^Checkout: .*-wt$/);
+      expect(text(upd)[1]).toMatch(/^Checkout: .*-wt \(worktree, feature\)$/);
+      expect(json(upd).warnings ?? []).toEqual([]); // switched: no nudge
       expect(readFileSync(join(wt, C, "22-opening-hours-change-impact.md"), "utf8")).toContain("owner: locks team");
       expect(readFileSync(join(fx.repo, C, "22-opening-hours-change-impact.md"), "utf8")).not.toContain("owner: locks team");
       // Back to where the server started.
