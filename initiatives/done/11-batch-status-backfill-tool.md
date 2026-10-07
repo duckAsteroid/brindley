@@ -16,8 +16,8 @@ A `batch_update` tool that applies `update`-style changes — `status`, `type`, 
 
 ## Dependencies
 
-- [6 Record status without lifecycle checks](6-record-status-without-lifecycle-checks.md) — batch_update applies the status-recording rule, and the single `update` status write, that #6 builds
-- [7 Infer a missing status from the initiative's prose](7-infer-a-missing-status-from-the-initiative-s-prose.md) — taking a status from the text calls #7's inference function
+- [6 Record status without lifecycle checks](06-record-status-without-lifecycle-checks.md) — batch_update applies the status-recording rule, and the single `update` status write, that #6 builds
+- [7 Infer a missing status from the initiative's prose](07-infer-a-missing-status-from-the-initiative-s-prose.md) — taking a status from the text calls #7's inference function
 
 ## Related
 

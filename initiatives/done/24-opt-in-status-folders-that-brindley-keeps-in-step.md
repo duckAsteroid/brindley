@@ -25,8 +25,8 @@ _None._
 ## Related
 
 - [13 Consistent zero-padded numbering](13-consistent-zero-padded-numbering.md) — `repad`'s shared rename-and-relink function does the moving
-- [3 rename_collection tool](3-rename-collection-tool.md) — the other sanctioned move with link rewriting
-- [1 migrate tool for numbered + completed/ collections](1-migrate-tool-for-numbered-completed-collections.md) — reads adopted status folders; an opted-in collection might keep them
+- [3 rename_collection tool](03-rename-collection-tool.md) — the other sanctioned move with link rewriting
+- [1 migrate tool for numbered + completed/ collections](../01-migrate-tool-for-numbered-completed-collections.md) — reads adopted status folders; an opted-in collection might keep them
 
 ## Decisions
 

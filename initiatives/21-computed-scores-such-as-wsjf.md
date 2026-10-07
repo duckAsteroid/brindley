@@ -11,7 +11,7 @@ With scoring dimensions in place (initiatives#19), let a collection declare a sc
 
 ## Dependencies
 
-- [19 Scoring dimensions on initiatives](19-rank-initiatives-by-scoring-dimensions.md) — scores are computed from the dimensions #19 adds
+- [19 Scoring dimensions on initiatives](done/19-rank-initiatives-by-scoring-dimensions.md) — scores are computed from the dimensions #19 adds
 
 ## Open questions
 

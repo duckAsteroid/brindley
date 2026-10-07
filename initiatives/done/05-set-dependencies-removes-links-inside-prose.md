@@ -20,7 +20,7 @@ _None._
 ## Related
 
 - [GitHub #3](https://github.com/duckAsteroid/brindley/issues/3) — the request this came from
-- [4 Cycle errors advise where back-references belong](4-flag-reverse-direction-links-under-dependencies.md) — gives the same advice for where to move a link
+- [4 Cycle errors advise where back-references belong](04-flag-reverse-direction-links-under-dependencies.md) — gives the same advice for where to move a link
 
 ## Decisions
 

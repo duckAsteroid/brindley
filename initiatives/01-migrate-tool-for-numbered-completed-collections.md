@@ -12,12 +12,12 @@ Implement the `migrate` tool specified in MCP-SERVER.md §3 (Setup), so an exist
 
 ## Dependencies
 
-- [7 Infer a missing status from the initiative's prose](7-infer-a-missing-status-from-the-initiative-s-prose.md) — migrate writes statuses with #7's inference function
-- [13 Consistent zero-padded numbering](13-consistent-zero-padded-numbering.md) — migrate pads numbers to the collection's width, which #13 defines
+- [7 Infer a missing status from the initiative's prose](done/07-infer-a-missing-status-from-the-initiative-s-prose.md) — migrate writes statuses with #7's inference function
+- [13 Consistent zero-padded numbering](done/13-consistent-zero-padded-numbering.md) — migrate pads numbers to the collection's width, which #13 defines
 
 ## Related
 
-- [8 Fix mode for mechanical validate findings](8-fix-mode-for-mechanical-validate-findings.md) — fix mode makes in-place text repairs; renames such as making padding consistent are left to migrate
+- [8 Fix mode for mechanical validate findings](done/08-fix-mode-for-mechanical-validate-findings.md) — fix mode makes in-place text repairs; renames such as making padding consistent are left to migrate
 
 ## Decisions
 

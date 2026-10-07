@@ -17,11 +17,11 @@ counted as open, with only one-at-a-time tools to tidy them.
 
 ### Initiatives in this theme
 
-Tagged `questions`: 2 open, 0 closed or deferred.
+Tagged `questions`: 1 open, 1 closed or deferred.
 
 | Ref | Initiative | Type | Status | Ready / blocked by |
 |-----|------------|------|--------|--------------------|
-| `initiatives#15` | [Show in-progress work blocked on an open question](15-show-in-progress-work-blocked-on-an-open-question.md) | feature | draft | — |
 | `initiatives#16` | [Resolve settled questions in bulk](16-resolve-settled-questions-in-bulk.md) | feature | draft | — |
+| `initiatives#15` | [Show in-progress work blocked on an open question](15-show-in-progress-work-blocked-on-an-open-question.md) | feature | abandoned | — |
 
 <!-- brindley:generated:end -->

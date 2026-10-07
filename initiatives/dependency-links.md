@@ -20,7 +20,7 @@ Tagged `dependency-links`: 0 open, 2 closed or deferred.
 
 | Ref | Initiative | Type | Status | Ready / blocked by |
 |-----|------------|------|--------|--------------------|
-| `initiatives#4` | [Cycle errors advise where back-references belong](4-flag-reverse-direction-links-under-dependencies.md) | feature | done | — |
-| `initiatives#5` | [set_dependencies explains links it cannot remove](5-set-dependencies-removes-links-inside-prose.md) | feature | done | — |
+| `initiatives#4` | [Cycle errors advise where back-references belong](done/04-flag-reverse-direction-links-under-dependencies.md) | feature | done | — |
+| `initiatives#5` | [set_dependencies explains links it cannot remove](done/05-set-dependencies-removes-links-inside-prose.md) | feature | done | — |
 
 <!-- brindley:generated:end -->

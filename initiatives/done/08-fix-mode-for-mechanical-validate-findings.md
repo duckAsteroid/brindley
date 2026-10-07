@@ -21,8 +21,8 @@ _None._
 ## Related
 
 - [GitHub #5](https://github.com/duckAsteroid/brindley/issues/5) — the request this came from
-- [7 Infer a missing status from the initiative's prose](7-infer-a-missing-status-from-the-initiative-s-prose.md) — writes inferred statuses, which fix mode does not
-- [1 migrate tool for numbered + completed/ collections](1-migrate-tool-for-numbered-completed-collections.md) — making padding consistent renames files, so migrate does it
+- [7 Infer a missing status from the initiative's prose](07-infer-a-missing-status-from-the-initiative-s-prose.md) — writes inferred statuses, which fix mode does not
+- [1 migrate tool for numbered + completed/ collections](../01-migrate-tool-for-numbered-completed-collections.md) — making padding consistent renames files, so migrate does it
 
 ## Decisions
 

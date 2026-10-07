@@ -20,7 +20,7 @@ _None._
 ## Related
 
 - [GitHub #4](https://github.com/duckAsteroid/brindley/issues/4) — the request this came from
-- [6 Record status without lifecycle checks](6-record-status-without-lifecycle-checks.md) — writing the inferred status needs a non-lifecycle write
+- [6 Record status without lifecycle checks](06-record-status-without-lifecycle-checks.md) — writing the inferred status needs a non-lifecycle write
 
 ## Decisions
 

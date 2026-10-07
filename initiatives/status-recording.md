@@ -19,8 +19,8 @@ Tagged `status-recording`: 0 open, 3 closed or deferred.
 
 | Ref | Initiative | Type | Status | Ready / blocked by |
 |-----|------------|------|--------|--------------------|
-| `initiatives#6` | [Record status without lifecycle checks](6-record-status-without-lifecycle-checks.md) | feature | done | — |
-| `initiatives#7` | [Infer a missing status from the initiative's prose](7-infer-a-missing-status-from-the-initiative-s-prose.md) | feature | done | — |
-| `initiatives#11` | [batch_update tool](11-batch-status-backfill-tool.md) | feature | done | — |
+| `initiatives#6` | [Record status without lifecycle checks](done/06-record-status-without-lifecycle-checks.md) | feature | done | — |
+| `initiatives#7` | [Infer a missing status from the initiative's prose](done/07-infer-a-missing-status-from-the-initiative-s-prose.md) | feature | done | — |
+| `initiatives#11` | [batch_update tool](done/11-batch-status-backfill-tool.md) | feature | done | — |
 
 <!-- brindley:generated:end -->

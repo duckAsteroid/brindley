@@ -1,10 +1,14 @@
 ---
 type: feature
-status: draft
+status: abandoned
 tags: [questions]
 updated: 2026-10-07
+status_note: "Not needed: the stop-and-ask rule shipped in 1.1.1, and check_ready, validate's open-questions warning and the Open Qs column already show the blocked state"
 ---
 # Show in-progress work blocked on an open question
+
+> [!WARNING]
+> **Abandoned** (2026-10-07): Not needed: the stop-and-ask rule shipped in 1.1.1, and check_ready, validate's open-questions warning and the Open Qs column already show the blocked state
 
 ## Goal
 

@@ -24,9 +24,9 @@ _None._
 
 ## Related
 
-- [1 migrate tool for numbered + completed/ collections](1-migrate-tool-for-numbered-completed-collections.md) — migrate, renumber and fix mode each touch numbering and must follow the collection's width
-- [2 renumber tool for post-merge number collisions](2-renumber-tool-for-post-merge-number-collisions.md) — migrate, renumber and fix mode each touch numbering and must follow the collection's width
-- [8 Fix mode for mechanical validate findings](8-fix-mode-for-mechanical-validate-findings.md) — migrate, renumber and fix mode each touch numbering and must follow the collection's width
+- [1 migrate tool for numbered + completed/ collections](../01-migrate-tool-for-numbered-completed-collections.md) — migrate, renumber and fix mode each touch numbering and must follow the collection's width
+- [2 renumber tool for post-merge number collisions](02-renumber-tool-for-post-merge-number-collisions.md) — migrate, renumber and fix mode each touch numbering and must follow the collection's width
+- [8 Fix mode for mechanical validate findings](08-fix-mode-for-mechanical-validate-findings.md) — migrate, renumber and fix mode each touch numbering and must follow the collection's width
 
 ## Decisions
 

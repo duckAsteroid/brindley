@@ -22,7 +22,7 @@ _None._
 
 ## Related
 
-- [12 Themes overview and tag cloud in the collection README](12-themes-overview-and-tag-cloud-in-the-collection-readme.md) — also adds a front-matter-controlled section to the generated README
+- [12 Themes overview and tag cloud in the collection README](../12-themes-overview-and-tag-cloud-in-the-collection-readme.md) — also adds a front-matter-controlled section to the generated README
 
 ## Decisions
 

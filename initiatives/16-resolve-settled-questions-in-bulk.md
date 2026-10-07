@@ -17,7 +17,7 @@ _None._
 ## Related
 
 - [GitHub #6](https://github.com/duckAsteroid/brindley/issues/6) — the request this came from
-- [11 batch_update tool](11-batch-status-backfill-tool.md) — the other bulk tidy-up tool, for front-matter fields
+- [11 batch_update tool](done/11-batch-status-backfill-tool.md) — the other bulk tidy-up tool, for front-matter fields
 
 ## Open questions
 

@@ -21,13 +21,13 @@ Tagged `adoption`: 1 open, 8 closed or deferred.
 | Ref | Initiative | Type | Status | Ready / blocked by |
 |-----|------------|------|--------|--------------------|
 | `initiatives#16` | [Resolve settled questions in bulk](16-resolve-settled-questions-in-bulk.md) | feature | draft | — |
-| `initiatives#1` | [migrate tool for numbered + completed/ collections](1-migrate-tool-for-numbered-completed-collections.md) | feature | deferred | — |
-| `initiatives#4` | [Cycle errors advise where back-references belong](4-flag-reverse-direction-links-under-dependencies.md) | feature | done | — |
-| `initiatives#7` | [Infer a missing status from the initiative's prose](7-infer-a-missing-status-from-the-initiative-s-prose.md) | feature | done | — |
-| `initiatives#8` | [Fix mode for mechanical validate findings](8-fix-mode-for-mechanical-validate-findings.md) | feature | done | — |
-| `initiatives#9` | [Suggest a home for companion notes](9-suggest-an-ignore-pattern-for-companion-notes.md) | feature | done | — |
-| `initiatives#10` | [Name the base folder in path errors](10-name-the-base-folder-in-path-errors.md) | feature | done | — |
-| `initiatives#11` | [batch_update tool](11-batch-status-backfill-tool.md) | feature | done | — |
-| `initiatives#13` | [Consistent zero-padded numbering](13-consistent-zero-padded-numbering.md) | feature | done | — |
+| `initiatives#1` | [migrate tool for numbered + completed/ collections](01-migrate-tool-for-numbered-completed-collections.md) | feature | deferred | — |
+| `initiatives#4` | [Cycle errors advise where back-references belong](done/04-flag-reverse-direction-links-under-dependencies.md) | feature | done | — |
+| `initiatives#7` | [Infer a missing status from the initiative's prose](done/07-infer-a-missing-status-from-the-initiative-s-prose.md) | feature | done | — |
+| `initiatives#8` | [Fix mode for mechanical validate findings](done/08-fix-mode-for-mechanical-validate-findings.md) | feature | done | — |
+| `initiatives#9` | [Suggest a home for companion notes](done/09-suggest-an-ignore-pattern-for-companion-notes.md) | feature | done | — |
+| `initiatives#10` | [Name the base folder in path errors](done/10-name-the-base-folder-in-path-errors.md) | feature | done | — |
+| `initiatives#11` | [batch_update tool](done/11-batch-status-backfill-tool.md) | feature | done | — |
+| `initiatives#13` | [Consistent zero-padded numbering](done/13-consistent-zero-padded-numbering.md) | feature | done | — |
 
 <!-- brindley:generated:end -->
