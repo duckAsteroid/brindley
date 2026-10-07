@@ -222,6 +222,15 @@ describe("update", () => {
     expect(text).toContain("## Goal\n\nRecord every passage.");
   });
 
+  it("adds a new section before Open questions and Acceptance criteria", () => {
+    fx = fixture({ files: lockExample });
+    const r = ops.create(fx.load(), { collection: "sb", title: "Winter stoppages" });
+    const root = fx.load();
+    ops.update(root, resolveRef(root, r.result.ref), { section: "Decisions", content: "- Close for two weeks." });
+    const heads = read(r.result.path).match(/^## .+$/gm);
+    expect(heads).toEqual(["## Goal", "## Dependencies", "## Decisions", "## Open questions", "## Acceptance criteria"]);
+  });
+
   it("keeps a leading heading that names something else", () => {
     fx = fixture({ files: lockExample });
     const root = fx.load();

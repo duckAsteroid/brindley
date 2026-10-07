@@ -374,7 +374,10 @@ export function update(root: Root, i: Initiative, input: UpdateInput): OpResult<
     if (input.content === undefined) throw new BrindleyError("`content` is required with `section`.");
     if (input.section.trim().toLowerCase() === OPEN_QUESTIONS.toLowerCase())
       throw new BrindleyError("Use add_question / resolve_question to change open questions.");
-    body = setSection(body, input.section, input.content);
+    // A new section goes where resolve_question puts Decisions: before Open questions and Acceptance criteria.
+    const name = input.section.trim().toLowerCase();
+    const before = name === "acceptance criteria" ? [] : [OPEN_QUESTIONS, "Acceptance criteria"];
+    body = setSection(body, input.section, input.content, before);
   }
   const changes: Record<string, unknown> = {};
   for (const k of ["type", "owner", "tags", "status_note", "docs"] as const) if (input[k] !== undefined) changes[k] = input[k];

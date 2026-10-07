@@ -214,12 +214,12 @@ export function setH1(body: string, title: string): string {
 }
 
 /** Replace a section's content, or add the section at the end (before any appendix). */
-export function setSection(body: string, name: string, content: string): string {
+export function setSection(body: string, name: string, content: string, before?: string[]): string {
   content = withoutLeadingHeading(content, name);
   const s = findSection(body, name);
   const contentLines = ["", ...content.replace(/\s+$/, "").split("\n"), ""];
   if (s) return replaceLines(body, s.start, s.end, contentLines);
-  return insertSection(body, name, content);
+  return insertSection(body, name, content, before);
 }
 
 /** Section content minus a leading heading naming that section (callers often include it). */
