@@ -32,7 +32,7 @@ Planned work on Brindley itself: tools specified in MCP-SERVER.md but not yet bu
 | 10 | [Name the base folder in path errors](10-name-the-base-folder-in-path-errors.md) | feature | designed | ✅ ready | 0 (+1 impl.) | — |
 | 11 | [batch_update tool](11-batch-status-backfill-tool.md) | feature | designed | ⛔ 6, 7 | 0 | — |
 | 12 | [Themes overview and tag cloud in the collection README](12-themes-overview-and-tag-cloud-in-the-collection-readme.md) | feature | draft | — | 3 | — |
-| 13 | [Consistent zero-padded numbering](13-consistent-zero-padded-numbering.md) | feature | draft | — | 2 | — |
+| 13 | [Consistent zero-padded numbering](13-consistent-zero-padded-numbering.md) | feature | designed | ✅ ready | 0 | — |
 | 14 | [README front-matter controls what the dependency graph shows](14-readme-front-matter-controls-what-the-dependency-graph-shows.md) | feature | draft | — | 2 | — |
 | 15 | [Show in-progress work blocked on an open question](15-show-in-progress-work-blocked-on-an-open-question.md) | feature | draft | — | 2 | — |
 | 16 | [Resolve settled questions in bulk](16-resolve-settled-questions-in-bulk.md) | feature | draft | — | 1 | — |
@@ -55,7 +55,7 @@ flowchart LR
   n10["🟢 10 Name the base folder in path errors"]
   n11["📐 11 batch_update tool"]
   n12["✏️ 12 Themes overview and tag cloud in the collection README"]
-  n13["✏️ 13 Consistent zero-padded numbering"]
+  n13["🟢 13 Consistent zero-padded numbering"]
   n14["✏️ 14 README front-matter controls what the dependency graph shows"]
   n15["✏️ 15 Show in-progress work blocked on an open question"]
   n16["✏️ 16 Resolve settled questions in bulk"]

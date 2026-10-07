@@ -27,7 +27,7 @@ Tagged `adoption`: 9 open, 0 closed or deferred.
 | `initiatives#9` | [Suggest a home for companion notes](9-suggest-an-ignore-pattern-for-companion-notes.md) | feature | designed | ✅ ready |
 | `initiatives#10` | [Name the base folder in path errors](10-name-the-base-folder-in-path-errors.md) | feature | designed | ✅ ready |
 | `initiatives#11` | [batch_update tool](11-batch-status-backfill-tool.md) | feature | designed | ⛔ 6, 7 |
-| `initiatives#13` | [Consistent zero-padded numbering](13-consistent-zero-padded-numbering.md) | feature | draft | — |
+| `initiatives#13` | [Consistent zero-padded numbering](13-consistent-zero-padded-numbering.md) | feature | designed | ✅ ready |
 | `initiatives#16` | [Resolve settled questions in bulk](16-resolve-settled-questions-in-bulk.md) | feature | draft | — |
 
 <!-- brindley:generated:end -->
