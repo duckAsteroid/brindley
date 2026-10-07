@@ -177,3 +177,47 @@ describe("renumber", () => {
     expect(read("locks/06-old.md")).toContain("superseded_by: 4"); // another collection's bare number is untouched
   });
 });
+
+describe("rename_collection", () => {
+  const files = (lockReadme = "---\nbrindley: 1\n---\n# Lock gates\n"): Record<string, string> => ({
+    "plans/lock-gates/README.md": lockReadme,
+    "plans/lock-gates/01-hinges.md": draft("Hinges", "\nSee the [canal water plan](../../canal/01-water.md) and [paddles](02-paddles.md).\n"),
+    "plans/lock-gates/02-paddles.md": draft("Paddles"),
+    "canal/README.md": "---\nbrindley: 1\n---\n# Canal\n",
+    "canal/01-water.md": draft(
+      "Water",
+      "\n## Dependencies\n\n- [hinges](../plans/lock-gates/01-hinges.md)\n\nAlso lock-gates#2, lgm#1? no: lg#1, and plans/lock-gates#2.\n",
+    ),
+    "docs/guide.md": "# Guide\n\n[Hinges](../plans/lock-gates/01-hinges.md)\n",
+  });
+
+  it("moves the folder, rewriting links both ways and references by the old name, path and automatic alias", () => {
+    fx = fixture({ files: files() });
+    const plan = ops.renameCollection(fx.load(), "lock-gates", "plans/gates", { dry_run: true });
+    expect(plan.result).toMatchObject({ from: "plans/lock-gates", to: "plans/gates", name: "gates" });
+    expect(existsSync(join(fx.repo, "plans/lock-gates"))).toBe(true);
+    ops.renameCollection(fx.load(), "lock-gates", "plans/gates");
+    expect(existsSync(join(fx.repo, "plans/gates/01-hinges.md"))).toBe(true);
+    expect(read("plans/gates/01-hinges.md")).toContain("[canal water plan](../../canal/01-water.md) and [paddles](02-paddles.md)");
+    expect(read("canal/01-water.md")).toContain("- [hinges](../plans/gates/01-hinges.md)");
+    expect(read("canal/01-water.md")).toContain("Also gates#2, lgm#1? no: gates#1, and gates#2.");
+    expect(read("docs/guide.md")).toContain("[Hinges](../plans/gates/01-hinges.md)");
+    const bad = validate(fx.load()).filter((f) => ["broken-link", "dangling-ref"].includes(f.rule));
+    expect(bad).toEqual([]);
+  });
+
+  it("keeps an explicit name and aliases, rewriting only links", () => {
+    fx = fixture({ files: files("---\nbrindley: 1\nname: lock-gates\naliases: [lg]\n---\n# Lock gates\n") });
+    ops.renameCollection(fx.load(), "lg", "gates");
+    expect(read("canal/01-water.md")).toContain("Also lock-gates#2, lgm#1? no: lg#1, and plans/lock-gates#2.");
+    expect(read("canal/01-water.md")).toContain("- [hinges](../gates/01-hinges.md)");
+  });
+
+  it("refuses a destination that exists, is inside another collection, or takes another's name", () => {
+    fx = fixture({ files: { ...files(), "docs/old/notes.md": "# Notes\n" } });
+    const root = fx.load();
+    expect(() => ops.renameCollection(root, "lock-gates", "docs/old")).toThrow(/already exists/);
+    expect(() => ops.renameCollection(root, "lock-gates", "canal/gates")).toThrow(/inside the collection canal/);
+    expect(() => ops.renameCollection(root, "lock-gates", "elsewhere/canal")).toThrow(/new name "canal" is already used/);
+  });
+});

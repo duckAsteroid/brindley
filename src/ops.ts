@@ -32,6 +32,7 @@ import {
   lookup,
   numberedFilesMatching,
   parseRef,
+  readFrontMatterOf,
   requireCollection,
   resolveRef,
   toPosix,
@@ -838,6 +839,49 @@ export function renumber(root: Root, i: Initiative, opts: { to?: number; dry_run
   if (shared) warnings.push(`Number ${i.number} is shared in ${c.name}, so "${c.name}#${i.number}" references were left alone; check any that meant this initiative.`);
   if (result.dryRun) return { result, touched: [], warnings };
   return finish(root, [c.name], applyRelink(root, plan), result, warnings);
+}
+
+export interface RenameCollectionResult {
+  from: string;
+  to: string;
+  name: string;
+  dryRun: boolean;
+  moves: Move[];
+  rewrites: Rewrite[];
+}
+
+/**
+ * Move a collection's folder, rewriting every relative link into it from anywhere in the repo and
+ * out of it from inside. When its name comes from the folder (no `name:`), the name changes too, so
+ * `"<name>#<n>"` references — by its old name, old path or old automatic alias — become the new name.
+ * Explicit aliases are kept, and references through them still work.
+ */
+export function renameCollection(root: Root, collection: string, to: string, opts: { dry_run?: boolean } = {}): OpResult<RenameCollectionResult> {
+  const c = requireCollection(root, collection);
+  const dest = checkFolderPath(root, to);
+  if (dest === c.path) throw new BrindleyError(`${c.name} is already at ${dest}.`);
+  if (dest.startsWith(c.path + "/")) throw new BrindleyError(`Can't move ${c.path} inside itself (${dest}).`);
+  const host = root.collections.find((o) => o !== c && (o.path === "." || dest.startsWith(o.path + "/")));
+  if (host) throw new BrindleyError(`${dest} is inside the collection ${host.name} (${host.path}); collections don't nest.`);
+  const explicitName = readFrontMatterOf(c.readme)?.["name"] !== undefined;
+  const name = explicitName ? c.name : dest.split("/").pop()!;
+  if (name !== c.name) {
+    const clash = root.collections.find(
+      (o) => o !== c && (o.name.toLowerCase() === name.toLowerCase() || o.aliases.some((a) => a.toLowerCase() === name.toLowerCase())),
+    );
+    if (clash) throw new BrindleyError(`The new name "${name}" is already used by the collection ${clash.name} (${clash.path}); set \`name:\` in its README or choose another folder.`);
+  }
+  const plan = planRelink(root, [{ from: c.path, to: dest }]);
+  if (name !== c.name) {
+    // References that named it by its old name, path or automatic alias; explicit aliases still resolve.
+    const old = new Set([c.name, c.path, ...(c.autoAlias ? [c.autoAlias] : [])].map((x) => x.toLowerCase()));
+    plan.rewrites.push(
+      ...planRefs(root, (col, n, written) => (col === c.name && old.has(written.replace(/#\d+$/, "").toLowerCase()) ? `${name}#${n}` : null)),
+    );
+  }
+  const result: RenameCollectionResult = { from: c.path, to: dest, name, dryRun: opts.dry_run === true, moves: plan.moves, rewrites: plan.rewrites };
+  if (result.dryRun) return { result, touched: [], warnings: [] };
+  return finish(root, [c.name], applyRelink(root, plan), result);
 }
 
 export function regenerateReadmes(root: Root, collection?: string, check = false) {

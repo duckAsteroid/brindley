@@ -16,6 +16,10 @@ Implement the `renumber` tool specified in MCP-SERVER.md, which fixes a post-mer
 
 _None._
 
+## Decisions
+
+- Implementation: `renumber` uses the shared planner in src/relink.ts, extended with `planRefs` for `"<collection>#<n>"` references (by name or alias, outside code) and a bare `superseded_by: <n>` in the initiative's own collection. When the number is shared by a `duplicate-number` pair, its references are ambiguous, so they are left alone with a warning; links, which name a specific file, are still rewritten. It applies by default, with an optional `dry_run`, and pads the new number to the collection's width.
+
 ## Open questions
 
 _None._
@@ -28,6 +32,3 @@ _None._
 - After it runs, `validate` reports no `duplicate-number` or broken links for that initiative.
 - Documented in MCP-SERVER.md and the site's MCP reference; tested on a collision with links from the same and another collection.
 
-## Decisions
-
-- Implementation: `renumber` uses the shared planner in src/relink.ts, extended with `planRefs` for `"<collection>#<n>"` references (by name or alias, outside code) and a bare `superseded_by: <n>` in the initiative's own collection. When the number is shared by a `duplicate-number` pair, its references are ambiguous, so they are left alone with a warning; links, which name a specific file, are still rewritten. It applies by default, with an optional `dry_run`, and pads the new number to the collection's width.

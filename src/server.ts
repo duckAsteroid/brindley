@@ -532,6 +532,13 @@ export function createServer(opts: ServerOptions): McpServer {
   );
 
   tool(
+    "rename_collection",
+    "Move a collection to a new folder, rewriting every relative link into it from anywhere in the repo and out of it from inside. If its name comes from its folder (no `name:` in its README), the name changes too and \"<name>#<n>\" references by the old name, path or automatic alias are rewritten; explicit aliases are kept. Refuses a destination that exists or is inside another collection, and a new name another collection uses. `dry_run: true` returns the plan.",
+    { collection: z.string(), to: z.string().describe("The new folder, relative to the repo root."), dry_run: z.boolean().optional() },
+    (root, a) => ops.renameCollection(root, a.collection, a.to, { dry_run: a.dry_run }),
+  );
+
+  tool(
     "renumber",
     "Give an initiative a new number — fixing a number collision after a merge. Renames its file and asset folder (keeping the slug, padded to the collection's width) and rewrites every link and \"<collection>#<n>\" reference to it across the repo. `to` defaults to the next number, coined as `create` does. For one file of a duplicate-number pair, pass `ref` as its path. `dry_run: true` returns the plan without writing.",
     {

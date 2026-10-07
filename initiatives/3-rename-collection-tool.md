@@ -1,7 +1,11 @@
 ---
 type: feature
-status: designed
+status: done
 updated: 2026-10-07
+docs_impact:
+  - FORMAT.md
+  - MCP-SERVER.md
+  - site/reference/mcp.md
 ---
 # rename_collection tool
 
@@ -12,6 +16,10 @@ Implement the `rename_collection` tool specified in MCP-SERVER.md §3 (Setup), w
 ## Dependencies
 
 _None._
+
+## Decisions
+
+- Implementation: `renameCollection` uses the shared planner (src/relink.ts): one folder move, which carries links into and out of it, plus `planRefs` for references. When the name follows the folder, references written with the old name, the old path or the old automatic alias become the new name; references through an explicit alias, or an alias that never named this collection, are left. Applies by default, with an optional `dry_run`.
 
 ## Open questions
 

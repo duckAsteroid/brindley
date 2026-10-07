@@ -22,7 +22,6 @@ Planned work on Brindley itself: tools specified in MCP-SERVER.md but not yet bu
 | # | Initiative | Type | Status | Ready / blocked by | Open Qs | Owner |
 |---|------------|------|--------|--------------------|---------|-------|
 | 1 | [migrate tool for numbered + completed/ collections](1-migrate-tool-for-numbered-completed-collections.md) | feature | designed | ✅ ready | 0 | — |
-| 3 | [rename_collection tool](3-rename-collection-tool.md) | feature | designed | ✅ ready | 0 | — |
 | 8 | [Fix mode for mechanical validate findings](8-fix-mode-for-mechanical-validate-findings.md) | feature | designed | ✅ ready | 0 | — |
 | 11 | [batch_update tool](11-batch-status-backfill-tool.md) | feature | designed | ✅ ready | 0 | — |
 | 12 | [Themes overview and tag cloud in the collection README](12-themes-overview-and-tag-cloud-in-the-collection-readme.md) | feature | draft | — | 3 | — |
@@ -39,7 +38,6 @@ Planned work on Brindley itself: tools specified in MCP-SERVER.md but not yet bu
 ```mermaid
 flowchart RL
   n1["🟢 1 migrate tool for numbered + completed/ collections"]
-  n3["🟢 3 rename_collection tool"]
   n8["🟢 8 Fix mode for mechanical validate findings"]
   n11["🟢 11 batch_update tool"]
   n12["✏️ 12 Themes overview and tag cloud in the collection README"]
@@ -67,6 +65,7 @@ flowchart RL
 | # | Initiative | Type | Updated |
 |---|------------|------|---------|
 | 2 | [renumber tool for post-merge number collisions](2-renumber-tool-for-post-merge-number-collisions.md) | feature | 2026-10-07 |
+| 3 | [rename_collection tool](3-rename-collection-tool.md) | feature | 2026-10-07 |
 | 4 | [Cycle errors advise where back-references belong](4-flag-reverse-direction-links-under-dependencies.md) | feature | 2026-10-07 |
 | 5 | [set_dependencies explains links it cannot remove](5-set-dependencies-removes-links-inside-prose.md) | feature | 2026-10-07 |
 | 6 | [Record status without lifecycle checks](6-record-status-without-lifecycle-checks.md) | feature | 2026-10-07 |

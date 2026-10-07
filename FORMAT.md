@@ -141,8 +141,9 @@ one an explicit `name`.
   collections of this working tree.
 
 **Renaming a collection** means changing its `name` (or, without one, its folder), which breaks
-`"<name>#<n>"` references from other collections. Avoid it; when unavoidable, validation catches
-the dangling references and a tool can rewrite them.
+`"<name>#<n>"` references from other collections, and moving its folder breaks relative links.
+The `rename_collection` tool moves the folder and rewrites both; validation catches anything
+renamed by hand. Explicit aliases survive a rename.
 
 ## 3. Identity, filenames and assets
 
