@@ -134,6 +134,8 @@ export interface CollectionMeta {
   graph?: unknown;
   /** README table columns, as written; read with `readmeColumns` (readme.ts). */
   columns?: unknown;
+  /** Status → folder, opting in to Brindley moving initiatives; read with `parseFolders` (folders.ts). */
+  folders?: unknown;
 }
 
 export interface Collection {

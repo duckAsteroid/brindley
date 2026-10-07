@@ -4,7 +4,7 @@ import { relative, resolve } from "node:path";
 import { createServer, VERSION } from "./server.js";
 import { openRepo, toPosix } from "./repo.js";
 import { summarise, validate } from "./validate.js";
-import { createCollection, fix, regenerateReadmes, repad } from "./ops.js";
+import { createCollection, fix, regenerateReadmes, repad, tidy } from "./ops.js";
 
 const USAGE = `brindley ${VERSION} — Design fully before anyone digs.
 
@@ -15,6 +15,8 @@ Usage:
   brindley validate --fix [--write]       Plan (or with --write, make) the repairs with one obvious fix:
                                           broken links to a moved initiative, front-matter dependencies
   brindley readmes [--check]              Regenerate collection README blocks; --check exits 1 if stale
+  brindley tidy <collection> [--write]     Move a collection's initiatives into the folders its
+                                          \`folders:\` declares, rewriting links; plans only unless --write
   brindley repad <collection> [<width>] [--write]
                                           Pad a collection's numbers to one width (default: the one most
                                           files use), renaming files and rewriting links; plans only
@@ -87,6 +89,19 @@ async function main() {
       process.exit(check && changes.length > 0 ? 1 : 0);
     }
     // eslint-disable-next-line no-fallthrough
+    case "tidy": {
+      const write = flag(args, "--write");
+      if (!args[0]) {
+        process.stderr.write(USAGE);
+        process.exit(2);
+      }
+      const r = tidy(openRepo(process.cwd()), args[0], { dry_run: !write });
+      for (const m of r.result.moves) console.log(`${write ? "moved" : "move"}  ${m.from} → ${m.to}`);
+      for (const w of r.result.rewrites) console.log(`${write ? "relinked" : "relink"} ${w.file}:${w.line}  ${w.before} → ${w.after}`);
+      if (r.result.moves.length === 0) console.log(`${r.result.collection} is already tidy.`);
+      else if (!write) console.log("\nDry run. Re-run with --write to apply.");
+      return;
+    }
     case "repad": {
       const write = flag(args, "--write");
       const [collection, width] = args;

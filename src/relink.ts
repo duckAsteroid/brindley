@@ -1,4 +1,4 @@
-import { existsSync, readFileSync, readdirSync, renameSync, statSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, readdirSync, renameSync, statSync, writeFileSync } from "node:fs";
 import { dirname, join, relative, resolve, sep } from "node:path";
 import type { Root } from "./model.js";
 import { git } from "./git.js";
@@ -140,6 +140,7 @@ export function applyRelink(root: Root, plan: RelinkPlan): string[] {
     touched.add(file);
   }
   for (const m of plan.moves) {
+    mkdirSync(dirname(join(root.repoRoot, m.to)), { recursive: true });
     renameSync(join(root.repoRoot, m.from), join(root.repoRoot, m.to));
     touched.add(join(root.repoRoot, m.to));
   }

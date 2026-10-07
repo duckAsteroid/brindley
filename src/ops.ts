@@ -48,6 +48,7 @@ import { checkDocs, docsGlobs, inCollection, isProjectDoc } from "./docs.js";
 import { dimensionsFor, sameValue, type DimensionValue } from "./dimensions.js";
 import { capacity, collectionWidth, nearFull, padNumber } from "./numbering.js";
 import { applyRelink, planRefs, planRelink, type Move, type Rewrite } from "./relink.js";
+import { movesFor, parseFolders } from "./folders.js";
 
 export function today(): string {
   return process.env["BRINDLEY_TODAY"] ?? new Date().toISOString().slice(0, 10);
@@ -74,6 +75,22 @@ function finish<T>(root: Root, _collections: string[], written: string[], result
   const changes = regenerate(fresh);
   const touched = [...new Set([...written.map((w) => rel(root, w)), ...changes.map((c) => rel(root, c.path))])];
   return { result, touched, warnings };
+}
+
+/**
+ * For a collection with `folders:`, the moves that put an initiative where `status` belongs — worked
+ * out before anything is written, so a move that would overwrite something is refused first.
+ */
+function plannedMoves(root: Root, i: Initiative, status: string | undefined): Move[] {
+  const c = findCollection(root, i.collection);
+  return c ? movesFor(root, c, i, status) : [];
+}
+
+/** After an initiative is written, make its planned moves and rewrite links; returns the paths written. */
+function relocate(root: Root, i: Initiative, moves: Move[]): { written: string[]; moved?: { moves: Move[]; rewrites: Rewrite[] } } {
+  if (!moves.length) return { written: [i.file] };
+  const plan = planRelink(root, moves);
+  return { written: applyRelink(root, plan), moved: { moves: plan.moves, rewrites: plan.rewrites } };
 }
 
 function writeInitiative(i: Initiative, changes: Record<string, unknown>, body?: string): void {
@@ -435,10 +452,12 @@ function planUpdate(root: Root, i: Initiative, input: UpdateInput): { changes: R
   return { changes, body, warnings };
 }
 
-export function update(root: Root, i: Initiative, input: UpdateInput): OpResult<{ ref: string }> {
+export function update(root: Root, i: Initiative, input: UpdateInput): OpResult<{ ref: string; moved?: { moves: Move[]; rewrites: Rewrite[] } }> {
   const { changes, body, warnings } = planUpdate(root, i, input);
+  const moves = changes["status"] !== undefined ? plannedMoves(root, i, changes["status"] as string) : [];
   writeInitiative(i, changes, body);
-  return finish(root, [i.collection], [i.file], { ref: initiativeKey(i) }, warnings);
+  const { written, moved } = relocate(root, i, moves);
+  return finish(root, [i.collection], written, { ref: initiativeKey(i), ...(moved ? { moved } : {}) }, warnings);
 }
 
 /** One entry of a batch_update: an initiative and the `update` fields for it; `status: "from-text"` reads it from the text. */
@@ -494,9 +513,12 @@ export function batchUpdate(
   const dryRun = opts.dry_run === true;
   const result = { dryRun, ok: failures.length === 0, entries: planned.map((p) => p.result), failures };
   if (failures.length) return { result: { ...result, entries: [] }, touched: [], warnings: [`Nothing written: ${failures.length} of ${entries.length} entries failed.`] };
+  const moves = planned.map((p) => (p.plan.changes["status"] !== undefined ? plannedMoves(root, p.i, p.plan.changes["status"] as string) : []));
   if (dryRun) return { result, touched: [], warnings: [] };
   for (const p of planned) writeInitiative(p.i, p.plan.changes, p.plan.body);
-  return finish(root, [...new Set(planned.map((p) => p.i.collection))], planned.map((p) => p.i.file), result);
+  const all = moves.flat();
+  const written = all.length ? applyRelink(root, planRelink(root, all)) : [];
+  return finish(root, [...new Set(planned.map((p) => p.i.collection))], [...planned.map((p) => p.i.file).filter(existsSync), ...written], result);
 }
 
 /** Statuses that show a callout under the H1 saying so (and why). */
@@ -525,7 +547,7 @@ export function setStatus(
   i: Initiative,
   status: string,
   opts: { force?: boolean; superseded_by?: string | number; reason?: string; outcome?: string } = {},
-): OpResult<{ ref: string; status: string }> {
+): OpResult<{ ref: string; status: string; moved?: { moves: Move[]; rewrites: Rewrite[] } }> {
   const core = normaliseStatus(status, findCollection(root, i.collection)?.meta.statuses);
   if (!core) throw new BrindleyError(`Unknown status "${status}". Use one of ${STATUSES.join(", ")} or a known alias.`);
   status = core;
@@ -565,8 +587,10 @@ export function setStatus(
     changes["status_note"] = undefined;
   }
   if (opts.outcome?.trim()) body = setSection(body, "Outcome", opts.outcome, [OPEN_QUESTIONS, "Acceptance criteria"]);
+  const moves = plannedMoves(root, i, status);
   writeInitiative(i, changes, body);
-  return finish(root, [i.collection], [i.file], { ref: initiativeKey(i), status }, warnings);
+  const { written, moved } = relocate(root, i, moves);
+  return finish(root, [i.collection], written, { ref: initiativeKey(i), status, ...(moved ? { moved } : {}) }, warnings);
 }
 
 export function addQuestion(root: Root, i: Initiative, text: string, implementation = false): OpResult<{ ref: string; index: number; status: string | undefined }> {
@@ -802,11 +826,14 @@ export function complete(
   if (debate) warnings.push(`"## ${debate.text}" is in the main body; move it to "## Appendix: Rejected alternatives".`);
 
   const before = new Set(dependants(root, i).filter((d) => isReady(root, d)).map(initiativeKey));
+  const moves = plannedMoves(root, i, "done");
   writeInitiative(i, { status: "done", docs_impact: impact });
+  const { written, moved } = relocate(root, i, moves);
+  if (moved) warnings.push(`Moved into its status folder: ${moved.moves.map((m) => `${m.from} → ${m.to}`).join(", ")}.`);
   const out = finish(
     root,
     [i.collection],
-    [i.file],
+    written,
     {
       ref: initiativeKey(i),
       becameReady: [] as string[],
@@ -1088,6 +1115,21 @@ export function fix(root: Root, opts: { collection?: string; dry_run?: boolean }
 function fmLineOf(fmText: string | null, key: string): number {
   const k = (fmText ?? "").split("\n").findIndex((l) => l.startsWith(`${key}:`));
   return k < 0 ? 1 : k + 2;
+}
+
+/**
+ * Put every initiative of a collection with `folders:` where its status belongs — its folder, or the
+ * top of the collection — moving files and asset folders and rewriting links. Dry run by default.
+ */
+export function tidy(root: Root, collection: string, opts: { dry_run?: boolean } = {}): OpResult<{ collection: string; dryRun: boolean; moves: Move[]; rewrites: Rewrite[] }> {
+  const c = requireCollection(root, collection);
+  const { map } = parseFolders(c.meta.folders, c.meta.statuses);
+  if (!map) throw new BrindleyError(`${c.name} doesn't declare \`folders:\` in its README, so Brindley doesn't move its files.`);
+  const moves = c.initiatives.flatMap((i) => movesFor(root, c, i, i.status));
+  const plan = planRelink(root, moves);
+  const result = { collection: c.name, dryRun: opts.dry_run !== false, moves: plan.moves, rewrites: plan.rewrites };
+  if (result.dryRun || !moves.length) return { result, touched: [], warnings: [] };
+  return finish(root, [c.name], applyRelink(root, plan), result);
 }
 
 export function regenerateReadmes(root: Root, collection?: string, check = false) {

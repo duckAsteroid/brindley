@@ -599,6 +599,13 @@ export function createServer(opts: ServerOptions): McpServer {
   );
 
   tool(
+    "tidy",
+    "For a collection that declares `folders:` (status → folder), move every initiative to where its status belongs — its folder, or the top of the collection — with its asset folder, rewriting every link to them. Dry run by default: returns each move and link rewrite; pass dry_run: false to apply. Status changes keep things in step after that; tidy is for files already out of place.",
+    { collection: z.string(), dry_run: z.boolean().optional() },
+    (root, a) => ops.tidy(root, a.collection, { dry_run: a.dry_run }),
+  );
+
+  tool(
     "repad",
     "Pad every initiative number in a collection to one width (`01-`, `001-`) — the given `width`, or the width most of its files use — renaming the files and their asset folders and rewriting every link to them across the repo. Dry run by default: returns each rename and link rewrite; pass dry_run: false to apply. Refuses a width too small for the highest number.",
     {

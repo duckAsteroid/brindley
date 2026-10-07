@@ -52,4 +52,5 @@ README's Closed list. Put the fuller story in `outcome`, which becomes an `## Ou
 
 In an existing layout, a file without a `status` takes it from the sub-folder it's in:
 `completed/` → done, `deferred/` → deferred, `superseded/` → superseded, plus any word mapped
-above. Front-matter always wins. Brindley never moves files between folders.
+above. Front-matter always wins. Brindley moves files between folders only for a collection that
+opts in with `folders:` (see [Front-matter](/reference/front-matter)).

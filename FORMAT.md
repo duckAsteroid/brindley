@@ -91,6 +91,8 @@ ignore:                                     # .gitignore-style, relative to this
 dimensions:                                 # scoring dimensions (§4.3)
   priority: { values: [now, soon, later], default: soon, required: true }
   job_size: [1, 2, 3, 5, 8, 13]
+folders:                                    # opt in: move initiatives into status folders
+  done: completed
 graph:                                      # what the generated dependency graph shows (§8.3)
   related: true                             # also draw ## Related links (default: off)
   themes: [box, icon]                       # group and mark initiatives by theme (default: off)
@@ -128,8 +130,13 @@ one an explicit `name`.
 - **Status folders** are read, not required. Sub-folders holding numbered initiatives —
   `completed/`, `deferred/`, `superseded/`, or anything mapped with `statuses:` — are part of the
   collection, and a file without a `status` in its front-matter takes its status from the folder
-  name. Front-matter always wins. New work should stay in the collection folder and use
-  front-matter, because moving a file breaks the links to it.
+  name. Front-matter always wins. Tools never move a file unless the collection opts in.
+- **Opting in to status folders:** a collection README's `folders:` maps statuses to folder names,
+  e.g. `folders: { done: completed, abandoned: closed, superseded: closed }`. Then a status change
+  moves the initiative — and its asset folder — into its status's folder, or back to the top of
+  the collection for a status not listed (reopened work), rewriting every link to them in the
+  repository; a `tidy` tool puts existing files where they belong. A folder named for one status is
+  read as that status, without a `statuses:` entry.
 - Asset folders (`<number>-…/`) and sub-folders that are collections themselves are not status
   folders. Sub-folders with no numbered files are ignored.
 - **`ignore:`** lists paths Brindley should not treat as initiatives, with `.gitignore` semantics
@@ -753,6 +760,8 @@ Warnings:
     `**Status:**` line or a `## Status` section that maps to a core status — record it.
 27. `status: abandoned` without a reason (`status_note`), unless the status comes from a status folder.
 28. A collection README's `columns:` with an unknown table or column, or a value that isn't a list.
+29. A collection README's `folders:` listing something that isn't a status or alias, or a value that isn't a
+    plain folder name.
 
 Broken-link warnings name the new location when the linked file has moved within the collection.
 

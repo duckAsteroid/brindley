@@ -10,7 +10,8 @@ appended after your text.
 ## What's understood without changes
 
 - **Status folders.** Files in `completed/`, `deferred/` or `superseded/` take their status from
-  the folder unless their front-matter says otherwise. Brindley never moves files itself.
+  the folder unless their front-matter says otherwise. Brindley moves files only if the collection
+  opts in with `folders:` — then `tidy` puts everything where its status belongs.
 - **Your status words.** *Proposed*, *Exploratory*, *Design complete*, *Future* and other common
   words map to core statuses; map your own with `statuses:` in the collection README.
 - **Dependency links.** Links under `## Dependencies` count — even links to files that have since

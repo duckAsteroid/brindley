@@ -1,7 +1,16 @@
 ---
 type: feature
-status: designed
+status: done
 updated: 2026-10-07
+docs_impact:
+  - FORMAT.md
+  - MCP-SERVER.md
+  - site/reference/mcp.md
+  - site/reference/cli.md
+  - site/reference/front-matter.md
+  - site/reference/statuses.md
+  - site/reference/validation.md
+  - site/guide/adopting.md
 ---
 # Opt-in status folders that Brindley keeps in step
 
@@ -25,6 +34,7 @@ _None._
 - The move happens in the same call that changes the status — `set_status`, `complete`, and `update`'s status recording (initiatives#6) — moving the file and its asset folder and rewriting every link to them with the shared planner (initiatives#13); the result lists what moved. Reopening moves it back: a done initiative set to draft returns to the top of the collection. Files already out of place (opted in late, or edited by hand) are brought into line by a `tidy` tool, dry run by default like `repad`, which `status-not-in-folder` points to. Fix mode (initiatives#8) still never moves files.
 - With `folders:` declared, every status has a home: a listed status, its folder; anything unlisted, including all active work, the top of the collection. `status-not-in-folder` warns in both directions — a done initiative still at the top, a reopened draft still in `completed/` — and points to `tidy`.
 - Links from outside the repo (tickets, other repos, bookmarks) to a moved file are not a concern: moves rewrite every link inside the repo, and nothing more is needed — no warning when opting in, in `tidy`'s plan or on each move, and no stub file left at the old path.
+- Implementation: src/folders.ts reads `folders:` and works out each status's home and the moves; moves use the shared planner (src/relink.ts), which now creates a missing target folder. A move is worked out before anything is written, so one that would overwrite a file is refused first. `batch_update` moves too, like the other status-changing calls. A folder that several statuses share (`closed`) doesn't give a status to a file without one — front-matter decides there. `status-not-in-folder` keeps its old guess for collections without `folders:`.
 
 ## Open questions
 

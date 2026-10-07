@@ -27,6 +27,7 @@ import {
   splitFrontMatter,
 } from "./markdown.js";
 import { git, otherWorktrees } from "./git.js";
+import { folderStatuses, parseFolders } from "./folders.js";
 
 const SKIP_DIRS = new Set(["node_modules", ".git"]);
 
@@ -183,6 +184,7 @@ function collectionMeta(data: Record<string, unknown>, folder: string): Collecti
     dimensions: data["dimensions"],
     graph: data["graph"],
     columns: data["columns"],
+    folders: data["folders"],
     aliases:
       data["aliases"] !== undefined || data["alias"] !== undefined
         ? [...strList(data["aliases"]), ...strList(data["alias"])]
@@ -249,11 +251,13 @@ export function loadCollection(repoRoot: string, readmeRel: string): Collection 
   const name = str(data["name"]) ?? folder;
   const meta = collectionMeta(data, folder);
   const ignored = ignoreMatcher(meta.ignore);
+  // Folders a collection names in `folders:` are read as their status, like `statuses:` words.
+  const statuses = { ...folderStatuses(parseFolders(meta.folders, meta.statuses).map), ...meta.statuses };
   const initiatives = [
-    ...initiativeFiles(dir, ignored).map((f) => loadInitiative(join(dir, f), repoRoot, name, { statuses: meta.statuses })),
+    ...initiativeFiles(dir, ignored).map((f) => loadInitiative(join(dir, f), repoRoot, name, { statuses })),
     ...statusFolders(dir, ignored).flatMap((sub) =>
       initiativeFiles(join(dir, sub), (f) => ignored(`${sub}/${f}`)).map((f) =>
-        loadInitiative(join(dir, sub, f), repoRoot, name, { folder: sub, statuses: meta.statuses }),
+        loadInitiative(join(dir, sub, f), repoRoot, name, { folder: sub, statuses }),
       ),
     ),
   ].sort((a, b) => a.number - b.number || a.rel.localeCompare(b.rel));

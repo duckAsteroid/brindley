@@ -7,6 +7,8 @@ brindley validate [--docs]              Check every collection; exits 1 on error
 brindley validate --fix [--write]       Plan (or with --write, make) the repairs with one obvious fix:
                                         broken links to a moved initiative, front-matter dependencies
 brindley readmes [--check]              Regenerate collection README blocks; --check exits 1 if stale
+brindley tidy <collection> [--write]    Move a collection's initiatives into the folders its `folders:`
+                                        declares, rewriting links; plans only unless --write
 brindley repad <collection> [<width>] [--write]
                                         Pad a collection's numbers to one width (default: the one most
                                         files use), renaming files and rewriting links; plans only

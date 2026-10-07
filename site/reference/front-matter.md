@@ -71,6 +71,7 @@ dimensions:
 | `ignore` | `.gitignore`-style patterns for numbered files that aren't initiatives. |
 | `dimensions` | This collection's [scoring dimensions](#scoring-dimensions). |
 | `graph` | What the README's dependency graph shows — see [Graph settings](#graph-settings). |
+| `folders` | Opt in to status folders: statuses mapped to folder names (`{ done: completed, abandoned: closed }`). Status changes then move initiatives — with their asset folders, rewriting links — and `tidy` puts existing ones in place. Without it, files never move. |
 | `columns` | The README tables' columns: `active` and/or `completed`, each an ordered list replacing that table's defaults — from `number`, `title`, `type`, `status`, `ready`, `questions`, `owner`, `tags`, `updated` and the collection's scoring dimensions. |
 
 ## Graph settings

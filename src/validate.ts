@@ -9,6 +9,7 @@ import { readmeColumns, regenerate } from "./readme.js";
 import { checkDocs } from "./docs.js";
 import { dimensionsOf, parseDimensions, sameValue } from "./dimensions.js";
 import { parseGraph } from "./graph.js";
+import { homeFolder, parseFolders } from "./folders.js";
 import { capacity, collectionWidth, fitsWidth, nearFull, numberPrefix, padNumber, roomFor } from "./numbering.js";
 
 export interface Finding {
@@ -51,6 +52,7 @@ export function validate(root: Root, opts: { collection?: string; docs?: boolean
     for (const p of parseDimensions(c.meta.dimensions).problems) err("dimension-declaration", rel(c.readme), p);
     for (const p of parseGraph(c.meta.graph, c.meta.statuses).problems) warn("graph-setting", rel(c.readme), p);
     for (const p of readmeColumns(root, c).problems) warn("readme-columns", rel(c.readme), p);
+    for (const p of parseFolders(c.meta.folders, c.meta.statuses).problems) warn("folders-setting", rel(c.readme), p);
     // Padding: every number at the width most files use, and room to grow.
     const width = collectionWidth(c);
     for (const i of c.initiatives) {
@@ -190,7 +192,17 @@ function checkInitiative(
       warn("status-folder-mismatch", f, `In "${i.folder}/" (${byFolder}) but front-matter says ${i.status}; front-matter wins.`);
   }
   // A collection that files work by status in folders: is this file where its status says?
-  if (collection && i.status) {
+  const declared = collection ? parseFolders(collection.meta.folders, collection.meta.statuses).map : null;
+  if (collection && i.status && declared) {
+    // Declared folders: every status has a home — its folder, or the top of the collection.
+    const home = homeFolder(declared, i.status);
+    if ((i.folder ?? "") !== home)
+      warn(
+        "status-not-in-folder",
+        f,
+        `Status ${i.status} belongs ${home ? `in "${collection.path}/${home}/"` : `directly in "${collection.path}/"`}, but this file is ${i.folder ? `in "${collection.path}/${i.folder}/"` : `directly in "${collection.path}/"`}. \`tidy\` moves it.`,
+      );
+  } else if (collection && i.status) {
     const home = statusFolderFor(collection, i.status);
     if (home && i.folder !== home)
       warn("status-not-in-folder", f, `Status ${i.status}, but this collection keeps ${i.status} work in "${collection.path}/${home}/" and this file is ${i.folder ? `in "${collection.path}/${i.folder}/"` : `directly in "${collection.path}/"`}.`);

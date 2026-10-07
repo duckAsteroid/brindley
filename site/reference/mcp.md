@@ -15,6 +15,7 @@ accepts a name, an alias or a folder path.
 | `fix` | `collection?`, `dry_run?` | Repairs findings with one obvious fix — a broken link to an initiative that moved (one match by filename), dependencies written in front-matter — editing text only. Plans unless `dry_run: false`. |
 | `rename_collection` | `collection`, `to`, `dry_run?` | Moves a collection to a new folder, rewriting links into and out of it, and `name#n` references when its name follows the folder. |
 | `renumber` | `ref`, `to?`, `dry_run?` | Gives an initiative a new number (default: the next free one) — the fix for a number collision after a merge. Renames its file and asset folder and rewrites links and `name#n` references to it. Pass one file of a colliding pair by path. |
+| `tidy` | `collection`, `dry_run?` | For a collection with `folders:`, moves every initiative into its status's folder (or the top), rewriting links. Plans unless `dry_run: false`. |
 | `repad` | `collection`, `width?`, `dry_run?` | Pads every number in a collection to one width (`01-`), renaming files and asset folders and rewriting links across the repo. Plans only unless `dry_run: false`. |
 | `collections` | — | Every collection with aliases, counts by status, number ready and ignored files. |
 

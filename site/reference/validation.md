@@ -36,7 +36,8 @@
 | `open-questions` | In progress or done, with questions still open. |
 | `docs-impact` | Done, with no `docs_impact` recorded. |
 | `status-folder-mismatch` | Front-matter says one status, the folder another. |
-| `status-not-in-folder` | The collection keeps this status in a folder (e.g. done in `completed/`), but this file is elsewhere. |
+| `status-not-in-folder` | The file isn't where its status belongs: with `folders:` declared, a listed status in its folder and everything else at the top (`tidy` moves it); otherwise, the collection keeps this status in a folder (e.g. done in `completed/`) but this file is elsewhere. |
+| `folders-setting` | A collection README's `folders:` lists something that isn't a status, or a value that isn't a plain folder name. |
 | `status-prose-mismatch` | The body's "Status:" line disagrees with the actual status. |
 | `broken-link` | A link target doesn't exist — with where the file is now, if it moved; the repo path a `../` link resolves to; and the worktree that has it, if another one does. |
 | `front-matter-dependencies` | `depends_on` / `related` in front-matter, which are ignored; use the sections. |
