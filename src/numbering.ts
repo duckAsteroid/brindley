@@ -46,6 +46,13 @@ export function nearFull(width: number): number {
   return 8 * 10 ** (width - 1);
 }
 
+/** The narrowest width a number fits with room to spare (below its 80% mark): 24 → 2, 85 → 3. */
+export function roomFor(n: number): number {
+  let w = 1;
+  while (n >= nearFull(w)) w++;
+  return w;
+}
+
 /** The largest number a width can hold: 9, 99, 999, … */
 export function capacity(width: number): number {
   return 10 ** width - 1;

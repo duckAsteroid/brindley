@@ -53,6 +53,11 @@ describe("padding width", () => {
     expect(found.find((f) => f.rule === "number-width")?.message).toBe(
       "The highest number, 81, is 82% of what 2 digits hold. `repad` to 3 digits (001-) before it runs out.",
     );
+    fx.cleanup();
+    fx = fixture({ files: { "locks/README.md": "---\nbrindley: 1\n---\n# Locks\n", "locks/1-a.md": draft("A"), "locks/2-b.md": draft("B"), "locks/24-x.md": draft("X") } });
+    expect(validate(fx.load()).find((f) => f.rule === "number-width")?.message).toBe(
+      "The highest number, 24, has outgrown this collection's width of 1 digit, so files no longer sort in order. `repad` to 2 digits (01-).",
+    );
   });
 });
 

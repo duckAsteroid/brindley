@@ -9,7 +9,7 @@ import { regenerate } from "./readme.js";
 import { checkDocs } from "./docs.js";
 import { dimensionsOf, parseDimensions, sameValue } from "./dimensions.js";
 import { parseGraph } from "./graph.js";
-import { capacity, collectionWidth, fitsWidth, nearFull, numberPrefix, padNumber } from "./numbering.js";
+import { capacity, collectionWidth, fitsWidth, nearFull, numberPrefix, padNumber, roomFor } from "./numbering.js";
 
 export interface Finding {
   level: "error" | "warning";
@@ -61,7 +61,13 @@ export function validate(root: Root, opts: { collection?: string; docs?: boolean
     }
     const highest = Math.max(0, ...c.initiatives.map((i) => i.number));
     if (highest >= nearFull(width))
-      warn("number-width", rel(c.readme), `The highest number, ${highest}, is ${Math.round((highest / capacity(width)) * 100)}% of what ${width === 1 ? "1 digit holds" : `${width} digits hold`}. \`repad\` to ${width + 1} digits (${padNumber(1, width + 1)}-) before it runs out.`);
+      warn(
+        "number-width",
+        rel(c.readme),
+        highest > capacity(width)
+          ? `The highest number, ${highest}, has outgrown this collection's width of ${width} digit${width === 1 ? "" : "s"}, so files no longer sort in order. \`repad\` to ${roomFor(highest)} digits (${padNumber(1, roomFor(highest))}-).`
+          : `The highest number, ${highest}, is ${Math.round((highest / capacity(width)) * 100)}% of what ${width === 1 ? "1 digit holds" : `${width} digits hold`}. \`repad\` to ${width + 1} digits (${padNumber(1, width + 1)}-) before it runs out.`,
+      );
   }
 
   const themeOwners = new Map<string, string>();
