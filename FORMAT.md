@@ -609,7 +609,11 @@ Rules for the generated block:
 
 2. **Dependency graph** (Mermaid) — see §8.3.
 
-3. **Completed** table — `done` initiatives (#, linked title, `updated`); then a short
+3. **Themes** — each tag used by the collection's initiatives, linked to its theme doc (§4.2)
+   when there is one, with its description and how many of the collection's initiatives carry it,
+   open and closed or deferred. Left out when nothing is tagged.
+
+4. **Completed** table — `done` initiatives (#, linked title, `updated`); then a short
    **Closed** list for `abandoned`/`superseded` (with `superseded_by`, and the reason from `status_note`).
 
 ### 8.2 Overview of all collections

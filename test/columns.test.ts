@@ -57,3 +57,27 @@ describe("README columns", () => {
     expect(regenerate(fx.load())).toEqual([]);
   });
 });
+
+describe("Themes section", () => {
+  it("lists the collection's tags with their theme doc, description and counts", () => {
+    fx = fixture({
+      files: {
+        "locks/README.md": "---\nbrindley: 1\ntags:\n  safety: Keeping boaters safe at the lock\n---\n# Locks\n",
+        "locks/repairs.md": "---\ntheme: repairs\nsummary: Fixing what wears out\n---\n# Repairs\n",
+        "locks/safety.md": "---\ntheme: safety\n---\n# Safety\n",
+        "locks/01-gates.md": "---\nstatus: draft\ntags: [repairs, safety]\n---\n# Gates\n",
+        "locks/02-paddles.md": "---\nstatus: done\ndocs_impact: 'none: x'\ntags: [repairs]\n---\n# Paddles\n",
+        "canal/README.md": "---\nbrindley: 1\n---\n# Canal\n",
+        "canal/01-water.md": "---\nstatus: draft\n---\n# Water\n",
+      },
+    });
+    regenerate(fx.load());
+    expect(read("locks/README.md")).toContain(
+      "### Themes\n\n" +
+        "- [**repairs**](repairs.md) — Fixing what wears out · 1 open, 1 closed or deferred\n" +
+        "- [**safety**](safety.md) — Keeping boaters safe at the lock · 1 open, 0 closed or deferred\n", // the declaration, not the doc's title
+    );
+    expect(read("canal/README.md")).not.toContain("### Themes"); // nothing tagged
+    expect(regenerate(fx.load())).toEqual([]); // deterministic
+  });
+});

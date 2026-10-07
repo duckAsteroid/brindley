@@ -250,6 +250,27 @@ function table(root: Root, c: Collection, keys: string[], items: Initiative[]): 
   ];
 }
 
+/**
+ * The collection's themes: each tag its initiatives use, linked to the theme's overview doc when
+ * there is one, with its description and this collection's open and closed counts.
+ */
+function themesSection(root: Root, c: Collection): string[] {
+  const tags = [...new Set(c.initiatives.flatMap((i) => i.tags))].sort();
+  if (!tags.length) return [];
+  const described = declaredTags(root) ?? {};
+  const out = ["", "### Themes", ""];
+  for (const tag of tags) {
+    const doc = themeFor(root, tag);
+    const name = doc ? `[**${esc(tag)}**](${posix.relative(c.path, doc.rel)})` : `**${esc(tag)}**`;
+    // This collection's own description first, then another collection's, then the theme doc's summary.
+    const desc = c.meta.tags?.[tag] || (described[tag] && described[tag] !== doc?.title ? described[tag] : undefined) || doc?.summary;
+    const items = c.initiatives.filter((i) => i.tags.includes(tag));
+    const open = items.filter(isActive).length;
+    out.push(`- ${name}${desc ? ` — ${esc(desc)}` : ""} · ${open} open, ${items.length - open} closed or deferred`);
+  }
+  return out;
+}
+
 export function collectionBlock(root: Root, c: Collection): string {
   const out: string[] = [];
   const active = c.initiatives.filter(isActive);
@@ -268,6 +289,7 @@ export function collectionBlock(root: Root, c: Collection): string {
     ? mermaid(root, [...active, ...c.initiatives.filter((i) => !isActive(i) && settings.show.includes(i.status ?? ""))], c.name, settings)
     : null;
   if (graph) out.push("", "### Dependencies", "", graph);
+  out.push(...themesSection(root, c));
   if (deferred.length > 0) {
     out.push("", "### Deferred", "");
     for (const i of deferred) out.push(`- ${i.number} ${link(i, c.path)}${i.statusNote ? ` — ${esc(i.statusNote)}` : ""}`);

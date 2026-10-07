@@ -19,7 +19,7 @@ The collection README's tables have fixed columns — Active: # | Initiative | T
 
 ## Related
 
-- [12 Themes overview and tag cloud in the collection README](../12-themes-overview-and-tag-cloud-in-the-collection-readme.md) — another front-matter-controlled section of the generated README
+- [12 Themes overview and tag cloud in the collection README](12-themes-overview-and-tag-cloud-in-the-collection-readme.md) — another front-matter-controlled section of the generated README
 - [14 README front-matter controls what the dependency graph shows](14-readme-front-matter-controls-what-the-dependency-graph-shows.md) — the graph setting and this columns setting should look alike in front-matter
 - [21 Computed scores such as WSJF](../21-computed-scores-such-as-wsjf.md) — computed scores can be columns too, once they exist
 

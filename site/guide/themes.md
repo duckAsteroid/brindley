@@ -42,6 +42,12 @@ Brindley then:
 Ask *"show me everything in the notifications theme"* to get the overview plus every member as
 one document.
 
+## Themes in the collection README
+
+A collection's README lists the themes its initiatives use, each linked to its overview doc where
+there is one, with its description and how many of the collection's initiatives are open and
+closed.
+
 ## Themes in the dependency graph
 
 A collection can show themes in its README graph with `graph: { themes: … }`:

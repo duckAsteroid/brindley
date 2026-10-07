@@ -91,5 +91,5 @@ declare its own, make one required, or give it a default. See
 ## Generated READMEs
 
 Each collection's README keeps its own introduction, plus a block Brindley regenerates on every
-change: a table of active work, a Mermaid dependency graph, and completed work. You never edit
+change: a table of active work, a Mermaid dependency graph, the themes in use, and completed work. You never edit
 that block by hand; on a merge conflict it is simply regenerated.
