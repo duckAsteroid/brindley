@@ -36,6 +36,7 @@ export default defineConfig({
         items: [
           { text: "Front-matter", link: "/reference/front-matter" },
           { text: "Statuses", link: "/reference/statuses" },
+          { text: "Types", link: "/reference/types" },
           { text: "MCP tools & prompts", link: "/reference/mcp" },
           { text: "CLI", link: "/reference/cli" },
           { text: "Validation rules", link: "/reference/validation" },

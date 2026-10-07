@@ -18,7 +18,7 @@ updated: 2026-10-06
 | Field | Notes |
 |-------|-------|
 | `status` | Required. See [Statuses](/reference/statuses). Without it, a file in a status folder takes the folder's status. |
-| `type` | `feature`, `bug`, `refactor`, `perf`, `docs`, `chore`, `spike` — or your own words. `raconiter` means spike. |
+| `type` | `feature`, `bug`, `refactor`, `perf`, `docs`, `chore`, `spike` — or your own words. See [Types](/reference/types). |
 | `status_note` | A one-line qualifier shown beside the status. |
 | `tags` | Themes, lowercase kebab-case. |
 | `owner` | Owning team, module or person. |
@@ -111,6 +111,42 @@ A collection README adds its own, or replaces a default by using its name, under
 `values` (strings or numbers, in ranking order), and optionally `required: true` and a `default`
 that unset initiatives are treated as having. A bare list is shorthand for `values`. Set values
 with `update`'s `dimensions`; filter and order with `list`'s `where` and `order_by`.
+
+### Example: adding a dimension
+
+A lock-maintenance team wants to rank work by how disruptive it is to boats using the canal, and
+to make every initiative say so. In the collection README:
+
+```yaml
+dimensions:
+  disruption:
+    values: [none, minor, closure]   # least disruptive first: it ranks ahead
+    required: true                   # validate warns about any initiative without it
+    default: minor                   # until set, an initiative sorts and filters as minor
+  priority: [now, soon, later]       # replaces the default priority; a bare list is the values
+```
+
+Each initiative then records its value in front-matter:
+
+```yaml
+---
+status: designed
+disruption: closure
+priority: now
+---
+# Replace the bottom gates
+```
+
+or through a tool — `update(ref: "locks#12", dimensions: { disruption: "none" })`. Values
+outside the list are refused by `update` and flagged by `validate`. To find the least disruptive
+work that is ready, most urgent first:
+
+```
+list(ready: true, where: { disruption: [none, minor] }, order_by: [priority, disruption])
+```
+
+A dimension can also be a README column — `columns: { active: [number, title, disruption, priority] }`
+— where a value taken from the `default` is shown in italics.
 
 ## Theme doc
 

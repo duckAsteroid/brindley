@@ -231,7 +231,10 @@ updated: 2026-09-24
 
 - A collection may declare its list with `types:` in its README front-matter. When declared, an
   unlisted `type` is a validation warning (typo protection); when not, any string is accepted.
-- Type is descriptive only: it never affects readiness or lifecycle rules.
+- Common words are read as the type they stand for: `feat` → `feature`; `fix`, `bugfix` → `bug`;
+  `raconiter`, `raconitering`, `reconnoitre`, `investigation` → `spike`.
+- Type is descriptive, with one exception: a `spike` is held to `## Measures` instead of acceptance
+  criteria before it starts, and records `## Findings` when done (§7.1).
 - Tools may use it for grouping and filtering, and an implementing agent may use it to choose a
   commit type (e.g. `feature` → `feat`, `bug` → `fix` in Conventional Commits).
 
