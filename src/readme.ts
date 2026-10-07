@@ -92,7 +92,9 @@ function themeIcon(root: Root, tag: string): string {
  * `arrows`, `## Related` links only when `related`, outside nodes only when `external`, and theme
  * boxes or marks per `themes`. In `icon` mode a legend line follows the block.
  */
-export function mermaid(root: Root, items: Initiative[], from: string, settings: GraphSettings = DEFAULT_GRAPH): string | null {
+export function mermaid(root: Root, items: Initiative[], from: string, settings: GraphSettings = DEFAULT_GRAPH, fromDir?: string): string | null {
+  // Node links are relative to the file the graph is written into: a collection's README, else the repo root.
+  const linkDir = fromDir ?? root.collections.find((c) => c.name === from)?.path ?? ".";
   const outside = (i: Initiative) => !settings.external && from !== "" && i.collection !== from;
   const shown = items.filter((i) => !outside(i));
   if (shown.length === 0) return null;
@@ -155,7 +157,12 @@ export function mermaid(root: Root, items: Initiative[], from: string, settings:
       out.push("  end");
     }
   } else out.push(...lines.values());
-  out.push(...[...externals.entries()].map(([raw, id]) => `  ${id}{{"🔗 ${label(raw)}"}}`), ...edges, "```");
+  out.push(...[...externals.entries()].map(([raw, id]) => `  ${id}{{"🔗 ${label(raw)}"}}`), ...edges);
+  if (settings.links) {
+    for (const [id, i] of nodes) out.push(`  click ${id} href "${posix.relative(linkDir, i.rel)}"`);
+    for (const [raw, id] of externals) if (/^https?:\/\//i.test(raw)) out.push(`  click ${id} href "${raw.replace(/"/g, "%22")}"`);
+  }
+  out.push("```");
   if (icons.size) out.push("", `Themes: ${[...icons].sort().map((t) => `${themeFor(root, t)!.icon} ${t}`).join(" · ")}`);
   return out.join("\n");
 }

@@ -21,6 +21,8 @@ export interface GraphSettings {
   box: boolean;
   /** Mark each node with its themes: icons before the title, or names after it. */
   mark: "icon" | "label" | null;
+  /** Make each node a link to its initiative (and external dependencies to their URL). */
+  links: boolean;
 }
 
 export const DEFAULT_GRAPH: Readonly<GraphSettings> = {
@@ -32,6 +34,7 @@ export const DEFAULT_GRAPH: Readonly<GraphSettings> = {
   external: true,
   box: false,
   mark: null,
+  links: true,
 };
 
 const DIRECTIONS: Record<string, Direction> = {
@@ -46,7 +49,7 @@ const DIRECTIONS: Record<string, Direction> = {
   bt: "bottom-to-top",
 };
 
-const KEYS = ["enabled", "direction", "arrows", "related", "show", "external", "themes"];
+const KEYS = ["enabled", "direction", "arrows", "related", "show", "external", "themes", "links"];
 
 /**
  * Read a `graph:` object leniently: anything unusable falls back to the default and is reported as a
@@ -59,7 +62,7 @@ export function parseGraph(raw: unknown, statuses?: Record<string, string>): { s
   if (typeof raw !== "object" || Array.isArray(raw)) return { settings, problems: ["`graph` must be a set of settings, e.g. `graph: { related: true }`."] };
   const g = raw as Record<string, unknown>;
   for (const k of Object.keys(g)) if (!KEYS.includes(k)) problems.push(`Unknown \`graph\` setting "${k}" (known: ${KEYS.join(", ")}).`);
-  const bool = (k: "enabled" | "related" | "external") => {
+  const bool = (k: "enabled" | "related" | "external" | "links") => {
     if (g[k] === undefined) return;
     if (typeof g[k] === "boolean") settings[k] = g[k] as boolean;
     else problems.push(`\`graph.${k}\` must be true or false.`);
@@ -67,6 +70,7 @@ export function parseGraph(raw: unknown, statuses?: Record<string, string>): { s
   bool("enabled");
   bool("related");
   bool("external");
+  bool("links");
   if (g["direction"] !== undefined) {
     const d = DIRECTIONS[String(g["direction"]).toLowerCase()];
     if (d) settings.direction = d;

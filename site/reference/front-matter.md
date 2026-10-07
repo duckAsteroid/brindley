@@ -89,6 +89,7 @@ graph:
   show: [done]               # also include initiatives in these statuses (default: none)
   external: false            # leave out external dependencies and other collections' work (default: true)
   themes: [box, icon]        # box: group by first theme; icon or label: mark each node's themes (default: off)
+  links: false               # don't make nodes links to their initiatives (default: true)
   enabled: true              # false: no graph in this README (default: true)
 ```
 

@@ -682,6 +682,7 @@ other collections' graphs or the repo-wide overview, which use the defaults.
 | `show` | list of statuses, default none | Also include every initiative in these statuses (core names or aliases), e.g. `[done]`. |
 | `external` | `true` (default), `false` | `false` leaves out external dependencies and other collections' initiatives, and their edges. |
 | `themes` | `box`, `icon`, `label`, `true`, or a list | `box` groups each initiative in a box for its first tag. `icon` puts each of its themes' icons (§4.2; `[name]` without one) before its title, with a legend under the graph. `label` — or `true` — puts the theme names after its title. `box` combines with `icon` or `label`; `icon` and `label` together mean `label`. |
+| `links` | `true` (default), `false` | Each node links to its initiative (a `click … href` line, relative to the README), and an external dependency with a URL to that URL — clickable where the Markdown preview supports it. |
 | `enabled` | `true` (default), `false` | `false` leaves the graph out of the README. |
 
 Unknown settings and unusable values are validation warnings (§10), and fall back to the default.

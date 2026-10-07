@@ -42,6 +42,13 @@ flowchart RL
   n28["✏️ 28 Write and keep the agent rules in AGENTS.md / CLAUDE.md"]
   n19["✅ <s>19 Scoring dimensions on initiatives</s>"]
   n21 --> n19
+  click n12 href "12-themes-overview-and-tag-cloud-in-the-collection-readme.md"
+  click n16 href "16-resolve-settled-questions-in-bulk.md"
+  click n21 href "21-computed-scores-such-as-wsjf.md"
+  click n26 href "26-record-the-merge-commit-or-pr-when-work-is-done.md"
+  click n27 href "27-inline-the-collection-s-agent-file-in-the-implement-brief.md"
+  click n28 href "28-write-and-keep-the-agent-rules-in-agents-md-claude-md.md"
+  click n19 href "done/19-rank-initiatives-by-scoring-dimensions.md"
 ```
 
 ### Deferred

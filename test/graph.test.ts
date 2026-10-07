@@ -144,6 +144,15 @@ describe("graph settings", () => {
     expect(g.indexOf('n4["')).toBeLessThan(g.indexOf("subgraph")); // untagged stays outside
   });
 
+  it("links each node to its initiative, relative to the README, and externals to their URL", () => {
+    const g = graph("  show: [done]\n");
+    expect(g).toContain('  click n1 href "1-gates.md"');
+    expect(g).toContain('  click n3 href "3-signs.md"');
+    expect(g).toContain('  click c_canal_1 href "../canal/1-water.md"');
+    expect(g).toContain('  click x1 href "https://example.com/geo"');
+    expect(graph("  links: false\n")).not.toContain("click");
+  });
+
   it("is deterministic", () => {
     fx = fixture({ files: files("  themes: [box, icon]\n  related: true\n  show: [done]\n") });
     regenerate(fx.load());
@@ -158,7 +167,7 @@ describe("graph settings", () => {
       .filter((f) => f.rule === "graph-setting")
       .map((f) => f.message);
     expect(msgs).toEqual([
-      'Unknown `graph` setting "colour" (known: enabled, direction, arrows, related, show, external, themes).',
+      'Unknown `graph` setting "colour" (known: enabled, direction, arrows, related, show, external, themes, links).',
       "`graph.related` must be true or false.",
       "`graph.direction: sideways` is not one of left-to-right, right-to-left, top-to-bottom, bottom-to-top.",
       "`graph.arrows: both` must be from or to.",
