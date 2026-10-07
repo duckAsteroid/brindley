@@ -11,6 +11,10 @@ thing: folders whose `README.md` front-matter contains
   you cannot confirm.
 - Ask about open questions before implementing; `(implementation)` questions are yours to
   settle — record the decision in the initiative.
+- If, while building, you reach a decision the initiative doesn't settle and that matters to
+  what you build, don't guess: add it as an ordinary open question and stop to ask. The
+  initiative stays in-progress, and readiness checks fail until it is resolved. Mark a question
+  `(implementation)` only when the choice is genuinely yours to make.
 - When discussing open questions with the user: one at a time, in open chat (no form or
   multiple-choice prompts), grounded in the actual code (cite `path:line`; say "unclear from
   code" rather than guess), with concrete examples from the real domain. Record each decision

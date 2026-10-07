@@ -729,6 +729,11 @@ ${verifyStep(root, i)}
 - Ask about any product, data or API choice the initiative doesn't settle before writing code. \`(implementation)\` questions are yours to settle — record each decision in the initiative (\`resolve_question\`).
 - Set \`status\` to in-progress (\`set_status\`) when you begin.
 
+## While building
+
+- If you reach a decision the initiative doesn't settle and that matters to what you build — a placement, a contract detail, an ordering — don't guess and build on the guess. Record it with \`add_question\` as an ordinary question (not \`implementation\`) and stop to ask. The initiative stays in-progress; \`check_ready\` fails until you settle it with \`resolve_question\`, then carry on.
+- \`(implementation)\` questions are only for choices that are genuinely yours, such as naming or internal structure.
+
 ## Finishing (same commit as the code)
 
 1. Update the project docs so they describe the code **as it now is**: present tense, what exists, how callers use it, constraints and failure modes. No history ("previously", "now", "we added"), no rejected alternatives, no links to initiatives. Say *unclear from code* rather than guess.

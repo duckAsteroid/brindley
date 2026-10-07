@@ -35,7 +35,15 @@ The implement and spike briefs begin with the same check, and stop if it fails.
 
 The **implement** brief hands the agent the initiative, its dependency report and the rules:
 settle any `(implementation)` questions and record them, then finish in the **same commit** as
-the code:
+the code.
+
+If the agent reaches a decision mid-build that the initiative doesn't settle and that matters to
+what it builds, it doesn't guess: it adds an ordinary open question and stops to ask. The
+initiative stays in-progress — design isn't reopened — and `check_ready` fails until the question
+is resolved. `(implementation)` questions are only for choices that are genuinely the
+implementer's.
+
+Finishing:
 
 1. **Update the project docs** so they describe the code *as it now is* — present tense, no
    history, no ruled-out alternatives, no links to initiatives.

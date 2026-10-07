@@ -114,6 +114,8 @@ describe("MCP server", () => {
     const ok = await text("implement", "sb#21");
     expect(ok).toMatch(/## Step 1 — verify it is ready \(do this first\)/);
     expect(ok).toContain("All checks pass");
+    expect(ok).toContain("## While building");
+    expect(ok).toMatch(/don't guess and build on the guess/);
     const blocked = await text("implement", "sb#22");
     expect(blocked).toContain("❌ **Dependencies:** blocked by 23 (designed)");
     expect(blocked).toContain("Stop here:** do not start work.");
