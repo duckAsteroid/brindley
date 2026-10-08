@@ -23,8 +23,9 @@ accepts a name, an alias or a folder path.
 
 | Tool | Parameters | Does |
 |------|------------|------|
+| `fields` | `collection?`, `ref?` | Every front-matter field a collection understands and the values it accepts — statuses and aliases, types, tags, scoring dimensions with their order and default. |
 | `list` | `collection?`, `type?`, `status?`, `tag?`, `owner?`, `ready?`, `where?`, `order_by?` | Initiatives, filtered — `where` by [scoring dimensions](/reference/front-matter#scoring-dimensions) (`{ priority: [critical, high] }`) — and ordered by them with `order_by` (`[priority, impact]`). |
-| `get` | `ref` | One initiative in full: dependency report, dependants, questions, acceptance criteria, themes, scoring dimensions. |
+| `get` | `ref` | One initiative in full: dependency report, dependants, questions, acceptance criteria, themes, and every scoring dimension with its value and allowed values. |
 | `ready` | `collection?`, `type?` | What can be picked up now, prerequisites first. |
 | `check_ready` | `ref` | Whether one initiative is complete and ready to work on, check by check. Fails if it's already being built elsewhere. |
 | `graph` | `collection?`, `ref?`, `tag?`, `include_done?`, and `related?`, `themes?`, `show?`, `external?`, `direction?`, `arrows?` to override the collection's [graph settings](/reference/front-matter#graph-settings) | Dependency graph as data and Mermaid. |

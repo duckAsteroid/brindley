@@ -25,6 +25,7 @@ import { checkDocs } from "./docs.js";
 import { dimensionReport, filterByDimensions, orderByDimensions } from "./dimensions.js";
 import { graphSettings } from "./graph.js";
 import { elsewhereFor, type Elsewhere } from "./elsewhere.js";
+import { dimensionInfo, fieldsFor } from "./fields.js";
 import * as ops from "./ops.js";
 import { MEASURES, sectionIsBlank } from "./ops.js";
 import { COMMIT, VERSION } from "./version.js";
@@ -43,7 +44,10 @@ export const INSTRUCTIONS = `Brindley manages planned work as Markdown files in 
 - A theme overview doc is a non-numbered .md in a collection folder with \`theme: <tag>\` in its front-matter; initiatives join the theme with \`tags: [<tag>]\`. Brindley keeps a generated list of the theme's initiatives in the doc, and points to it from \`get\`, \`tags\` and the prompts.
 - \`ignore:\` in the collection README holds .gitignore-style patterns (relative to the collection folder) for numbered files that are not initiatives, e.g. companion rationale notes. Use the \`ignore\` tool to add/remove/preview patterns; \`collections\` lists what is ignored.
 - Dependencies are the links under an initiative's \`## Dependencies\` heading (links to initiative files, in any collection, block it; http links are external prerequisites). Links under \`## Related\` are non-blocking. Use set_dependencies to add or remove them.
-- Brindley never moves files. Every write regenerates the collection README's generated block. \`validate\` reports structural problems (missing or conflicting statuses, files outside their status folder, duplicate numbers, broken links, …).
+- Initiatives can carry scoring dimensions — \`priority\`, \`impact\`, \`complexity\` by default, plus any a collection declares — each a front-matter field whose value comes from an ordered set. Set them with \`update\` (\`dimensions\`), filter and order with \`list\` (\`where\`, \`order_by\`). A ticket with none set simply hasn't been scored yet.
+- \`fields\` lists every front-matter field a collection understands and the values each allows (statuses and aliases, types, tags, dimensions with their order and default) — look there rather than guessing.
+- If you implement in a git worktree, call \`use_worktree\` with its path first, so your edits land there; every result ends with the checkout it worked on.
+- Brindley moves files only for a collection that declares \`folders:\` (status → folder); then status changes move them and rewrite links. Every write regenerates the collection README's generated block. \`validate\` reports structural problems (missing or conflicting statuses, files outside their status folder, duplicate numbers, broken links, …).
 - When discussing open questions with the user: one at a time, in open chat (no form or multiple-choice prompts), grounded in the actual code, with concrete examples.`;
 
 export interface ServerOptions {
@@ -77,7 +81,8 @@ function summary(root: Root, i: Initiative) {
     elsewhere: elsewhereOf(root, i),
     owner: i.owner ?? null,
     tags: i.tags,
-    dimensions: dimensionReport(root, i),
+    // Only dimensions with a value (set, or from its default): unset ones are listed by `get` and `fields`.
+    dimensions: Object.fromEntries(Object.entries(dimensionReport(root, i)).filter(([, d]) => d.value !== null)),
     ready: isReady(root, i),
     blockedBy: blockers(root, i).map((d) => d.ref),
     openQuestions: open.filter((q) => !q.implementation).length,
@@ -97,6 +102,10 @@ function themesOf(root: Root, i: Initiative) {
 function detail(root: Root, i: Initiative) {
   return {
     ...summary(root, i),
+    // Every dimension the collection has, with its allowed values, so what could be set is visible.
+    dimensions: Object.fromEntries(
+      dimensionInfo(findCollection(root, i.collection)).map(({ name, ...d }) => [name, { ...dimensionReport(root, i)[name], ...d }]),
+    ),
     themes: themesOf(root, i),
     frontMatter: i.fm,
     dependencies: dependencyReport(root, i),
@@ -387,11 +396,29 @@ export function createServer(opts: ServerOptions): McpServer {
           path: c.path,
           aliases: c.aliases,
           ...c.meta,
+          // Effective dimensions (the defaults merged with the declaration), not the raw declaration.
+          dimensions: dimensionInfo(c),
           counts: Object.fromEntries(STATUSES.map((s) => [s, count(s)])),
           ready: c.initiatives.filter((i) => isReady(root, i)).length,
           ignoredFiles: c.ignored,
         };
       }),
+    { readOnlyHint: true },
+  );
+
+  tool(
+    "fields",
+    "Every front-matter field an initiative (ticket/issue) can have in a collection, and the values each accepts: statuses and their aliases, types, tags, scoring dimensions (in ranking order, with any default and whether required), and the free-text fields — with the tool that sets each. Give a `collection` or an initiative `ref`; with neither, every collection.",
+    { collection: z.string().optional(), ref: refArg.optional() },
+    (root, a) => {
+      const cols =
+        a.ref !== undefined
+          ? [findCollection(root, resolveRef(root, a.ref, a.collection).collection)!]
+          : a.collection
+            ? [findCollection(root, a.collection) ?? (() => { throw new BrindleyError(`No collection "${a.collection}".`); })()]
+            : root.collections;
+      return cols.map((c) => ({ collection: c.name, fields: fieldsFor(root, c) }));
+    },
     { readOnlyHint: true },
   );
 

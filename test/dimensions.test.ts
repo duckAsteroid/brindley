@@ -140,7 +140,22 @@ describe("scoring dimensions", () => {
     expect(list[1].dimensions.priority).toEqual({ value: "high", source: "set" });
     json(await client.callTool({ name: "update", arguments: { ref: "locks#3", dimensions: { impact: "high" } } }));
     const got = json(await client.callTool({ name: "get", arguments: { ref: "locks#3" } }));
-    expect(got.dimensions.impact).toEqual({ value: "high", source: "set" });
+    expect(got.dimensions.impact).toEqual({ value: "high", source: "set", values: ["high", "medium", "low"], required: false, builtIn: true });
+    expect(got.dimensions.complexity).toMatchObject({ value: null, values: ["low", "medium", "high"] }); // unset, but its options are shown
+    // list shows only dimensions with a value.
+    expect(Object.keys(list[1].dimensions)).toEqual(["priority", "complexity"]);
+    // fields: every field and what it accepts.
+    const raw = json(await client.callTool({ name: "fields", arguments: { collection: "gates" } }));
+    const fields = Object.fromEntries(raw[0].fields.map((f: { field: string }) => [f.field, f]));
+    expect(fields.priority).toMatchObject({ kind: "choice", values: ["now", "soon", "later"], default: "soon", builtIn: false });
+    expect(fields.risk).toMatchObject({ required: true, values: ["high", "low"] });
+    expect(fields.status).toMatchObject({ kind: "choice", enforced: "strict", required: true });
+    expect(fields.status.aliases.wontfix).toBe("abandoned");
+    expect(fields.type).toMatchObject({ enforced: "open", values: ["feature", "bug", "refactor", "perf", "docs", "chore", "spike"] });
+    expect(fields.type.aliases.raconiter).toBe("spike");
+    expect(fields.owner.kind).toBe("text");
+    const byRef = json(await client.callTool({ name: "fields", arguments: { ref: "locks#1" } }));
+    expect(byRef[0].collection).toBe("locks");
     const bad = await client.callTool({ name: "update", arguments: { ref: "locks#3", dimensions: { impact: "huge" } } });
     expect((bad as { isError?: boolean }).isError).toBe(true);
   });

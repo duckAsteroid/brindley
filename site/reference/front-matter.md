@@ -112,7 +112,8 @@ first. Every collection has three, all optional:
 A collection README adds its own, or replaces a default by using its name, under `dimensions:`:
 `values` (strings or numbers, in ranking order), and optionally `required: true` and a `default`
 that unset initiatives are treated as having. A bare list is shorthand for `values`. Set values
-with `update`'s `dimensions`; filter and order with `list`'s `where` and `order_by`.
+with `update`'s `dimensions`; filter and order with `list`'s `where` and `order_by`. The `fields`
+tool lists a collection's dimensions, with their values and defaults, alongside every other field.
 
 ### Example: adding a dimension
 
