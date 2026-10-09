@@ -29,6 +29,7 @@ Planned work on Brindley itself: tools specified in MCP-SERVER.md but not yet bu
 | 27 | [Inline the collection's agent file in the implement brief](27-inline-the-collection-s-agent-file-in-the-implement-brief.md) | feature | draft | — | 1 | — |
 | 28 | [Write and keep the agent rules in AGENTS.md / CLAUDE.md](28-write-and-keep-the-agent-rules-in-agents-md-claude-md.md) | feature | draft | — | 1 | — |
 | 29 | [Tag cloud in the collection README](29-tag-cloud-in-the-collection-readme.md) | feature | draft | — | 3 | — |
+| 30 | [One-page HTML progress dashboard](30-one-page-html-progress-dashboard.md) | feature | draft | — | 3 | — |
 
 ### Dependencies
 
@@ -40,6 +41,7 @@ flowchart RL
   n27["✏️ 27 Inline the collection's agent file in the implement brief"]
   n28["✏️ 28 Write and keep the agent rules in AGENTS.md / CLAUDE.md"]
   n29["✏️ 29 Tag cloud in the collection README"]
+  n30["✏️ 30 One-page HTML progress dashboard"]
   n19["✅ <s>19 Scoring dimensions on initiatives</s>"]
   n21 --> n19
   click n16 href "16-resolve-settled-questions-in-bulk.md"
@@ -48,6 +50,7 @@ flowchart RL
   click n27 href "27-inline-the-collection-s-agent-file-in-the-implement-brief.md"
   click n28 href "28-write-and-keep-the-agent-rules-in-agents-md-claude-md.md"
   click n29 href "29-tag-cloud-in-the-collection-readme.md"
+  click n30 href "30-one-page-html-progress-dashboard.md"
   click n19 href "done/19-rank-initiatives-by-scoring-dimensions.md"
 ```
 
@@ -88,6 +91,7 @@ flowchart RL
 | 23 | [Exclusions in docs globs](done/23-exclusions-in-docs-globs.md) | feature | 2026-10-07 |
 | 24 | [Opt-in status folders that Brindley keeps in step](done/24-opt-in-status-folders-that-brindley-keeps-in-step.md) | feature | 2026-10-07 |
 | 25 | [Show where in-progress work is being built](done/25-show-where-in-progress-work-is-being-built.md) | feature | 2026-10-07 |
+| 31 | [Spike: progress dashboard designs from git history](done/31-spike-progress-dashboard-designs-from-git-history.md) | spike | 2026-10-09 |
 
 ### Closed
 
