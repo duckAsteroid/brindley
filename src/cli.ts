@@ -5,6 +5,7 @@ import { createServer, VERSION } from "./server.js";
 import { openRepo, toPosix } from "./repo.js";
 import { summarise, validate } from "./validate.js";
 import { createCollection, fix, regenerateReadmes, repad, tidy } from "./ops.js";
+import { writeReport } from "./report.js";
 
 const USAGE = `brindley ${VERSION} — Design fully before anyone digs.
 
@@ -21,6 +22,20 @@ Usage:
                                           Pad a collection's numbers to one width (default: the one most
                                           files use), renaming files and rewriting links; plans only
                                           unless --write
+  brindley report [options]               Write a one-page progress report (HTML) from the collections
+                                          and their git history; prints the file's path
+      --since <tag|date|window>           Start of "this period" (e.g. v1.2.0, 2026-09-01, 4w, 30d, 3m);
+                                          default: the latest release that something changed after
+      --until <tag|date|window>           Report as of then (default: the latest commit)
+      --collection <name>                 Just one collection
+      --out <file>                        Default: build/brindley-report.html
+      --palette <name|file>               sea (default), plum, forest, fire, teal, slate, or a .json /
+                                          .css palette file
+      --mode auto|light|dark              Where the page's light/dark switch starts (default auto)
+      --branches <glob>                   Branches to count in-progress work on (repeatable; !<glob>
+                                          excludes); default: all
+      --no-branches                       Count no branches' in-progress work
+      --worktrees [<glob>]                Also count other worktrees' uncommitted work (repeatable)
 `;
 
 function flag(args: string[], name: string): boolean {
@@ -28,6 +43,13 @@ function flag(args: string[], name: string): boolean {
   if (i < 0) return false;
   args.splice(i, 1);
   return true;
+}
+
+/** Every value of a repeatable option. */
+function options(args: string[], name: string): string[] {
+  const out: string[] = [];
+  for (let v = option(args, name); v !== undefined; v = option(args, name)) out.push(v);
+  return out;
 }
 
 function option(args: string[], name: string): string | undefined {
@@ -116,6 +138,38 @@ async function main() {
       for (const w of r.warnings) console.log(`warning: ${w}`);
       if (moves.length === 0) console.log(`${r.result.collection} is already padded to ${r.result.width} digit${r.result.width === 1 ? "" : "s"}.`);
       else if (!write) console.log(`\nDry run. Re-run with --write to apply.`);
+      return;
+    }
+    case "report": {
+      const noBranches = flag(args, "--no-branches");
+      const branches = options(args, "--branches");
+      // --worktrees takes an optional glob: a value only when the next word isn't another option.
+      const worktrees: string[] = [];
+      let allTrees = false;
+      for (let k = args.indexOf("--worktrees"); k >= 0; k = args.indexOf("--worktrees")) {
+        const next = args[k + 1];
+        if (next !== undefined && !next.startsWith("--")) {
+          worktrees.push(next);
+          args.splice(k, 2);
+        } else {
+          allTrees = true;
+          args.splice(k, 1);
+        }
+      }
+      const mode = option(args, "--mode");
+      if (mode !== undefined && !["auto", "light", "dark"].includes(mode)) throw new Error(`--mode must be auto, light or dark (got ${mode}).`);
+      const r = writeReport(openRepo(process.cwd()), {
+        since: option(args, "--since"),
+        until: option(args, "--until"),
+        collection: option(args, "--collection"),
+        out: option(args, "--out"),
+        palette: option(args, "--palette"),
+        mode: mode as "auto" | "light" | "dark" | undefined,
+        branches: noBranches ? false : branches.length ? branches : undefined,
+        worktrees: allTrees ? true : worktrees.length ? worktrees : undefined,
+        cwd: process.cwd(),
+      });
+      console.log(relative(process.cwd(), r.file) || r.file);
       return;
     }
     default:

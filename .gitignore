@@ -6,3 +6,6 @@ src/version.ts
 site/node_modules/
 site/.vitepress/dist/
 site/.vitepress/cache/
+build/
+site/public/examples/
+site/public/progress.html

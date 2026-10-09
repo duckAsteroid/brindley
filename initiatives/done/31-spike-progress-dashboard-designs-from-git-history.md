@@ -16,7 +16,7 @@ _None._
 
 ## Related
 
-- [30 One-page HTML progress dashboard](../30-one-page-html-progress-dashboard.md)
+- [30 One-page HTML progress dashboard](30-one-page-html-progress-dashboard.md)
 
 ## Measures
 

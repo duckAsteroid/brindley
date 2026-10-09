@@ -21,7 +21,9 @@ Brindley is [on npm](https://www.npmjs.com/package/brindley); `npx` fetches and 
 claude mcp add brindley -- npx -y brindley@latest
 ```
 
-Then ask your agent to *"make `docs/plans` a collection"*. Other MCP clients (opencode, …) are
+Then ask your agent to *"make `docs/plans` a collection"*. For the people outside the team,
+`npx -y brindley@latest report` writes a one-page progress report from the collections and their
+git history ([example](https://duckasteroid.github.io/brindley/guide/reporting)). Other MCP clients (opencode, …) are
 covered in [getting started](https://duckasteroid.github.io/brindley/guide/getting-started).
 
 ## Developing Brindley

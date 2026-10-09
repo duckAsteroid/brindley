@@ -96,6 +96,8 @@ folders:                                    # opt in: move initiatives into stat
 graph:                                      # what the generated dependency graph shows (§8.3)
   related: true                             # also draw ## Related links (default: off)
   themes: [box, icon]                       # group and mark initiatives by theme (default: off)
+report:                                     # what the progress report sizes by and calls things (§8.4)
+  size: job_size
 ---
 # LOCK-42 lock slot booking
 
@@ -691,6 +693,26 @@ other collections' graphs or the repo-wide overview, which use the defaults.
 
 Unknown settings and unusable values are validation warnings (§10), and fall back to the default.
 
+### 8.4 Progress report
+
+Tools may write a one-page progress report for people outside the team from the collections and
+their git history (the reference server's `report`). Progress over time comes from git alone:
+each initiative as each commit on the checked-out branch's first-parent line left it — nothing is
+recorded in the initiatives for it. Statuses fall into three bands — Not started (`draft`,
+`designed`), In progress, Complete (`done`); `deferred` work is outside scope while parked, and
+`abandoned` and `superseded` work leaves scope.
+
+A collection README's `report:` settings shape it:
+
+| Setting | Values | Effect |
+|---------|--------|--------|
+| `size` | a scoring dimension (§4.3); default `size` | Work is weighed by this dimension's value; numbers count as points. Work without a value counts at the median of the sized work, shown as estimated. With no dimension, or nothing sized, work items are counted. |
+| `points` | map of the dimension's word values to numbers | Points for word values, e.g. `{ low: 1, medium: 3, high: 8 }`. A word without points counts as unsized. |
+| `workstreams` | `tags`, `collections` | What the report groups work by: tags (the default when any initiative is tagged), or collections only. |
+| `labels` | map of words to replacements | The report's words: `work_item`, `work_items`, `area`, `areas`, `not_started`, `in_progress`, `complete`, and the core statuses. |
+
+Unknown settings and unusable values are validation warnings (§10), and are ignored.
+
 ## 9. Agent instructions
 
 Two layers:
@@ -772,6 +794,8 @@ Warnings:
 29. A collection README's `folders:` listing something that isn't a status or alias, or a value that isn't a
     plain folder name.
 30. An in-progress initiative whose `branch` doesn't exist, locally or as a remote-tracking branch.
+31. A collection README's `report:` with an unknown setting, a `size` that isn't a scoring dimension, points
+    for a value the dimension doesn't have, word values without points, or labels the report doesn't use (§8.4).
 
 Broken-link warnings name the new location when the linked file has moved within the collection.
 

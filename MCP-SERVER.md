@@ -46,7 +46,8 @@
   front-matter has `brindley` (FORMAT §2), using `git ls-files` so gitignored paths (including
   worktrees under ignored folders) are skipped. There is no repo-level config file. With no
   collections yet, tools return empty results with a note pointing at `create_collection`.
-- **Writes** go only to collection folders: initiatives and collection READMEs. Project docs are
+- **Writes** go only to collection folders: initiatives and collection READMEs — apart from
+  `report`, which writes its page (and a replay cache) to the build folder. Project docs are
   written by the agent, never the server; outside collections the server only *reads* project
   docs matched by `docs:` globs (for `check_docs`) and git metadata (§6).
 
@@ -99,6 +100,7 @@ All tools return structured JSON plus a short text rendering.
 | `list` | `collection?`, `type?`, `status?`, `tag?`, `owner?`, `ready?`, `where?`, `order_by?` | Across the whole repo unless `collection` is given. Summaries: number, title, type, status, owner, scoring dimensions that have a value (each value and whether it was `set` or taken from the `default`; unset ones are left out), `ready`, blocking deps, open question counts. `where` keeps initiatives whose value for each named dimension is one of the listed values (`{ priority: [critical, high] }`); `order_by` sorts by dimensions in their declared order, later ones breaking ties, then by number (FORMAT §4.3). An unset value counts as the dimension's default, else matches nothing and sorts last. Unknown dimension names are refused. |
 | `get` | `ref` | Front-matter, title, body, parsed open questions and acceptance criteria, plus a **dependency report**: each dependency link classified `satisfied` / `blocking` / `external` (FORMAT §5), with the dependency's title and path; related links; dependants. This is the implementing agent's "select and validate" step in one call. Also every scoring dimension of its collection, with its value (and whether set or defaulted) and its allowed values, so what could be set is visible. |
 | `ready` | `collection?`, `type?` | Across the repo unless `collection` is given. Initiatives that are `designed` with nothing blocking (including cross-collection deps), in suggested order (topological, then number), each with its external deps listed. Leaves out initiatives already in progress elsewhere. |
+| `report` | `since?`, `until?`, `collection?`, `out?`, `palette?`, `mode?`, `branches?`, `worktrees?` | Writes the one-page progress report (FORMAT §8.4) — a self-contained HTML file, default `build/brindley-report.html` — and returns its path with the figures per collection and combined. See §6.2. Writes no initiative. |
 | `graph` | `collection?`, `ref?`, `tag?`, `include_done = false`, and overrides for the collection's graph settings (FORMAT §8.3): `related?`, `themes?`, `show?`, `external?`, `direction?`, `arrows?` — a collection or `ref` graph uses that collection's `graph:` settings, a `tag` graph the defaults | Dependency graph as adjacency list + Mermaid. With `tag`, the graph of that theme across all collections. |
 | `tags` | — | Every tag in use (plus declared-but-unused ones), with description, initiative counts by status, and the theme overview doc if there is one (FORMAT §4.2). `get` also lists the theme docs for an initiative's tags, and the `design-review` / `implement` prompts tell the agent to read them. |
 | `questions` | `collection?`, `ref?`, `include_implementation = true` | Unresolved open questions, grouped by initiative. Abandoned and superseded initiatives are left out (dropping the work settles them) unless asked for by `ref`; deferred and done ones are included. |
@@ -248,6 +250,33 @@ is never modified — the free-form introduction is the humans'.
 **First run.** A README without markers gets a block appended at the end on its first
 regeneration (reported in the result). Users can then move the markers wherever they like; the
 server only ever rewrites between them.
+
+### 6.2 The progress report
+
+`report` (and `brindley report`) reads the history in one pass: `git log --first-parent
+--name-status` over the collection folders, then every changed initiative file at its commit
+through one `git cat-file --batch`. The replay is cached in `build/.brindley-report-cache.json`,
+keyed by the commit it reached and the collections' status, ignore and folder settings; a later
+run whose cached commit is an ancestor of `HEAD` replays only the newer commits. Without git
+history the report shows the current files only, and says so.
+
+- **Now** is the latest commit's date (or `until`), not the clock, and every date on the page is
+  UTC — so the same commits and options give a byte-identical file.
+- **This period** starts at `since` (a tag, a `YYYY-MM-DD` date, or a window `30d`/`6w`/`3m`
+  before `until`), else the latest `vX.Y.Z` tag on `HEAD`'s line — stepping back to the latest
+  release after which an initiative was added, delivered, parked, dropped, replaced, removed,
+  resumed or resized, and saying so — else the last 4 weeks.
+- **Branches:** the current figures also count initiatives not started on this line but
+  `in-progress` on another branch (§6, `inProgressElsewhere`), narrowed by `branches` globs (`!`
+  excludes; matched with and without the remote name) or turned off with `branches: false`; other
+  worktrees' working files count only with `worktrees`. The history itself is this line only.
+- **Sizing** (FORMAT §8.4): a section is in points when any of its current initiatives is sized,
+  unsized work counting at the median of the sized in-scope work at each point in history; a
+  combined headline is in points only when every collection is sized, else in work items.
+- **The page** is one HTML file — inline CSS and SVG, no scripts, no external assets. The chart key
+  and the light/dark switch are checkboxes and radios driving CSS `:has()`; the palette's and a
+  palette file's `prefers-color-scheme: dark` blocks are rewritten to follow the switch.
+  Links go to the files on the repository host when `origin` is GitHub, GitLab or Bitbucket.
 
 ## 7. Testing
 

@@ -3,7 +3,7 @@ name: Docs site
 on:
   push:
     branches: [main]
-    paths: ["site/**", "scripts/changelog.mjs", ".github/workflows/pages.yml"]
+    paths: ["site/**", "scripts/changelog.mjs", "scripts/canal-history.mjs", "src/**", "initiatives/**", ".github/workflows/pages.yml"]
   workflow_dispatch:
 
 permissions:
@@ -24,7 +24,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0 # lastUpdated timestamps and the Releases page come from git history
+          fetch-depth: 0 # lastUpdated timestamps, the Releases page and the progress report come from git history
       # checkout can leave annotated tags as plain ones; refetch them so tag messages (release highlights) are there.
       - run: git fetch --force --tags origin
       - uses: actions/setup-node@v4
@@ -32,6 +32,14 @@ jobs:
           node-version: 22
           cache: npm
           cache-dependency-path: site/package-lock.json
+      # Brindley itself, built from this commit: it writes the progress pages below.
+      - run: npm ci
+        working-directory: .
+      # The guide's canal examples, from a scripted history; and Brindley's own progress, from this one.
+      - run: node scripts/canal-history.mjs site/public/examples
+        working-directory: .
+      - run: node dist/cli.js report --out site/public/progress.html
+        working-directory: .
       - run: npm ci
       - run: npm run build
       - uses: actions/upload-pages-artifact@v3

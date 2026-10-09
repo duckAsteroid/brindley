@@ -1,7 +1,8 @@
 import { existsSync, readFileSync } from "node:fs";
-import { join, resolve } from "node:path";
+import { basename, join, resolve } from "node:path";
 import type { Collection, Initiative, Root } from "./model.js";
 import { currentBranch, git, worktrees } from "./git.js";
+import { globToRegExp } from "./repo.js";
 
 /** Where an initiative is in progress outside this checkout. */
 export interface Elsewhere {
@@ -22,12 +23,34 @@ export function branchNames(repoRoot: string): Set<string> {
   return new Set(out.split("\n").map((s) => s.trim()).filter((s) => s && !s.endsWith("/HEAD")));
 }
 
+/** Which other branches and worktrees to look in: all of each unless narrowed. */
+export interface LookIn {
+  /** Globs over branch names (`!` excludes; a branch matches with or without its remote prefix); false: none. */
+  branches?: string[] | false;
+  /** true: every other worktree; globs over a worktree's path, folder name or branch; false: none. */
+  worktrees?: boolean | string[];
+}
+
+/**
+ * Does an ordered glob list select any of these names? Patterns apply in order, `!` excludes and
+ * the last match wins; a list of only exclusions starts from everything.
+ */
+export function selects(globs: string[], names: string[]): boolean {
+  let selected = globs.every((g) => g.startsWith("!"));
+  for (const g of globs) {
+    const negated = g.startsWith("!");
+    const re = globToRegExp(negated ? g.slice(1) : g);
+    if (names.some((n) => re.test(n))) selected = !negated;
+  }
+  return selected;
+}
+
 /**
  * Initiatives of a collection that are in progress in another worktree's working files or on
  * another local or remote-tracking branch — but not in this checkout — by number. One `git grep`
- * per worktree and one across the branches.
+ * per worktree and one across the branches. `look` narrows where it looks; by default, everywhere.
  */
-export function inProgressElsewhere(root: Root, c: Collection): Map<number, Elsewhere[]> {
+export function inProgressElsewhere(root: Root, c: Collection, look: LookIn = {}): Map<number, Elsewhere[]> {
   const here = new Map(c.initiatives.map((i) => [i.number, i.status]));
   const found = new Map<number, Elsewhere[]>();
   const add = (n: number, e: Elsewhere) => {
@@ -39,8 +62,11 @@ export function inProgressElsewhere(root: Root, c: Collection): Map<number, Else
   const self = resolve(root.repoRoot);
   const seenBranches = new Set<string>();
   // Other worktrees: their working files, so a start that isn't committed yet still counts.
+  const wantTrees = look.worktrees ?? true;
   for (const w of worktrees(root.repoRoot)) {
     if (w.path === self || !existsSync(w.path)) continue;
+    if (wantTrees === false) continue;
+    if (Array.isArray(wantTrees) && !selects(wantTrees, [w.path, basename(w.path), ...(w.branch ? [w.branch] : [])])) continue;
     if (w.branch) seenBranches.add(w.branch);
     const out = git(w.path, ["grep", "-l", "-E", "--untracked", "-e", IN_PROGRESS, "--", c.path]) ?? "";
     for (const f of out.split("\n").filter(Boolean)) {
@@ -51,9 +77,20 @@ export function inProgressElsewhere(root: Root, c: Collection): Map<number, Else
   // Branches, apart from this checkout's own (and its upstream) and those already seen in a worktree.
   const current = currentBranch(root.repoRoot);
   const upstream = git(root.repoRoot, ["rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}"])?.trim();
-  const refs = [...branchNames(root.repoRoot)].filter(
-    (b) => b !== current && b !== upstream && !seenBranches.has(b) && !seenBranches.has(b.replace(/^[^/]+\//, "")),
-  );
+  const remotes = new Set((git(root.repoRoot, ["remote"]) ?? "").split("\n").filter(Boolean));
+  const short = (b: string) => (remotes.has(b.split("/")[0]!) ? b.slice(b.indexOf("/") + 1) : b);
+  const wantBranches = look.branches;
+  const refs =
+    wantBranches === false
+      ? []
+      : [...branchNames(root.repoRoot)].filter(
+          (b) =>
+            b !== current &&
+            b !== upstream &&
+            !seenBranches.has(b) &&
+            !seenBranches.has(short(b)) &&
+            (wantBranches === undefined || selects(wantBranches, [b, short(b)])),
+        );
   if (refs.length) {
     const out = git(root.repoRoot, ["grep", "-l", "-E", "-e", IN_PROGRESS, ...refs, "--", c.path]) ?? "";
     for (const line of out.split("\n").filter(Boolean)) {

@@ -13,6 +13,8 @@ brindley repad <collection> [<width>] [--write]
                                         Pad a collection's numbers to one width (default: the one most
                                         files use), renaming files and rewriting links; plans only
                                         unless --write
+brindley report [options]               Write a one-page progress report (HTML) from the collections
+                                        and their git history; prints the file's path
 brindley --version
 ```
 
@@ -27,6 +29,25 @@ Run from anywhere inside the repository, via `npx brindley …` or after `npm in
 
 `validate` fails the build on errors (warnings are printed but pass); `readmes --check` fails if
 any generated README block is out of date.
+
+## Progress report
+
+```
+brindley report [--since <tag|date|window>] [--until <tag|date|window>] [--collection <name>]
+                [--out <file>] [--palette <name|file>] [--mode auto|light|dark]
+                [--branches <glob>]… [--no-branches] [--worktrees [<glob>]]…
+```
+
+Writes `build/brindley-report.html` (or `--out`) — one self-contained page — and prints its path.
+See [Reporting progress](/guide/reporting) for what it shows and every option. In CI, check out the
+full history:
+
+```yaml
+- uses: actions/checkout@v4
+  with:
+    fetch-depth: 0
+- run: npx -y brindley@latest report --out site/public/progress.html
+```
 
 ## Self-healing READMEs
 

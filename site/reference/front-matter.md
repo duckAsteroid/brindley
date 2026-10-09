@@ -73,6 +73,7 @@ dimensions:
 | `dimensions` | This collection's [scoring dimensions](#scoring-dimensions). |
 | `graph` | What the README's dependency graph shows — see [Graph settings](#graph-settings). |
 | `folders` | Opt in to status folders: statuses mapped to folder names (`{ done: completed, abandoned: closed }`). Status changes then move initiatives — with their asset folders, rewriting links — and `tidy` puts existing ones in place. Without it, files never move. |
+| `report` | What the [progress report](/guide/reporting) sizes work by and calls things — see [Report settings](#report-settings). |
 | `columns` | The README tables' columns: `active` and/or `completed`, each an ordered list replacing that table's defaults — from `number`, `title`, `type`, `status`, `ready`, `questions`, `owner`, `tags`, `updated` and the collection's scoring dimensions. |
 
 ## Graph settings
@@ -96,6 +97,29 @@ graph:
 A theme's icon comes from `icon:` in its [theme doc](#theme-doc); a theme without one shows as
 `[name]`. The settings also apply to the `graph` tool for this collection, which can override each
 one. Unknown settings and unusable values are `graph-setting` warnings.
+
+## Report settings
+
+The [progress report](/guide/reporting) weighs work by a `size` scoring dimension when the
+collection has one, and counts work items otherwise. A collection changes that, and the words the
+report uses, under `report:`:
+
+```yaml
+report:
+  size: complexity                          # the scoring dimension to size by (default: size)
+  points: { low: 1, medium: 3, high: 8 }    # points for a dimension's word values
+  workstreams: tags                         # tags (default when work is tagged) or collections
+  labels:                                   # the report's words, each optional
+    work_item: job
+    work_items: jobs
+    done: Shipped
+```
+
+Labels: `work_item`, `work_items`, `area`, `areas`, the chart bands `not_started`, `in_progress` and
+`complete`, and the statuses `draft` (Planning), `designed` (Ready to start), `in-progress`, `done`
+(Delivered), `deferred` (Parked), `abandoned` (Dropped) and `superseded` (Replaced). Unknown
+settings, a `size` that isn't a dimension and points for a word the dimension doesn't have are
+`report-setting` warnings.
 
 ## Scoring dimensions
 

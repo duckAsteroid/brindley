@@ -29,6 +29,7 @@ accepts a name, an alias or a folder path.
 | `ready` | `collection?`, `type?` | What can be picked up now, prerequisites first. |
 | `check_ready` | `ref` | Whether one initiative is complete and ready to work on, check by check. Fails if it's already being built elsewhere. |
 | `graph` | `collection?`, `ref?`, `tag?`, `include_done?`, and `related?`, `themes?`, `show?`, `external?`, `direction?`, `arrows?` to override the collection's [graph settings](/reference/front-matter#graph-settings) | Dependency graph as data and Mermaid. |
+| `report` | `since?`, `until?`, `collection?`, `out?`, `palette?`, `mode?`, `branches?`, `worktrees?` | Writes the one-page [progress report](/guide/reporting) and returns its path and figures — per collection and combined: complete, in progress, not started, scope, parked, what was delivered, added and taken out this period, and what needs attention. |
 | `questions` | `collection?`, `ref?`, `include_implementation?` | Unresolved open questions — not those of abandoned or superseded work, unless asked for by `ref`. |
 | `next_question` | `ref`, `after?` | The next blocking question to discuss, and how many remain. |
 | `tags` | — | Every tag, with descriptions, counts and theme docs. |

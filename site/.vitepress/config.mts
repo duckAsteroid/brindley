@@ -17,6 +17,7 @@ export default defineConfig({
       { text: "Guide", link: "/guide/getting-started" },
       { text: "Reference", link: "/reference/front-matter" },
       { text: "Releases", link: "/releases" },
+      { text: "Progress", link: "/progress.html", target: "_self" },
       { text: "Why Brindley?", link: "/story" },
     ],
     sidebar: [
@@ -28,6 +29,7 @@ export default defineConfig({
           { text: "The workflow", link: "/guide/workflow" },
           { text: "Spikes", link: "/guide/spikes" },
           { text: "Themes", link: "/guide/themes" },
+          { text: "Reporting progress", link: "/guide/reporting" },
           { text: "Adopting an existing folder", link: "/guide/adopting" },
         ],
       },

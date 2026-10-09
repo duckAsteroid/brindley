@@ -26,6 +26,7 @@ import { dimensionReport, filterByDimensions, orderByDimensions } from "./dimens
 import { graphSettings } from "./graph.js";
 import { elsewhereFor, type Elsewhere } from "./elsewhere.js";
 import { dimensionInfo, fieldsFor } from "./fields.js";
+import { figures, writeReport } from "./report.js";
 import * as ops from "./ops.js";
 import { MEASURES, sectionIsBlank } from "./ops.js";
 import { COMMIT, VERSION } from "./version.js";
@@ -46,6 +47,7 @@ export const INSTRUCTIONS = `Brindley manages planned work as Markdown files in 
 - Dependencies are the links under an initiative's \`## Dependencies\` heading (links to initiative files, in any collection, block it; http links are external prerequisites). Links under \`## Related\` are non-blocking. Use set_dependencies to add or remove them.
 - Initiatives can carry scoring dimensions — \`priority\`, \`impact\`, \`complexity\` by default, plus any a collection declares — each a front-matter field whose value comes from an ordered set. Set them with \`update\` (\`dimensions\`), filter and order with \`list\` (\`where\`, \`order_by\`). A ticket with none set simply hasn't been scored yet.
 - \`fields\` lists every front-matter field a collection understands and the values each allows (statuses and aliases, types, tags, dimensions with their order and default) — look there rather than guessing.
+- For progress at a glance — for managers or anyone outside the team — \`report\` writes a one-page HTML report from the collections and their git history (work complete against scope over time, what was delivered, added and taken out this period) and returns the figures.
 - If you implement in a git worktree, call \`use_worktree\` with its path first, so your edits land there; every result ends with the checkout it worked on.
 - Brindley moves files only for a collection that declares \`folders:\` (status → folder); then status changes move them and rewrite links. Every write regenerates the collection README's generated block. \`validate\` reports structural problems (missing or conflicting statuses, files outside their status folder, duplicate numbers, broken links, …).
 - When discussing open questions with the user: one at a time, in open chat (no form or multiple-choice prompts), grounded in the actual code, with concrete examples.`;
@@ -476,6 +478,25 @@ export function createServer(opts: ServerOptions): McpServer {
         ),
       ).map((i) => ({ ...summary(root, i), external: dependencyReport(root, i).filter((d) => d.classification === "external").map((d) => d.ref) })),
     { readOnlyHint: true },
+  );
+
+  tool(
+    "report",
+    "Write a one-page progress report for people outside the team — a self-contained HTML file (default build/brindley-report.html) — from the collections and their git history: headline figures, work complete against scope over time, what was delivered, added and taken out this period, workstreams, and what needs attention. Returns the file's path and the figures. Changes no initiative.",
+    {
+      since: z.string().optional().describe('Start of "this period": a tag (v1.2.0), a date (2026-09-01) or a window (4w, 30d, 3m). Default: the latest release that something changed after.'),
+      until: z.string().optional().describe("Report as of a tag, date or window; default the latest commit."),
+      collection: z.string().optional().describe("Just one collection."),
+      out: z.string().optional().describe("Output file, relative to the repository root."),
+      palette: z.string().optional().describe("sea (default), plum, forest, fire, teal, slate — or a .json / .css palette file."),
+      mode: z.enum(["auto", "light", "dark"]).optional().describe("Where the page's light/dark switch starts (default auto: the viewer's setting)."),
+      branches: z.union([z.literal(false), z.array(z.string())]).optional().describe('Branches to count in-progress work on, as globs ("!" excludes); false for none. Default: all.'),
+      worktrees: z.union([z.boolean(), z.array(z.string())]).optional().describe("Also count other worktrees' uncommitted work: true for all, or globs. Default: none."),
+    },
+    (root, a) => {
+      const { file, report } = writeReport(root, { ...a, cwd: root.repoRoot });
+      return { file, ...figures(report) };
+    },
   );
 
   tool(

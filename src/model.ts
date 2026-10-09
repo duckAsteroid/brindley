@@ -138,6 +138,8 @@ export interface CollectionMeta {
   columns?: unknown;
   /** Status → folder, opting in to Brindley moving initiatives; read with `parseFolders` (folders.ts). */
   folders?: unknown;
+  /** What the progress report sizes by and calls things, as written; read with `parseReport` (report.ts). */
+  report?: unknown;
 }
 
 export interface Collection {

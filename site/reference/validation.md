@@ -38,6 +38,7 @@
 | `docs-impact` | Done, with no `docs_impact` recorded. |
 | `status-folder-mismatch` | Front-matter says one status, the folder another. |
 | `status-not-in-folder` | The file isn't where its status belongs: with `folders:` declared, a listed status in its folder and everything else at the top (`tidy` moves it); otherwise, the collection keeps this status in a folder (e.g. done in `completed/`) but this file is elsewhere. |
+| `report-setting` | A collection README's `report:` has an unknown setting, a `size` that isn't a scoring dimension, points for a value the dimension doesn't have, word values without points, or labels the report doesn't use. |
 | `folders-setting` | A collection README's `folders:` lists something that isn't a status, or a value that isn't a plain folder name. |
 | `status-prose-mismatch` | The body's "Status:" line disagrees with the actual status. |
 | `broken-link` | A link target doesn't exist — with where the file is now, if it moved; the repo path a `../` link resolves to; and the worktree that has it, if another one does. |

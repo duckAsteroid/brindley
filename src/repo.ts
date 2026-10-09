@@ -186,6 +186,7 @@ function collectionMeta(data: Record<string, unknown>, folder: string): Collecti
     graph: data["graph"],
     columns: data["columns"],
     folders: data["folders"],
+    report: data["report"],
     aliases:
       data["aliases"] !== undefined || data["alias"] !== undefined
         ? [...strList(data["aliases"]), ...strList(data["alias"])]
