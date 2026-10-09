@@ -29,6 +29,7 @@ Planned work on Brindley itself: tools specified in MCP-SERVER.md but not yet bu
 | 27 | [Inline the collection's agent file in the implement brief](27-inline-the-collection-s-agent-file-in-the-implement-brief.md) | feature | draft | — | 1 | — |
 | 28 | [Write and keep the agent rules in AGENTS.md / CLAUDE.md](28-write-and-keep-the-agent-rules-in-agents-md-claude-md.md) | feature | draft | — | 1 | — |
 | 29 | [Tag cloud in the collection README](29-tag-cloud-in-the-collection-readme.md) | feature | draft | — | 3 | — |
+| 32 | [Split a compound open question into separate questions](32-split-a-compound-open-question-into-separate-questions.md) | feature | designed | ✅ ready | 0 | — |
 
 ### Dependencies
 
@@ -40,6 +41,7 @@ flowchart RL
   n27["✏️ 27 Inline the collection's agent file in the implement brief"]
   n28["✏️ 28 Write and keep the agent rules in AGENTS.md / CLAUDE.md"]
   n29["✏️ 29 Tag cloud in the collection README"]
+  n32["🟢 32 Split a compound open question into separate questions"]
   n19["✅ <s>19 Scoring dimensions on initiatives</s>"]
   n21 --> n19
   click n16 href "16-resolve-settled-questions-in-bulk.md"
@@ -48,6 +50,7 @@ flowchart RL
   click n27 href "27-inline-the-collection-s-agent-file-in-the-implement-brief.md"
   click n28 href "28-write-and-keep-the-agent-rules-in-agents-md-claude-md.md"
   click n29 href "29-tag-cloud-in-the-collection-readme.md"
+  click n32 href "32-split-a-compound-open-question-into-separate-questions.md"
   click n19 href "done/19-rank-initiatives-by-scoring-dimensions.md"
 ```
 
@@ -55,9 +58,9 @@ flowchart RL
 
 - [**adoption**](adoption.md) — Bringing an existing hand-written folder under Brindley with less hand-editing (GitHub #5) · 1 open, 8 closed or deferred
 - [**dependency-links**](dependency-links.md) — Telling blocking dependencies from other cross-references, and editing them (GitHub #3) · 0 open, 2 closed or deferred
-- [**questions**](questions.md) — Open questions during design and implementation, and tidying settled ones (GitHub #6, #7) · 1 open, 1 closed or deferred
+- [**questions**](questions.md) — Open questions during design and implementation, and tidying settled ones (GitHub #6, #7) · 2 open, 1 closed or deferred
 - [**status-recording**](status-recording.md) — Recording an initiative's status outside a lifecycle transition (GitHub #4) · 0 open, 3 closed or deferred
-- **text** — Changes only to what tools say — messages, findings and prompts — not to what they do · 0 open, 4 closed or deferred
+- **text** — Changes only to what tools say — messages, findings and prompts — not to what they do · 1 open, 4 closed or deferred
 
 ### Deferred
 
