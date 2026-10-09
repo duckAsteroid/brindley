@@ -168,6 +168,22 @@ describe("progress report", () => {
     expect(html).toContain("nothing has changed since v1.1.0");
   });
 
+  it("lists show a count in their title and the newest ten, the rest behind '+ N more…'; hover shows each point's figures", () => {
+    fx = fixture({ commit: false });
+    write(fx.repo, "locks/README.md", "---\nbrindley: 1\n---\n# Locks\n");
+    for (let n = 1; n <= 13; n++) write(fx.repo, `locks/${String(n).padStart(2, "0")}-lock-${n}.md`, item(`Lock ${n}`, "status: draft"));
+    commit(0, "plan the flight");
+    const html = renderReport(buildReport(fx.load(), { cache: false }));
+    expect(html).toContain('Added this period <span class="count">· 13</span>');
+    expect(html).toMatch(/<li><a href="[^"]*">Lock 13<\/a>|<li>Lock 13/); // newest (here: highest) first
+    expect(html).toContain("<summary>+ 3 more…</summary>");
+    expect(html).toContain('Needs attention <span class="count">· 0</span>');
+    // Hover: a figures box per point, not a native tooltip.
+    expect(html).toContain('<g class="tip"');
+    expect(html).toMatch(/<text class="tip-v"[^>]*>13<\/text>/);
+    expect(html).not.toContain("<title>1 Sep");
+  });
+
   it("palettes: built-in names, JSON files checked, CSS files whose dark blocks follow the switch", () => {
     fx = fixture({ commit: false });
     write(fx.repo, "brand.json", JSON.stringify({ light: { not_started: "#aaa", in_progress: "#555", complete: "#000" } }));

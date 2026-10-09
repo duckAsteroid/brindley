@@ -33,9 +33,12 @@ rebuilt every time this site is.
 - **Work complete against scope** — a burn-up over the whole history: Complete, In progress and Not
   started stacked up to the total scope line, parked work as a dashed band above it, and this
   period shaded. Release tags are marked on the time axis, and the start of the period always
-  stands out. The key doubles as switches: select an entry to hide or show it on every chart.
+  stands out. Point at the chart for the figures at that moment — Complete, In progress, Not
+  started, scope and parked — and the change that made them. The key doubles as switches: select
+  an entry to hide or show it on every chart.
 - **This period** — what was delivered, what was added and what was taken out (parked, dropped,
-  replaced or removed), with reasons.
+  replaced or removed), with reasons. Each list's title gives its count (and points, when work is
+  sized); the latest ten show, and "+ N more…" opens the rest.
 - **Workstreams** — one small burn-up per theme (tag), on a shared scale, with the work still to do
   under each. With several collections, the page starts with a combined headline and a chart per
   collection, then a section for each.

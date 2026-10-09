@@ -4,6 +4,7 @@ import { formatDay, formatWhen, timeAxis } from "./axis.js";
 import { darkAware, paletteCss } from "./palettes.js";
 
 const esc = (s: unknown) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
+const pts = (n: number) => `${fmt(n)} pt${n === 1 ? "" : "s"}`;
 const fmt = (n: number) => (Number.isInteger(n) ? String(n) : n.toFixed(1).replace(/\.0$/, ""));
 const signed = (n: number) => (n > 0 ? `+${fmt(n)}` : n < 0 ? `−${fmt(-n)}` : "0");
 const pct = (a: number, b: number) => (b ? Math.round((100 * a) / b) : 0);
@@ -48,8 +49,8 @@ const niceTop = (max: number) => {
 /**
  * A burn-up: stacked step areas (Complete, In progress, Not started) whose top is the scope line,
  * estimated parts hatched, parked work as a dashed band above, the period shaded and its start
- * marked; on the full chart, release ticks and labels below the time axis. Hover: a native tooltip
- * and a crosshair per point — no scripts.
+ * marked; on the full chart, release ticks and labels below the time axis. Hover: a crosshair and
+ * a box of each point's figures — no scripts.
  */
 function burnup(ctx: Ctx, data: Point[], end: Point, o: { w?: number; h?: number; yMax?: number; mini?: boolean; label: string }): string {
   const { r } = ctx;
@@ -106,13 +107,6 @@ function burnup(ctx: Ctx, data: Point[], end: Point, o: { w?: number; h?: number
   // The period's start: a dashed line, and on the full chart a label nothing overlaps.
   if (sinceIn) parts.push(`<line class="since" x1="${f1(sx)}" x2="${f1(sx)}" y1="${m.t}" y2="${h - m.b + (mini ? 0 : 17)}"/>`);
   if (!mini) parts.push(releaseMarks(r, x, h - m.b, sinceIn ? sx : null, t0, t1));
-  // Hover: one column per point.
-  for (let k = 0; k < pts.length; k++) {
-    const p = pts[k]!;
-    const x0 = x(p.t);
-    const tip = `${formatWhen(p.date, ctx.withTime)}${p.subject ? ` — ${p.subject}` : ""}\n${fmt(p.done)} ${r.labels.complete.toLowerCase()} · ${fmt(p.doing)} ${r.labels.in_progress.toLowerCase()} · ${fmt(p.todo)} ${r.labels.not_started.toLowerCase()} (scope ${fmt(p.scope)})${p.parked ? ` · ${fmt(p.parked)} ${r.labels.deferred.toLowerCase()}` : ""}`;
-    parts.push(`<g class="hit"><rect x="${f1(x0)}" y="${m.t}" width="${f1(Math.max(1, nx(k) - x0))}" height="${h - m.t - m.b}"/><line x1="${f1(x0)}" x2="${f1(x0)}" y1="${m.t}" y2="${h - m.b}"/><title>${esc(tip)}</title></g>`);
-  }
   // End labels (now, including in-progress work on branches), nudged apart.
   if (!mini) {
     const ends = [
@@ -127,6 +121,44 @@ function burnup(ctx: Ctx, data: Point[], end: Point, o: { w?: number; h?: number
       prev = yy;
       parts.push(`<text class="end ${cls}" x="${f1(x(t1) + 8)}" y="${f1(yy)}">${esc(text)}</text>`);
     }
+  }
+  // Hover: one column per point, showing its figures in a box (CSS :hover, no script), with dots
+  // on the band edges at that point. Drawn last, so the box sits over everything else.
+  const fs = mini ? 10 : 12;
+  const lh = fs + 4;
+  for (let k = 0; k < pts.length; k++) {
+    const p = pts[k]!;
+    const x0 = x(p.t);
+    const rows: [string, string, string][] = [
+      ["b-done", r.labels.complete, fmt(p.done)],
+      ["b-doing", r.labels.in_progress, fmt(p.doing)],
+      ["b-todo", r.labels.not_started, fmt(p.todo)],
+      ["line", "Scope", fmt(p.scope)],
+      ...(p.parked ? ([["parked", r.labels.deferred, fmt(p.parked)]] as [string, string, string][]) : []),
+    ];
+    const head = formatWhen(p.date, ctx.withTime);
+    const subject = !mini && p.subject ? (p.subject.length > 48 ? `${p.subject.slice(0, 47)}…` : p.subject) : "";
+    const textW = Math.max(head.length * fs * 0.62, subject.length * (fs - 1) * 0.6, ...rows.map(([, l, v]) => (l.length + v.length + 2) * fs * 0.6 + 16));
+    const bw = Math.ceil(textW + 16);
+    const bh = (rows.length + (subject ? 2 : 1)) * lh + 10;
+    const bx = x0 + 10 + bw <= w - 4 ? x0 + 10 : x0 - 10 - bw;
+    const by = m.t + 2;
+    let ty = by + 6 + fs;
+    const lines = [`<text class="tip-head" x="${f1(bx + 8)}" y="${f1(ty)}">${esc(head)}</text>`];
+    if (subject) lines.push(`<text class="tip-sub" x="${f1(bx + 8)}" y="${f1((ty += lh))}">${esc(subject)}</text>`);
+    for (const [cls, label, v] of rows) {
+      ty += lh;
+      lines.push(
+        `<rect class="tip-sw ${cls === "line" ? "tip-line" : cls}" x="${f1(bx + 8)}" y="${f1(ty - fs + (cls === "line" ? fs / 2 - 1 : 2))}" width="${fs - 2}" height="${cls === "line" ? 2 : fs - 2}" rx="${cls === "line" ? 0 : 2}"/>` +
+          `<text x="${f1(bx + 8 + fs + 2)}" y="${f1(ty)}">${esc(label)}</text><text class="tip-v" x="${f1(bx + bw - 8)}" y="${f1(ty)}" text-anchor="end">${esc(v)}</text>`,
+      );
+    }
+    const dots = [p.done, p.done + p.doing, p.scope]
+      .map((v, i) => `<circle class="tip-dot ${["b-done", "b-doing", "scope-dot"][i]}" cx="${f1(x0)}" cy="${f1(y(v))}" r="${mini ? 2.5 : 3.5}"/>`)
+      .join("");
+    parts.push(
+      `<g class="hit"><rect class="hit-area" x="${f1(x0)}" y="${m.t}" width="${f1(Math.max(1, nx(k) - x0))}" height="${h - m.t - m.b}"/><g class="tip" style="font-size:${fs}px"><line x1="${f1(x0)}" x2="${f1(x0)}" y1="${m.t}" y2="${h - m.b}"/>${dots}<rect class="tip-box" x="${f1(bx)}" y="${by}" width="${bw}" height="${bh}" rx="6"/>${lines.join("")}</g></g>`,
+    );
   }
   return `<svg class="chart" viewBox="0 0 ${w} ${h}" role="img" aria-label="${esc(o.label)}">${parts.join("")}</svg>`;
 }
@@ -192,11 +224,28 @@ function tiles(ctx: Ctx, s: Section): string {
 </div>`;
 }
 
+/** How many items a list shows before the rest fold away behind "+ N more…". */
+const SHOWN = 10;
+
+/** List items, the first SHOWN shown and the rest behind a "+ N more…" disclosure. */
+function capped(items: string[], cls = "items", shown = SHOWN): string {
+  const li = (xs: string[]) => xs.map((x) => `<li>${x}</li>`).join("");
+  const rest = items.slice(shown);
+  return `<ul class="${cls}">${li(items.slice(0, shown))}</ul>${rest.length ? `<details class="more"><summary>+ ${rest.length} more…</summary><ul class="${cls}">${li(rest)}</ul></details>` : ""}`;
+}
+
+/** A box title with its count: "Added this period · 33 (41 pts)". */
+const counted = (title: string, n: number, points?: number) =>
+  `${esc(title)} <span class="count">· ${n}${points !== undefined && n ? ` (${pts(points)})` : ""}</span>`;
+
 function periodLists(ctx: Ctx, s: Section): string {
   const { r } = ctx;
-  const sizeNote = (e: ReportEvent) => (s.unit === "points" && e.item.size !== null ? ` <span class="why">· ${fmt(e.item.size)} pts</span>` : "");
+  const sizeNote = (e: ReportEvent) => (s.unit === "points" && e.item.size !== null ? ` <span class="why">· ${pts(e.item.size)}</span>` : "");
+  // Newest first, so the first few are the latest.
   const list = (evs: ReportEvent[], empty: string, extra: (e: ReportEvent) => string = () => "") =>
-    evs.length ? `<ul class="items">${evs.map((e) => `<li>${link(e.item)}${extra(e)}</li>`).join("")}</ul>` : `<p class="muted">${esc(empty)}</p>`;
+    evs.length ? capped([...evs].reverse().map((e) => `${link(e.item)}${extra(e)}`)) : `<p class="muted">${esc(empty)}</p>`;
+  const total = (evs: ReportEvent[], measure: (e: ReportEvent) => number) => (s.unit === "points" ? evs.reduce((n, e) => n + measure(e), 0) : undefined);
+  const size = (e: ReportEvent) => e.item.size ?? s.median ?? 0;
   const delivered = s.period.filter((e) => e.kind === "delivered");
   const added = s.period.filter((e) => e.kind === "added" || e.kind === "resumed" || (e.kind === "resized" && e.scope > 0));
   const out = s.period.filter((e) => ["parked", "dropped", "replaced", "removed"].includes(e.kind) || (e.kind === "resized" && e.scope < 0));
@@ -213,9 +262,9 @@ function periodLists(ctx: Ctx, s: Section): string {
       ? ` <span class="why">— ${esc(word[e.kind]!.toLowerCase())}${e.kind === "resized" ? ` ${signed(e.scope)}` : ""}${e.item.note && e.kind !== "resized" && e.kind !== "resumed" ? `: ${esc(firstSentence(e.item.note))}` : ""}</span>`
       : sizeNote(e);
   return `<div class="cols">
-  <section class="card"><h3>${esc(r.labels.done)} this period</h3>${list(delivered, `Nothing ${r.labels.done.toLowerCase()} yet this period.`, sizeNote)}</section>
-  <section class="card"><h3>Added this period</h3>${list(added, "No new work this period.", why)}</section>
-  <section class="card"><h3>Taken out this period</h3>${list(out, "Nothing taken out of scope.", why)}</section>
+  <section class="card"><h3>${counted(`${r.labels.done} this period`, delivered.length, total(delivered, size))}</h3>${list(delivered, `Nothing ${r.labels.done.toLowerCase()} yet this period.`, sizeNote)}</section>
+  <section class="card"><h3>${counted("Added this period", added.length, total(added, (e) => Math.abs(e.scope)))}</h3>${list(added, "No new work this period.", why)}</section>
+  <section class="card"><h3>${counted("Taken out this period", out.length, total(out, (e) => Math.abs(e.scope)))}</h3>${list(out, "Nothing taken out of scope.", why)}</section>
 </div>`;
 }
 
@@ -227,14 +276,14 @@ function multiples(ctx: Ctx, s: Section, title: string, note: string): string {
     const left = w.items.filter((i) => ["draft", "designed", "in-progress"].includes(i.status ?? "draft"));
     return `<section class="card"><h3>${esc(w.label)} <span>${fmt(end.done)} of ${fmt(end.scope)} ${esc(ctx.r.labels.complete.toLowerCase())}</span></h3>
   ${w.series.length ? burnup(ctx, w.series, end, { w: 320, h: 130, yMax, mini: true, label: `${w.label}: work complete against scope` }) : ""}
-  ${left.length ? `<ul class="left">${left.map((i) => `<li>${link(i)}${i.elsewhere ? ` <span class="why">— ${esc(ctx.r.labels["in-progress"].toLowerCase())} on a branch</span>` : ""}</li>`).join("")}</ul>` : `<p class="left muted">All ${esc(ctx.r.labels.done.toLowerCase())}.</p>`}</section>`;
+  ${left.length ? capped(left.map((i) => `${link(i)}${i.elsewhere ? ` <span class="why">— ${esc(ctx.r.labels["in-progress"].toLowerCase())} on a branch</span>` : ""}`), "left") : `<p class="left muted">All ${esc(ctx.r.labels.done.toLowerCase())}.</p>`}</section>`;
   };
   return `<section><h2 class="sub-h">${esc(title)}</h2><p class="muted small">${esc(note)}</p><div class="multi">${s.workstreams.map(card).join("")}</div></section>`;
 }
 
 function attention(list: Attention[]): string {
-  return `<section class="card"><h3>Needs attention</h3>${
-    list.length ? `<ul class="items">${list.map((a) => `<li>${link(a.item)} <span class="why">— ${esc(a.why)}</span></li>`).join("")}</ul>` : `<p class="muted">Nothing.</p>`
+  return `<section class="card"><h3>${counted("Needs attention", list.length)}</h3>${
+    list.length ? capped(list.map((a) => `${link(a.item)} <span class="why">— ${esc(a.why)}</span>`)) : `<p class="muted">Nothing.</p>`
   }</section>`;
 }
 
@@ -294,7 +343,11 @@ path.b-done,path.b-doing,path.b-todo{stroke:var(--surface);stroke-width:2;stroke
 .parked{fill:none;stroke:var(--muted);stroke-width:1.5;stroke-dasharray:3 3}
 .scope{fill:none;stroke:var(--ink);stroke-width:2}
 .end{font-size:12px;fill:var(--ink2)}.end.strong{fill:var(--ink);font-weight:600}.end.muted{fill:var(--muted)}
-.hit rect{fill:transparent}.hit line{stroke:var(--ink);stroke-width:1;opacity:0}.hit:hover line{opacity:.5}
+.hit-area{fill:transparent}.tip{display:none;pointer-events:none}.hit:hover .tip{display:inline}
+.tip line{stroke:var(--ink);stroke-width:1;opacity:.5}.tip-box{fill:var(--surface);stroke:var(--axis);stroke-width:1}
+.tip text{fill:var(--ink2)}.tip .tip-head,.tip .tip-v{fill:var(--ink);font-weight:600;font-variant-numeric:tabular-nums}.tip .tip-sub{fill:var(--muted)}
+.tip-sw.b-done{fill:var(--complete)}.tip-sw.b-doing{fill:var(--in-progress)}.tip-sw.b-todo{fill:var(--not-started)}.tip-sw.tip-line{fill:var(--ink)}.tip-sw.parked{fill:none;stroke:var(--muted);stroke-dasharray:2 2}
+.tip-dot{stroke:var(--surface);stroke-width:1.5}.tip-dot.b-done{fill:var(--complete)}.tip-dot.b-doing{fill:var(--in-progress)}.tip-dot.scope-dot{fill:var(--ink)}
 .legend{display:flex;flex-wrap:wrap;gap:6px 16px;list-style:none;padding:0;margin:8px 0 0;font-size:13px;color:var(--ink2)}
 .sw{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:6px;vertical-align:-1px}
 .sw.b-done{background:var(--complete)}.sw.b-doing{background:var(--in-progress)}.sw.b-todo{background:var(--not-started)}
@@ -308,6 +361,8 @@ path.b-done,path.b-doing,path.b-todo{stroke:var(--surface);stroke-width:2;stroke
 .toggles label:has(input:not(:checked)) .sw{background:none;outline:1.5px solid var(--axis);outline-offset:-1.5px;border:0}
 .hint{margin:4px 0 0;font-size:12px;color:var(--muted)}
 .cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;margin:12px 0}
+.count{font-weight:400;color:var(--ink2)}
+.more{margin-top:4px}.more summary{cursor:pointer;color:var(--ink2);font-size:13px;list-style:none;padding-left:18px}.more summary::-webkit-details-marker{display:none}.more[open] summary{margin-bottom:2px}
 .items{margin:0;padding-left:18px}.items li{margin:3px 0}.why{color:var(--ink2);font-size:13px}
 .multi{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px;margin:10px 0 12px}.multi h3{display:flex;justify-content:space-between;gap:8px}.multi h3 span{font-weight:400;color:var(--ink2)}
 .left{font-size:13px;margin:8px 0 0;padding-left:16px;color:var(--ink2)}p.left{padding:0}
@@ -333,7 +388,7 @@ export function renderReport(r: Report, o: { paletteFile?: (p: string) => string
   const layerCss = LAYERS.map(([k, , , sel]) => `body:has(#show-${k}:not(:checked)) .chart :is(${sel}){display:none}`).join("\n");
   const css = darkAware(`${CSS}\n${layerCss}\n${paletteCss(r.palette, o.paletteFile)}`);
   const sinceWhen = formatWhen(r.period.since, ctx.withTime);
-  const sub = `As of ${esc(formatWhen(r.now, ctx.withTime))} · this period: ${esc(r.period.label)}${r.period.tag || /^since \d/.test(r.period.label) ? ` (${esc(sinceWhen)})` : ""}${r.period.steppedBackFrom ? ` — nothing has changed since ${esc(r.period.steppedBackFrom)}` : ""}`;
+  const sub = `As of ${esc(formatWhen(r.now, ctx.withTime))} · this period: ${esc(r.period.label)}${r.period.tag ? ` (${esc(sinceWhen)})` : ""}${r.period.steppedBackFrom ? ` — nothing has changed since ${esc(r.period.steppedBackFrom)}` : ""}`;
   const body: string[] = [];
   if (r.combined) {
     body.push(block(ctx, r.combined, { key: true, areas: true }));

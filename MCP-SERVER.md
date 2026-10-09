@@ -274,7 +274,8 @@ history the report shows the current files only, and says so.
   unsized work counting at the median of the sized in-scope work at each point in history; a
   combined headline is in points only when every collection is sized, else in work items.
 - **The page** is one HTML file — inline CSS and SVG, no scripts, no external assets. The chart key
-  and the light/dark switch are checkboxes and radios driving CSS `:has()`; the palette's and a
+  and the light/dark switch are checkboxes and radios driving CSS `:has()`; each chart point's
+  figures show in a box on `:hover`, and long lists fold behind `<details>`; the palette's and a
   palette file's `prefers-color-scheme: dark` blocks are rewritten to follow the switch.
   Links go to the files on the repository host when `origin` is GitHub, GitLab or Bitbucket.
 
