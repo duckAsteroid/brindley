@@ -1,0 +1,4 @@
+{
+  "light": { "not_started": "#f3bed1", "in_progress": "#e93d82", "complete": "#621639" },
+  "dark": { "not_started": "#873356", "in_progress": "#e93d82", "complete": "#ff92ad" }
+}

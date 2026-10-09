@@ -1,0 +1,5 @@
+/* Any of the page's custom properties can be set; these three colour the bands. */
+:root { --not-started: #acdec8; --in-progress: #29a383; --complete: #1d3b31; }
+@media (prefers-color-scheme: dark) {
+  :root { --not-started: #246854; --in-progress: #29a383; --complete: #1fd8a4; }
+}
