@@ -639,13 +639,42 @@ export function setStatus(
   return finish(root, [i.collection], written, { ref: initiativeKey(i), status, ...(branch ? { branch } : {}), ...(moved ? { moved } : {}) }, warnings);
 }
 
-export function addQuestion(root: Root, i: Initiative, text: string, implementation = false): OpResult<{ ref: string; index: number; status: string | undefined }> {
+/**
+ * Does a question look like several? More than one "?" outside inline code, or a nested list under
+ * it. A hint only: the agent may know better.
+ */
+export function compoundReason(questionLines: string[]): string | null {
+  const marks = questionLines.reduce((n, l) => n + (withoutInlineCode(l).match(/\?/g) ?? []).length, 0);
+  const nested = questionLines.slice(1).some((l) => /^\s+([-*+]|\d+[.)])\s+\S/.test(l));
+  if (nested) return "it has a nested list";
+  if (marks > 1) return `it asks ${marks} questions`;
+  return null;
+}
+
+/** The hint given with a compound question. */
+export function compoundHint(reason: string): string {
+  return `This looks like more than one decision (${reason}). Pose one decision per question: split it with split_question, giving each part — and an answer for any part already settled.`;
+}
+
+/** Is open question `q` of `i` compound, and why. */
+export function compoundQuestion(i: Initiative, q: { start: number; end: number }): string | null {
+  return compoundReason(lines(i.body).slice(q.start, q.end));
+}
+
+/** One open-question list item: the marker, an optional (implementation) prefix, continuation lines indented. */
+function questionItem(text: string, implementation: boolean, marker = "-"): string {
   const clean = text.trim().replace(/^[-*+]\s+/, "");
   const prefix = implementation && !/^\(implementation\)/i.test(clean) ? "(implementation) " : "";
+  return `${marker} ${prefix}${clean.split("\n").map((l, k) => (k === 0 || l.trim() === "" ? l : `  ${l}`)).join("\n")}`;
+}
+
+export function addQuestion(root: Root, i: Initiative, text: string, implementation = false): OpResult<{ ref: string; index: number; status: string | undefined }> {
   // Indent continuation lines so a multi-line question stays one list item, as decisions are.
-  const item = `- ${prefix}${clean.split("\n").map((l, k) => (k === 0 || l.trim() === "" ? l : `  ${l}`)).join("\n")}`;
+  const item = questionItem(text, implementation);
   const body = appendToSection(i.body, OPEN_QUESTIONS, item, ["Acceptance criteria"]);
   const warnings: string[] = [];
+  const compound = compoundReason(item.split("\n"));
+  if (compound) warnings.push(compoundHint(compound));
   const changes: Record<string, unknown> = {};
   let status = i.status;
   if (i.status === "designed" && !implementation) {
@@ -705,13 +734,94 @@ export function resolveQuestion(
   return finish(root, [i.collection], [i.file], { ref: initiativeKey(i), question: q.text, recordedIn, section });
 }
 
+/** A part of a split question: its text, and optionally its own (implementation) marker and an answer. */
+export type QuestionPart = string | { text: string; implementation?: boolean; answer?: string };
+
+/**
+ * Replace one open question with its parts, in its place and order, in one write. A part with an
+ * answer is settled as it is written: recorded in `record_in` (default Decisions), or kept ticked
+ * with `mode: tick`. Parts inherit the question's (implementation) marker unless they set their own.
+ */
+export function splitQuestion(
+  root: Root,
+  i: Initiative,
+  sel: { index?: number; match?: string },
+  into: QuestionPart[],
+  opts: { record_in?: string; mode?: "remove" | "tick" } = {},
+): OpResult<{ ref: string; question: string; open: { index: number; text: string; implementation: boolean }[]; decisions: string[]; recordedIn: string | null; status: string | undefined }> {
+  const q = findQuestion(i, sel);
+  if (q.resolved) throw new BrindleyError(`Question ${q.index} is already resolved.`);
+  const parts = into
+    .map((p) => (typeof p === "string" ? { text: p } : p))
+    .map((p) => ({ text: p.text.trim(), implementation: p.implementation ?? q.implementation, answer: p.answer?.trim() || undefined }))
+    .filter((p) => p.text);
+  if (parts.length < 2) throw new BrindleyError("Give at least two parts to split a question into (`into`).");
+  const mode = opts.mode ?? "remove";
+  const ls = lines(i.body);
+  const marker = /^\s*([-*+]|\d+[.)])/.exec(ls[q.start]!)?.[1] ?? "-";
+  // What goes in the question's place: open parts, and answered ones too when ticking.
+  const written = parts.filter((p) => !p.answer || mode === "tick");
+  const items = written.map((p) => {
+    const item = questionItem(p.text, p.implementation, marker);
+    if (!p.answer) return item;
+    const [first, ...rest] = item.split("\n");
+    const ticked = first!.replace(/^(\S+)\s+/, "$1 [x] ");
+    return [ticked, ...rest].join("\n") + ` — ${p.answer}`;
+  });
+  let end = q.end;
+  // Every part settled and removed: swallow one blank line, as resolve_question does.
+  if (!items.length && ls[end] !== undefined && ls[end]!.trim() === "" && (q.start === 0 || ls[q.start - 1]!.trim() === "")) end++;
+  let body = replaceLines(i.body, q.start, end, items.length ? items.join("\n").split("\n") : []);
+  if (!items.length) {
+    const s = findSection(body, OPEN_QUESTIONS);
+    if (s && lines(body).slice(s.start, s.end).every((l) => l.trim() === "")) body = setSection(body, OPEN_QUESTIONS, NONE);
+  }
+  const answered = parts.filter((p) => p.answer);
+  let recordedIn: string | null = null;
+  if (mode === "remove" && answered.length) {
+    recordedIn = opts.record_in ?? "Decisions";
+    for (const p of answered) {
+      const decision = p.answer!.split("\n").map((l, k) => (k === 0 ? `- ${l}` : `  ${l}`)).join("\n");
+      body = appendToSection(body, recordedIn, decision, [OPEN_QUESTIONS, "Acceptance criteria"]);
+    }
+  }
+  const warnings: string[] = [];
+  const changes: Record<string, unknown> = {};
+  let status = i.status;
+  const open = written.map((p, k) => ({ index: q.index + k, text: p.text, implementation: p.implementation, answered: !!p.answer })).filter((p) => !p.answered);
+  if (i.status === "designed" && open.some((p) => !p.implementation)) {
+    changes["status"] = "draft";
+    status = "draft";
+    warnings.push("A blocking question is open on a designed initiative; it is back to draft.");
+  }
+  for (const p of open) {
+    const why = compoundReason(questionItem(p.text, false).split("\n"));
+    if (why) warnings.push(`Part ${p.index}: ${compoundHint(why)}`);
+  }
+  writeInitiative(i, changes, body);
+  return finish(root, [i.collection], [i.file], {
+    ref: initiativeKey(i),
+    question: q.text,
+    open: open.map(({ index, text, implementation }) => ({ index, text, implementation })),
+    decisions: answered.map((p) => p.answer!),
+    recordedIn,
+    status,
+  }, warnings);
+}
+
+/** `compound: true` and the hint, for a question that looks like several; nothing otherwise. */
+export function compoundFields(i: Initiative, q: { start: number; end: number }): { compound?: true; hint?: string } {
+  const why = compoundQuestion(i, q);
+  return why ? { compound: true, hint: compoundHint(why) } : {};
+}
+
 export function nextQuestion(i: Initiative, after?: number) {
   const open = i.questions.filter((q) => !q.resolved);
   const blocking = open.filter((q) => !q.implementation);
   const q = blocking.find((x) => after === undefined || x.index > after) ?? null;
   return {
     ref: initiativeKey(i),
-    question: q ? { index: q.index, text: q.text } : null,
+    question: q ? { index: q.index, text: q.text, ...compoundFields(i, q) } : null,
     remaining: blocking.filter((x) => after === undefined || x.index > after).length,
     implementationQuestions: open.filter((x) => x.implementation).map((x) => ({ index: x.index, text: x.text })),
     sections: headings(i.body).filter((h) => h.level === 2).map((h) => h.text),

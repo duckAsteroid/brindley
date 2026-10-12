@@ -50,6 +50,7 @@ export const INSTRUCTIONS = `Brindley manages planned work as Markdown files in 
 - For progress at a glance — for managers or anyone outside the team — \`report\` writes a one-page HTML report from the collections and their git history (work complete against scope over time, what was delivered, added and taken out this period) and returns the figures.
 - If you implement in a git worktree, call \`use_worktree\` with its path first, so your edits land there; every result ends with the checkout it worked on.
 - Brindley moves files only for a collection that declares \`folders:\` (status → folder); then status changes move them and rewrite links. Every write regenerates the collection README's generated block. \`validate\` reports structural problems (missing or conflicting statuses, files outside their status folder, duplicate numbers, broken links, …).
+- One decision per open question. If a question poses several (several "?", or a list of sub-questions), split it with \`split_question\` before discussing it — answering any part already settled in the same call.
 - When discussing open questions with the user: one at a time, in open chat (no form or multiple-choice prompts), grounded in the actual code, with concrete examples.`;
 
 export interface ServerOptions {
@@ -563,7 +564,7 @@ export function createServer(opts: ServerOptions): McpServer {
           status: i.status,
           questions: i.questions
             .filter((q) => !q.resolved && (a.include_implementation !== false || !q.implementation))
-            .map((q) => ({ index: q.index, text: q.text, implementation: q.implementation })),
+            .map((q) => ({ index: q.index, text: q.text, implementation: q.implementation, ...ops.compoundFields(i, q) })),
         }))
         .filter((x) => x.questions.length > 0);
     },
@@ -767,9 +768,26 @@ export function createServer(opts: ServerOptions): McpServer {
 
   tool(
     "add_question",
-    "Add an open question. A blocking question moves a designed initiative back to draft. Use implementation=true for questions deliberately left to the implementer.",
+    "Add an open question — one decision per question: pose several as separate questions (warns when the text looks like more than one). A blocking question moves a designed initiative back to draft. Use implementation=true for questions deliberately left to the implementer.",
     { ref: refArg, collection: z.string().optional(), text: z.string(), implementation: z.boolean().optional() },
     (root, a) => ops.addQuestion(root, resolveRef(root, a.ref, a.collection), a.text, a.implementation),
+  );
+
+  tool(
+    "split_question",
+    "Split an open question that poses several decisions into one question per decision, in its place and order, in one write. Each part is text or { text, implementation?, answer? }: parts inherit the question's (implementation) marker unless they set their own, and a part with an `answer` is settled as it is written — recorded in `record_in` (default \"Decisions\"), or kept ticked with mode \"tick\", as resolve_question does. Returns the parts left open with their new indexes.",
+    {
+      ref: refArg,
+      collection: z.string().optional(),
+      index: z.number().int().optional(),
+      match: z.string().optional(),
+      into: z
+        .array(z.union([z.string(), z.object({ text: z.string(), implementation: z.boolean().optional(), answer: z.string().optional() })]))
+        .describe("The separate questions, in order (at least two)."),
+      record_in: z.string().optional(),
+      mode: z.enum(["remove", "tick"]).optional(),
+    },
+    (root, a) => ops.splitQuestion(root, resolveRef(root, a.ref, a.collection), a, a.into, a),
   );
 
   tool(
@@ -933,7 +951,7 @@ export function createServer(opts: ServerOptions): McpServer {
 ## How to run this conversation
 
 1. **Open chat, not forms.** Ask in the normal conversation, in prose. Never use a structured question, multiple-choice or form tool, even if one is available — I want to reply freely, push back and redirect.
-2. **One question at a time**, in order unless I pick another. Say which question we are on and how many remain.
+2. **One question at a time**, in order unless I pick another. Say which question we are on and how many remain. **One decision per question:** if a question poses several (\`next_question\` marks it \`compound\`), split it with \`split_question\` first — settling any part I've already decided in the same call — then take the parts one at a time.
 3. **Grounded in the code, not theory.** Before discussing a question, read the code that owns the behaviour: classes, queries, tests and docs. Cite every claim about how the system works (\`path:line\`, test name, doc section). If the code doesn't establish something, say *unclear from code* and what you checked — never fill the gap with how such systems usually work.
 4. **Clear, concrete examples** drawn from the real domain and code: actual types, fields and data, and what a caller sees before and after. No \`Foo\`/\`x\` placeholders.
 5. **Recommend, then let me decide.** Lay out the realistic options (usually 2–3) with their consequences in this codebase, recommend one and say why, then ask. Don't move on until I have decided, deferred it, or marked it \`(implementation)\`.
@@ -954,7 +972,7 @@ Related:
 ${d.related.length ? d.related.map((x) => `- ${x.ref}${x.title ? ` — ${x.title} (${x.status})` : ""}`).join("\n") : "- none"}
 
 Blocking open questions (${blocking.length}):
-${blocking.map((q) => `${q.index}. ${q.text}`).join("\n") || "- none"}
+${blocking.map((q) => `${q.index}. ${q.text}${ops.compoundQuestion(i, q) ? " _(looks like more than one decision: split it first)_" : ""}`).join("\n") || "- none"}
 
 Delegated to implementation (${impl.length}, not discussed unless I ask):
 ${impl.map((q) => `${q.index}. ${q.text}`).join("\n") || "- none"}

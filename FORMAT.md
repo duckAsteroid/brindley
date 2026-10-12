@@ -442,8 +442,9 @@ case-insensitively):
 - [x] Slot length? — 20 minutes per lock cycle, see Design.
 ```
 
-- Each top-level list item is one question. Items may run over several lines and contain inline
-  context, links and code — questions are often paragraphs, not one-liners.
+- Each top-level list item is one question, posing one decision. Items may run over several lines
+  and contain inline context, links and code — questions are often paragraphs, not one-liners —
+  but several decisions are several items, so each can be settled on its own.
 - A plain bullet (`-`) or an unchecked task (`- [ ]`) is **unresolved**.
 - **Resolving** a question, preferred: delete the item and record the decision where it belongs in
   the body (e.g. an `## Agreed direction` or `## Decisions` section, or a row in a rejected
