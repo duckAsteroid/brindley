@@ -107,6 +107,7 @@ function burnup(ctx: Ctx, data: Point[], end: Point, o: { w?: number; h?: number
   // The period's start: a dashed line, and on the full chart a label nothing overlaps.
   if (sinceIn) parts.push(`<line class="since" x1="${f1(sx)}" x2="${f1(sx)}" y1="${m.t}" y2="${h - m.b + (mini ? 0 : 17)}"/>`);
   if (!mini) parts.push(releaseMarks(r, x, h - m.b, sinceIn ? sx : null, t0, t1));
+  if (!mini) parts.push(milestoneMarks(r, x, m.t, h - m.b, sinceIn ? sx : null, t0, t1));
   // End labels (now, including in-progress work on branches), nudged apart.
   if (!mini) {
     const ends = [
@@ -192,6 +193,50 @@ function releaseMarks(r: Report, x: (t: number) => number, base: number, sx: num
   }
   const ticks = shown.map((t) => `<line class="tag" x1="${f1(t.tx)}" x2="${f1(t.tx)}" y1="${base}" y2="${base + (t.row < 0 ? 6 : t.row ? 31 : 17)}"><title>${esc(t.tag)} · ${esc(formatWhen(t.date, true))}</title></line>`);
   return ticks.join("") + labels.join("") + pill;
+}
+
+/**
+ * Each milestone reached within the chart: a dotted line at when it was reached, flagged with its
+ * icon and title along the top (in up to three rows, leaving out labels that would overlap; every
+ * one named on hover).
+ */
+function milestoneMarks(r: Report, x: (t: number) => number, top: number, base: number, sx: number | null, t0: number, t1: number): string {
+  const shown = r.milestones.filter((m) => m.t !== undefined && m.t >= t0 && m.t <= t1).sort((a, b) => a.t! - b.t! || a.slug.localeCompare(b.slug));
+  if (!shown.length) return "";
+  const rows: [number, number][][] = [[], [], []];
+  // Keep clear of the "This period" label.
+  if (sx !== null) rows[0]!.push([sx, sx + 80]);
+  const out: string[] = [];
+  for (const m of shown) {
+    const mx = x(m.t!);
+    const text = `${m.icon ?? "◆"} ${m.title}`;
+    const width = text.length * 6.4 + 8;
+    const row = [0, 1, 2].find((k) => rows[k]!.every(([a, b]) => mx + 4 + width <= a || mx >= b));
+    const when = `${m.title} — reached ${formatWhen(m.reachedAt!, true)}`;
+    out.push(`<line class="milestone" x1="${f1(mx)}" x2="${f1(mx)}" y1="${top}" y2="${base}"><title>${esc(when)}</title></line>`);
+    if (row === undefined) continue;
+    rows[row]!.push([mx, mx + 4 + width]);
+    out.push(`<text class="tick milestone-label" x="${f1(mx + 4)}" y="${top + 26 + row * 13}"><title>${esc(when)}</title>${esc(text)}</text>`);
+  }
+  return out.join("");
+}
+
+/** Every milestone: reached (and when), or how far along, or unspecified. */
+function milestonesCard(ctx: Ctx): string {
+  const { r } = ctx;
+  if (!r.milestones.length) return "";
+  const reached = r.milestones.filter((m) => m.state === "reached").length;
+  const line = (m: Report["milestones"][number]) => {
+    const ext = m.external ? ` <span class="why">· ${m.external} external not confirmed</span>` : "";
+    const where =
+      m.state === "reached"
+        ? `reached${m.reachedAt ? ` ${esc(formatWhen(m.reachedAt, ctx.withTime))}` : ""}`
+        : m.state === "unspecified"
+          ? "nothing counts towards it yet"
+          : `${m.done} of ${m.counted} done`;
+    return `${m.icon ? `${esc(m.icon)} ` : ""}<strong>${esc(m.title)}</strong> <span class="why">— ${where}</span>${ext}`;
+  };
+  return `<section class="card milestones"><h3>${counted("Milestones", r.milestones.length)} <span class="count">· ${reached} reached</span></h3>${capped(r.milestones.map(line))}</section>`;
 }
 
 function toggles(ctx: Ctx): string {
@@ -336,6 +381,7 @@ h2.area{border-top:1px solid var(--grid);padding-top:20px;margin-top:36px}h2.sub
 .tile .k{font-size:13px;color:var(--ink2)}.tile .v{font-size:30px;font-weight:650;line-height:1.15;margin-top:4px}.tile .d{font-size:13px;color:var(--ink2)}.hero .v{font-size:44px}
 .chart{width:100%;height:auto;display:block}
 .grid{stroke:var(--grid);stroke-width:1}.axis{stroke:var(--axis);stroke-width:1}.tick{fill:var(--muted);font-size:11px;font-variant-numeric:tabular-nums}.tick.strong{fill:var(--ink2);font-weight:600}
+.milestone{stroke:var(--ink2);stroke-width:1.25;stroke-dasharray:1 3}.milestone-label{fill:var(--ink2);font-weight:600}.card.milestones{margin:14px 0}
 .period{fill:var(--wash)}.since{stroke:var(--ink2);stroke-width:1.5;stroke-dasharray:4 3}.since-pill{fill:var(--ink)}.since-label{fill:var(--surface);font-size:12px;font-weight:650}.tag{stroke:var(--muted);stroke-width:1}
 .b-done{fill:var(--complete)}.b-doing{fill:var(--in-progress)}.b-todo{fill:var(--not-started)}
 path.b-done,path.b-doing,path.b-todo{stroke:var(--surface);stroke-width:2;stroke-linejoin:round}
@@ -405,6 +451,7 @@ export function renderReport(r: Report, o: { paletteFile?: (p: string) => string
 <body><svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs><pattern id="hatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line class="hatch-line" x1="0" y1="0" x2="0" y2="6"/></pattern></defs></svg>
 <main><fieldset class="mode"><legend class="sr">Appearance</legend>${modes}</fieldset>
 <header><h1>${esc(r.name)} — progress</h1><p class="sub">${sub}</p></header>
+${milestonesCard(ctx)}
 ${body.join("\n")}
 <footer>${historyNote} · as of ${esc(formatWhen(r.now, true))}${counted}${ctx.withTime ? " · times in UTC" : ""}</footer>
 </main></body></html>

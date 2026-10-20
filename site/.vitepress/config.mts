@@ -29,6 +29,7 @@ export default defineConfig({
           { text: "The workflow", link: "/guide/workflow" },
           { text: "Spikes", link: "/guide/spikes" },
           { text: "Themes", link: "/guide/themes" },
+          { text: "Milestones", link: "/guide/milestones" },
           { text: "Reporting progress", link: "/guide/reporting" },
           { text: "Adopting an existing folder", link: "/guide/adopting" },
         ],

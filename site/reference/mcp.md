@@ -25,14 +25,15 @@ accepts a name, an alias or a folder path.
 |------|------------|------|
 | `fields` | `collection?`, `ref?` | Every front-matter field a collection understands and the values it accepts — statuses and aliases, types, tags, scoring dimensions with their order and default. |
 | `list` | `collection?`, `type?`, `status?`, `tag?`, `owner?`, `ready?`, `where?`, `order_by?` | Initiatives, filtered — `where` by [scoring dimensions](/reference/front-matter#scoring-dimensions) (`{ priority: [critical, high] }`) — and ordered by them with `order_by` (`[priority, impact]`). |
-| `get` | `ref` | One initiative in full: dependency report, dependants, questions, acceptance criteria, themes, and every scoring dimension with its value and allowed values. |
+| `get` | `ref` | One initiative in full: dependency report, dependants, questions, acceptance criteria, themes, the milestones it counts towards, and every scoring dimension with its value and allowed values. |
 | `ready` | `collection?`, `type?` | What can be picked up now, prerequisites first. |
 | `check_ready` | `ref` | Whether one initiative is complete and ready to work on, check by check. Fails if it's already being built elsewhere. |
-| `graph` | `collection?`, `ref?`, `tag?`, `include_done?`, and `related?`, `themes?`, `show?`, `external?`, `direction?`, `arrows?` to override the collection's [graph settings](/reference/front-matter#graph-settings) | Dependency graph as data and Mermaid. |
+| `graph` | `collection?`, `ref?`, `tag?`, `include_done?`, and `related?`, `themes?`, `show?`, `external?`, `direction?`, `arrows?`, `milestones?` to override the collection's [graph settings](/reference/front-matter#graph-settings) | Dependency graph as data and Mermaid. |
 | `report` | `since?`, `until?`, `collection?`, `out?`, `palette?`, `mode?`, `branches?`, `worktrees?` | Writes the one-page [progress report](/guide/reporting) and returns its path and figures — per collection and combined: complete, in progress, not started, scope, parked, what was delivered, added and taken out this period, and what needs attention. |
 | `questions` | `collection?`, `ref?`, `include_implementation?` | Unresolved open questions — not those of abandoned or superseded work, unless asked for by `ref`. A question that looks like several decisions is marked `compound`. |
 | `next_question` | `ref`, `after?` | The next blocking question to discuss, and how many remain; `compound` when it should be split first. |
 | `tags` | — | Every tag, with descriptions, counts and theme docs. |
+| `milestones` | `milestone?` | Every [milestone](/guide/milestones): reached, not reached or unspecified, done against counted, what's still to do, unconfirmed external members, and when it was reached. With `milestone`, one, with all its members. |
 | `validate` | `collection?`, `rules?`, `docs?` | Problems with initiatives and collection structure. See [Validation rules](/reference/validation). |
 | `check_docs` | `paths?` | History phrasing, design debate and initiative links in project docs. |
 | `version` | — | The server's version. |
@@ -40,7 +41,8 @@ accepts a name, an alias or a folder path.
 ## Writing
 
 Every write touches only the initiative (or collection README) concerned, plus the regenerated
-README blocks — and reports every file it touched, ready to commit.
+README blocks — and reports every file it touched, ready to commit. When a write reaches a
+[milestone](/guide/milestones), or un-reaches one, its result says so under `milestones`.
 
 | Tool | Parameters | Does |
 |------|------------|------|
@@ -52,7 +54,7 @@ README blocks — and reports every file it touched, ready to commit.
 | `split_question` | `ref`, `index` or `match`, `into`, `record_in?`, `mode?` | Replaces one question with its parts, in place — each text or `{ text, implementation?, answer? }`. A part with an `answer` is settled as it's written, like `resolve_question`. |
 | `resolve_question` | `ref`, `index` or `match`, `answer`, `record_in?`, `mode?` | Removes the question and records the decision (or ticks it, with `mode: tick`). |
 | `set_dependencies` | `ref`, `add?`, `remove?`, `related_add?`, `related_remove?`, `why?` | Adds or removes links under `## Dependencies` / `## Related`. Removes bullets only: a link in a paragraph stays, and the warning gives its line to edit by hand. Refuses cycles. |
-| `complete` | `ref`, `docs_impact` | Marks it done. `docs_impact` lists the project docs changed (paths from the repo root, not initiative files), or `none: <reason>` (spikes default to none). Reports what became ready. |
+| `complete` | `ref`, `docs_impact` | Marks it done. `docs_impact` lists the project docs changed (paths from the repo root, not initiative files), or `none: <reason>` (spikes default to none). Reports what became ready, and any milestone it reaches. |
 | `regenerate_readmes` | `collection?`, `check?` | Rebuilds generated README blocks; `check` only reports stale ones. |
 
 ## Prompts

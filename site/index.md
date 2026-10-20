@@ -38,6 +38,9 @@ features:
   - icon: 🛠️
     title: Hand it to an agent
     details: An implement brief that starts by checking the work is really ready, and finishes by requiring the project docs to describe what is now true.
+  - icon: 🚤
+    title: Milestones across the work
+    details: Name what a delivery means — initiatives and whole themes from any collection — and Brindley tells you when a change reaches it.
   - icon: 🔭
     title: Spikes that measure
     details: Build just enough to measure what matters, record the findings, and keep the code — it may become the real implementation.

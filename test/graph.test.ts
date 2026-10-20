@@ -167,7 +167,7 @@ describe("graph settings", () => {
       .filter((f) => f.rule === "graph-setting")
       .map((f) => f.message);
     expect(msgs).toEqual([
-      'Unknown `graph` setting "colour" (known: enabled, direction, arrows, related, show, external, themes, links).',
+      'Unknown `graph` setting "colour" (known: enabled, direction, arrows, related, show, external, themes, links, milestones).',
       "`graph.related` must be true or false.",
       "`graph.direction: sideways` is not one of left-to-right, right-to-left, top-to-bottom, bottom-to-top.",
       "`graph.arrows: both` must be from or to.",

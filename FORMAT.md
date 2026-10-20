@@ -318,6 +318,56 @@ dimensions:
 Each initiative is checked against its own collection's dimensions, and ranked by them. A dimension
 may not reuse a field with its own meaning (`status`, `type`, `tags`, …).
 
+### 4.4 Milestones: significant deliveries
+
+A milestone names something significant the work delivers — "the lock reopens to boats" — and says
+what delivers it, from any collection or theme. It is not work: it has no status, is never started
+or completed, and is never ready. It is **reached** when what delivers it is done.
+
+A milestone is a non-numbered `.md` file in any collection folder whose front-matter names it, with
+its members as links under `## Delivered by`:
+
+```markdown
+---
+milestone: reopening
+summary: Boats can use the lock again after the winter stoppage
+icon: 🚤
+---
+# Lock reopens to boats
+
+Reopening means both gates swing and seal, and the towpath is safe to walk a horse along.
+
+## Delivered by
+
+- [Gates](gates.md)
+- [Resurface towpath](../towpath/01-resurface-towpath.md)
+- [Ready for the season](season.md)
+- [Gate sensors release](https://github.com/example/canal/releases/tag/v2.0)
+```
+
+- `milestone` is its slug: lowercase kebab-case, unique in the repo. `summary` (else its H1)
+  describes it; the optional `icon` marks its members in dependency graphs that ask for it (§8.3).
+- Members, as relative links (like `## Dependencies`, §6):
+  - an **initiative**, in any collection;
+  - a **theme doc** (§4.2) — every initiative tagged with that theme, now and later;
+  - another **milestone doc** — this milestone is reached only when that one is, and that one's
+    initiatives count towards this one's progress;
+  - an **http link** — not counted: shown as unconfirmed, to check by hand.
+
+  Initiatives carry nothing about milestones; a milestone's definition is its one file.
+- **Reached** when at least one member is `done` and every counted member is `done`, and every
+  included milestone is reached. `deferred`, `abandoned` and `superseded` members are left out of
+  the count. With no member counting — none listed, only empty themes, or all left out — a
+  milestone is **unspecified**, and never reached. Otherwise it is **not reached**.
+- Reached is computed, never recorded, so it can stop being true: reopening a done member, or a new
+  open initiative joining an included theme, un-reaches it. When it was reached comes from git
+  history (§8.4).
+- A milestone has no target date: it says what is delivered, not when.
+- Tools keep a generated block in the doc (§8) showing where it stands and every initiative that
+  counts towards it.
+- A doc is a theme doc or a milestone doc, not both; milestones including each other in a cycle,
+  and a member link to anything else, are validation errors (§10).
+
 ## 5. Status lifecycle
 
 Core statuses (format v1; other words map onto these, see below):
@@ -566,7 +616,8 @@ is not allowed — the implementer must decide and state, which is what keeps do
 
 Each collection's `README.md` is its human entry point: front-matter (§2), a free-form
 introduction written by people, plus a **generated block** that tools keep current. Theme
-overview docs (§4.2) get the same treatment, with a generated list of the theme's initiatives:
+overview docs (§4.2) get the same treatment, with a generated list of the theme's initiatives, and
+so do milestone docs (§4.4), with where the milestone stands:
 
 ```markdown
 <!-- brindley:generated:begin — do not edit by hand; regenerate instead -->
@@ -616,7 +667,11 @@ Rules for the generated block:
    when there is one, with its description and how many of the collection's initiatives carry it,
    open and closed or deferred. Left out when nothing is tagged.
 
-4. **Completed** table — `done` initiatives (#, linked title, `updated`); then a short
+4. **Milestones** — each milestone (§4.4) that any of the collection's initiatives count towards,
+   linked to its doc, with its summary and where it stands: reached, done against counted members,
+   or unspecified, and any external members not confirmed. Left out when there are none.
+
+5. **Completed** table — `done` initiatives (#, linked title, `updated`); then a short
    **Closed** list for `abandoned`/`superseded` (with `superseded_by`, and the reason from `status_note`).
 
 ### 8.2 Overview of all collections
@@ -689,6 +744,7 @@ other collections' graphs or the repo-wide overview, which use the defaults.
 | `show` | list of statuses, default none | Also include every initiative in these statuses (core names or aliases), e.g. `[done]`. |
 | `external` | `true` (default), `false` | `false` leaves out external dependencies and other collections' initiatives, and their edges. |
 | `themes` | `box`, `icon`, `label`, `true`, or a list | `box` groups each initiative in a box for its first tag. `icon` puts each of its themes' icons (§4.2; `[name]` without one) before its title, with a legend under the graph. `label` — or `true` — puts the theme names after its title. `box` combines with `icon` or `label`; `icon` and `label` together mean `label`. |
+| `milestones` | `icon`, `false` (default) | `icon` (or `true`) puts the icon of each milestone an initiative counts towards (§4.4; `[slug]` without one) before its title, after any theme icons, with a legend under the graph. |
 | `links` | `true` (default), `false` | Each node links to its initiative (a `click … href` line, relative to the README), and an external dependency with a URL to that URL — clickable where the Markdown preview supports it. |
 | `enabled` | `true` (default), `false` | `false` leaves the graph out of the README. |
 
@@ -713,6 +769,10 @@ A collection README's `report:` settings shape it:
 | `labels` | map of words to replacements | The report's words: `work_item`, `work_items`, `area`, `areas`, `not_started`, `in_progress`, `complete`, and the core statuses. |
 
 Unknown settings and unusable values are validation warnings (§10), and are ignored.
+
+The report also shows every milestone (§4.4) as of its end: when each was reached — the commit
+after which it has stayed reached, judged by today's milestone docs — marked on the timeline, and
+how far along the others are.
 
 ## 9. Agent instructions
 
@@ -765,38 +825,45 @@ Errors:
 6. Collection names are unique in the repo.
 7. A scoring dimension's value is one of its declared values; a `dimensions:` declaration has
    values, no duplicates, a `default` among them, and doesn't reuse a reserved field name (§4.3).
+8. Milestone slugs are unique in the repo (§4.4).
+9. A milestone doc's member under `## Delivered by` is an initiative, a theme doc, a milestone doc or an
+   http link.
+10. Milestones don't include each other in a cycle.
+11. A doc is not both a theme doc and a milestone doc.
 
 Warnings:
 
-8. `status: designed` with unresolved non-`(implementation)` open questions.
-9. `status: in-progress`/`done` with unresolved open questions.
-10. Relative links that do not resolve.
-11. Asset directories whose number matches no initiative.
-12. Missing H1.
-13. A collection README's generated block is out of date.
-14. Collection `status: done` while any of its initiatives is still `draft`/`designed`/`in-progress`.
-15. `status: done` without `docs_impact`.
-16. A project doc (per `docs:` globs) that links into a collection folder.
-17. History phrasing in a project doc (heuristic — see §7.2 list).
-18. `type` not in its collection's `types:` list, when one is declared.
-19. A tag not declared by any collection's `tags:`, when any are declared; or a tag that isn't kebab-case.
-20. Front-matter status contradicts the status folder the file is in.
-21. The collection files a status in a status folder (e.g. done in `completed/`), but this file
+12. `status: designed` with unresolved non-`(implementation)` open questions.
+13. `status: in-progress`/`done` with unresolved open questions.
+14. Relative links that do not resolve.
+15. Asset directories whose number matches no initiative.
+16. Missing H1.
+17. A collection README's generated block is out of date.
+18. Collection `status: done` while any of its initiatives is still `draft`/`designed`/`in-progress`.
+19. `status: done` without `docs_impact`.
+20. A project doc (per `docs:` globs) that links into a collection folder.
+21. History phrasing in a project doc (heuristic — see §7.2 list).
+22. `type` not in its collection's `types:` list, when one is declared.
+23. A tag not declared by any collection's `tags:`, when any are declared; or a tag that isn't kebab-case.
+24. Front-matter status contradicts the status folder the file is in.
+25. The collection files a status in a status folder (e.g. done in `completed/`), but this file
     with that status is elsewhere.
-22. A status written in the body (`**Status:** …` or `## Status`) disagrees with the file's status.
-23. A number padded differently from the collection's width (§3), or a collection whose highest
+26. A status written in the body (`**Status:** …` or `## Status`) disagrees with the file's status.
+27. A number padded differently from the collection's width (§3), or a collection whose highest
     number has reached 80% of its width (8, 80, 800 …).
-24. A required scoring dimension (§4.3) without a value.
-25. A collection README's `graph:` with an unknown setting or an unusable value (§8.3).
-26. No status recorded (no front-matter `status`, not in a status folder), but the body states one in a
+28. A required scoring dimension (§4.3) without a value.
+29. A collection README's `graph:` with an unknown setting or an unusable value (§8.3).
+30. No status recorded (no front-matter `status`, not in a status folder), but the body states one in a
     `**Status:**` line or a `## Status` section that maps to a core status — record it.
-27. `status: abandoned` without a reason (`status_note`), unless the status comes from a status folder.
-28. A collection README's `columns:` with an unknown table or column, or a value that isn't a list.
-29. A collection README's `folders:` listing something that isn't a status or alias, or a value that isn't a
+31. `status: abandoned` without a reason (`status_note`), unless the status comes from a status folder.
+32. A collection README's `columns:` with an unknown table or column, or a value that isn't a list.
+33. A collection README's `folders:` listing something that isn't a status or alias, or a value that isn't a
     plain folder name.
-30. An in-progress initiative whose `branch` doesn't exist, locally or as a remote-tracking branch.
-31. A collection README's `report:` with an unknown setting, a `size` that isn't a scoring dimension, points
+34. An in-progress initiative whose `branch` doesn't exist, locally or as a remote-tracking branch.
+35. A collection README's `report:` with an unknown setting, a `size` that isn't a scoring dimension, points
     for a value the dimension doesn't have, word values without points, or labels the report doesn't use (§8.4).
+36. A milestone doc that lists no members under `## Delivered by` (it is unspecified), or a milestone slug
+    that isn't kebab-case.
 
 Broken-link warnings name the new location when the linked file has moved within the collection.
 

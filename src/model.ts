@@ -179,11 +179,48 @@ export interface Theme {
   collection: string;
 }
 
+/** What a link under a milestone doc's `## Delivered by` stands for. `line` is 0-based in the body. */
+export type MilestoneMember =
+  /** An initiative, keyed `<collection path>#<number>` (the key history uses too). */
+  | { kind: "initiative"; raw: string; key: string; line: number; movedTo?: string }
+  /** Every initiative tagged with a theme, through a link to its overview doc. */
+  | { kind: "theme"; raw: string; tag: string; line: number }
+  /** Another milestone, through a link to its doc. */
+  | { kind: "milestone"; raw: string; slug: string; line: number }
+  /** An http link: not counted, shown as unconfirmed. */
+  | { kind: "external"; raw: string; line: number }
+  /** A link to nothing Brindley tracks (a validation error). */
+  | { kind: "unknown"; raw: string; line: number };
+
+/**
+ * A milestone: a non-initiative .md in a collection folder whose front-matter has
+ * `milestone: <slug>`. It names a significant delivery and lists what delivers it under
+ * `## Delivered by`; it is reached, never worked on.
+ */
+export interface Milestone {
+  slug: string;
+  title: string;
+  summary?: string;
+  /** Marks its members in graphs (`graph: { milestones: icon }`), from the doc's `icon:`. */
+  icon?: string;
+  /** Absolute path. */
+  file: string;
+  /** Path relative to the repo root. */
+  rel: string;
+  /** Name of the collection whose folder holds the doc. */
+  collection: string;
+  members: MilestoneMember[];
+  /** The doc also has `theme:` (a validation error: one doc, one generated block). */
+  alsoTheme: boolean;
+}
+
 export interface Root {
   repoRoot: string;
   collections: Collection[];
   /** Theme overview documents found in collection folders. */
   themes: Theme[];
+  /** Milestone docs found in collection folders. */
+  milestones: Milestone[];
 }
 
 /** Other words for initiative types. "Raconitering" is James Brindley's own spelling of a reconnoitre. */

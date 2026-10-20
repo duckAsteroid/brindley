@@ -1,8 +1,9 @@
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { posix } from "node:path";
-import type { Collection, Initiative, Root, Theme } from "./model.js";
+import type { Collection, Initiative, Milestone, Root, Theme } from "./model.js";
 import { blockers, dependencyReport, displayRef, isActive, isReady, target } from "./deps.js";
-import { allInitiatives, declaredTags, initiativeKey, lookup, themeFor } from "./repo.js";
+import { allInitiatives, declaredTags, findCollection, initiativeKey, lookup, milestoneFor, themeFor } from "./repo.js";
+import { currentStates, displayKey, keyOf, progress, progressLine, type Via } from "./milestones.js";
 import { DEFAULT_GRAPH, mermaidDirection, parseGraph, type GraphSettings } from "./graph.js";
 import { dimensionsOf, effectiveValue } from "./dimensions.js";
 
@@ -81,6 +82,20 @@ function nodeLabel(root: Root, i: Initiative, text: string, marks: { icons?: str
   return plain("✏️");
 }
 
+/** A milestone's mark in graphs: its doc's icon, else its slug in brackets. */
+function milestoneIcon(m: Milestone): string {
+  return m.icon ?? `[${m.slug}]`;
+}
+
+/** For each initiative key, the milestones it counts towards (in slug order). */
+function milestonesByKey(root: Root): Map<string, Milestone[]> {
+  const states = currentStates(root);
+  const out = new Map<string, Milestone[]>();
+  for (const m of [...root.milestones].sort((a, b) => a.slug.localeCompare(b.slug)))
+    for (const x of progress(root, m, states).members) out.set(x.key, [...(out.get(x.key) ?? []), m]);
+  return out;
+}
+
 /** A theme's mark in `icon` mode: its theme doc's icon, else its name in brackets. */
 function themeIcon(root: Root, tag: string): string {
   return themeFor(root, tag)?.icon ?? `[${tag}]`;
@@ -103,6 +118,8 @@ export function mermaid(root: Root, items: Initiative[], from: string, settings:
   const edges: string[] = [];
   const externals = new Map<string, string>();
   const icons = new Set<string>();
+  const milestoneMarks = settings.milestones ? milestonesByKey(root) : new Map<string, Milestone[]>();
+  const milestoneLegend = new Set<Milestone>();
   const addNode = (i: Initiative) => {
     const id = nodeId(i, from);
     if (nodes.has(id)) return id;
@@ -112,6 +129,11 @@ export function mermaid(root: Root, items: Initiative[], from: string, settings:
       marks.icons = i.tags.map((t) => themeIcon(root, t)).join("");
       for (const t of i.tags) if (themeFor(root, t)?.icon) icons.add(t);
     } else if (settings.mark === "label" && i.tags.length) marks.names = i.tags.join(", ");
+    const ms = milestoneMarks.get(keyOf(root, i)) ?? [];
+    if (ms.length) {
+      marks.icons = `${marks.icons ?? ""}${ms.map(milestoneIcon).join("")}`;
+      for (const m of ms) if (m.icon) milestoneLegend.add(m);
+    }
     nodes.set(id, i);
     lines.set(id, `  ${id}["${nodeLabel(root, i, label(`${prefix} ${titleOf(i)}`), marks)}"]`);
     return id;
@@ -164,6 +186,8 @@ export function mermaid(root: Root, items: Initiative[], from: string, settings:
   }
   out.push("```");
   if (icons.size) out.push("", `Themes: ${[...icons].sort().map((t) => `${themeFor(root, t)!.icon} ${t}`).join(" · ")}`);
+  if (milestoneLegend.size)
+    out.push("", `Milestones: ${[...milestoneLegend].sort((a, b) => a.slug.localeCompare(b.slug)).map((m) => `${m.icon} ${m.slug}`).join(" · ")}`);
   return out.join("\n");
 }
 
@@ -271,6 +295,24 @@ function themesSection(root: Root, c: Collection): string[] {
   return out;
 }
 
+/**
+ * The milestones this collection's work counts towards: each linked to its doc, with its summary and
+ * where it stands.
+ */
+function milestonesSection(root: Root, c: Collection): string[] {
+  const keys = new Set(c.initiatives.map((i) => `${c.path}#${i.number}`));
+  const states = currentStates(root);
+  const relevant = [...root.milestones]
+    .sort((a, b) => a.slug.localeCompare(b.slug))
+    .map((m) => ({ m, p: progress(root, m, states) }))
+    .filter(({ p }) => p.members.some((x) => keys.has(x.key)));
+  if (!relevant.length) return [];
+  const out = ["", "### Milestones", ""];
+  for (const { m, p } of relevant)
+    out.push(`- [**${esc(m.title)}**](${posix.relative(c.path, m.rel)})${m.summary ? ` — ${esc(m.summary)}` : ""} · ${esc(progressLine(p))}`);
+  return out;
+}
+
 export function collectionBlock(root: Root, c: Collection): string {
   const out: string[] = [];
   const active = c.initiatives.filter(isActive);
@@ -290,6 +332,7 @@ export function collectionBlock(root: Root, c: Collection): string {
     : null;
   if (graph) out.push("", "### Dependencies", "", graph);
   out.push(...themesSection(root, c));
+  out.push(...milestonesSection(root, c));
   if (deferred.length > 0) {
     out.push("", "### Deferred", "");
     for (const i of deferred) out.push(`- ${i.number} ${link(i, c.path)}${i.statusNote ? ` — ${esc(i.statusNote)}` : ""}`);
@@ -427,13 +470,54 @@ export function themeBlock(root: Root, theme: Theme): string {
   ].join("\n");
 }
 
+const viaWords = (v: Via) => (v.kind === "listed" ? "listed" : v.kind === "theme" ? `theme \`${v.tag}\`` : `milestone \`${v.slug}\``);
+
+/**
+ * Generated block for a milestone doc: where it stands (reached, not reached, unspecified), what is
+ * outstanding, and every initiative that counts towards it with how it belongs. No dates: a block
+ * can't know the commit it lands in.
+ */
+export function milestoneBlock(root: Root, m: Milestone): string {
+  const fromDir = posix.dirname(m.rel);
+  const p = progress(root, m);
+  const out = ["### Delivery", ""];
+  const ref = (key: string) => `\`${displayKey(root, key)}\``;
+  if (p.state === "unspecified")
+    out.push("**Unspecified** — no member counts yet. List the initiatives, theme docs or milestones that deliver it under `## Delivered by`; deferred, abandoned and superseded work is left out.");
+  else if (p.state === "reached") out.push(`**Reached** — ${p.done} of ${p.counted} done.`);
+  else {
+    const waiting = [
+      ...(p.outstanding.length ? [`still to do: ${p.outstanding.map(ref).join(", ")}`] : []),
+      ...(p.milestonesOutstanding.length ? [`waiting on ${p.milestonesOutstanding.map((s) => {
+        const n = milestoneFor(root, s);
+        return n ? `[${esc(n.title)}](${posix.relative(fromDir, n.rel)})` : `\`${s}\``;
+      }).join(", ")}`] : []),
+    ];
+    out.push(`**Not reached** — ${p.done} of ${p.counted} done; ${waiting.join("; ")}.`);
+  }
+  if (p.external.length)
+    out.push("", `${p.external.length} external member${p.external.length > 1 ? "s" : ""} not confirmed (check by hand): ${p.external.map(externalLink).join(", ")}.`);
+  if (p.members.length) {
+    const words = { done: "done", open: "to do", ignored: "left out" } as const;
+    out.push("", "| Ref | Initiative | Status | Counts | Via |", "|-----|------------|--------|--------|-----|");
+    const rank = { open: 0, done: 1, ignored: 2 } as const;
+    for (const x of [...p.members].sort((a, b) => rank[a.count] - rank[b.count])) {
+      const at = x.key.lastIndexOf("#");
+      const i = findCollection(root, x.key.slice(0, at))?.initiatives.find((o) => o.number === Number(x.key.slice(at + 1)));
+      out.push(`| ${ref(x.key)} | ${i ? link(i, fromDir) : "_missing_"} | ${i ? esc(statusLabel(i)) : "—"} | ${words[x.count]} | ${x.via.map(viaWords).join(", ")} |`);
+    }
+  }
+  return out.join("\n");
+}
+
 export interface ReadmeChange {
   path: string;
   reason: "updated" | "created" | "conflict";
 }
 
 /**
- * Regenerate generated blocks: each collection README's, and each theme doc's member list. With onlyConflicted,
+ * Regenerate generated blocks: each collection README's, each theme doc's member list, and each
+ * milestone doc's progress. With onlyConflicted,
  * only blocks containing conflict markers are rewritten (used during merges/rebases).
  */
 export function regenerate(
@@ -455,5 +539,14 @@ export function regenerate(
   // Theme docs in those collections get their member list kept current too.
   const names = new Set(collections.map((c) => c.name));
   for (const t of root.themes) if (names.has(t.collection)) handle(t.file, themeBlock(root, t), `# ${t.title}\n`);
+  // Milestone docs too: those in these collections, or counting any of their work. A doc that is
+  // also a theme doc keeps its theme block (validate reports it).
+  const paths = new Set(collections.map((c) => `${c.path}#`));
+  const states = currentStates(root);
+  for (const m of root.milestones) {
+    if (m.alsoTheme) continue;
+    const near = names.has(m.collection) || progress(root, m, states).members.some((x) => paths.has(x.key.slice(0, x.key.lastIndexOf("#") + 1)));
+    if (near) handle(m.file, milestoneBlock(root, m), `# ${m.title}\n`);
+  }
   return changes;
 }

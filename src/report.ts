@@ -5,6 +5,7 @@ import { BrindleyError, findCollection, toPosix } from "./repo.js";
 import { dimensionsOf } from "./dimensions.js";
 import { currentBranch, git } from "./git.js";
 import { defaultCacheFile, readHistory, type Change, type ItemState } from "./history.js";
+import { currentStates, progress, replay, type MilestoneState } from "./milestones.js";
 import { inProgressElsewhere, type Elsewhere } from "./elsewhere.js";
 import { formatWhen } from "./axis.js";
 import { renderReport } from "./report-html.js";
@@ -210,8 +211,24 @@ export interface Release {
   t: number;
 }
 
+/** A milestone as the report shows it: where it stood at the report's now, and when it was reached. */
+export interface ReportMilestone {
+  slug: string;
+  title: string;
+  icon?: string;
+  state: MilestoneState;
+  done: number;
+  counted: number;
+  /** When it last became reached (ISO), while reached. */
+  reachedAt?: string;
+  t?: number;
+  /** External members, not counted. */
+  external: number;
+}
+
 export interface Report {
   name: string;
+  milestones: ReportMilestone[];
   now: string;
   first: string | null;
   period: { since: string; t: number; label: string; tag?: string; steppedBackFrom?: string; explicit: boolean };
@@ -610,8 +627,28 @@ export function buildReport(root: Root, opts: ReportOptions = {}): Report {
     };
   }
 
+  // Milestones span collections: judged on all of them, as of now, by today's milestone docs.
+  const at = hasHistory ? replay(root, history, now) : { states: currentStates(root), dates: new Map<string, string | undefined>() };
+  const milestones: ReportMilestone[] = [...root.milestones]
+    .sort((a, b) => a.slug.localeCompare(b.slug))
+    .map((m) => {
+      const p = progress(root, m, at.states);
+      const reachedAt = p.state === "reached" ? at.dates.get(m.slug) : undefined;
+      return {
+        slug: m.slug,
+        title: m.title,
+        ...(m.icon ? { icon: m.icon } : {}),
+        state: p.state,
+        done: p.done,
+        counted: p.counted,
+        ...(reachedAt ? { reachedAt, t: Date.parse(reachedAt) } : {}),
+        external: p.external.length,
+      };
+    });
+
   return {
     name: repoName(root),
+    milestones,
     now: nowDate,
     first: timeline[0]?.ch.date ?? null,
     period,
@@ -717,6 +754,9 @@ export function figures(r: Report) {
     period: { label: r.period.label, since: r.period.since, ...(r.period.steppedBackFrom ? { stepped_back_from: r.period.steppedBackFrom } : {}) },
     ...(r.combined ? { all: sec(r.combined) } : {}),
     collections: r.sections.map(sec),
+    ...(r.milestones.length
+      ? { milestones: r.milestones.map((m) => ({ milestone: m.slug, title: m.title, state: m.state, done: m.done, counted: m.counted, reached_at: m.reachedAt ?? null })) }
+      : {}),
     looked_in: r.lookedIn,
     history: r.history,
   };

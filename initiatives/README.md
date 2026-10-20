@@ -29,7 +29,6 @@ Planned work on Brindley itself: tools specified in MCP-SERVER.md but not yet bu
 | 27 | [Inline the collection's agent file in the implement brief](27-inline-the-collection-s-agent-file-in-the-implement-brief.md) | feature | draft | — | 1 | — |
 | 28 | [Write and keep the agent rules in AGENTS.md / CLAUDE.md](28-write-and-keep-the-agent-rules-in-agents-md-claude-md.md) | feature | draft | — | 1 | — |
 | 29 | [Tag cloud in the collection README](29-tag-cloud-in-the-collection-readme.md) | feature | draft | — | 3 | — |
-| 33 | [Milestones](33-milestones.md) | feature | designed | ✅ ready | 0 | — |
 
 ### Dependencies
 
@@ -41,7 +40,6 @@ flowchart RL
   n27["✏️ 27 Inline the collection's agent file in the implement brief"]
   n28["✏️ 28 Write and keep the agent rules in AGENTS.md / CLAUDE.md"]
   n29["✏️ 29 Tag cloud in the collection README"]
-  n33["🟢 33 Milestones"]
   n19["✅ <s>19 Scoring dimensions on initiatives</s>"]
   n21 --> n19
   click n16 href "16-resolve-settled-questions-in-bulk.md"
@@ -50,7 +48,6 @@ flowchart RL
   click n27 href "27-inline-the-collection-s-agent-file-in-the-implement-brief.md"
   click n28 href "28-write-and-keep-the-agent-rules-in-agents-md-claude-md.md"
   click n29 href "29-tag-cloud-in-the-collection-readme.md"
-  click n33 href "33-milestones.md"
   click n19 href "done/19-rank-initiatives-by-scoring-dimensions.md"
 ```
 
@@ -94,6 +91,7 @@ flowchart RL
 | 30 | [One-page HTML progress dashboard](done/30-one-page-html-progress-dashboard.md) | feature | 2026-10-09 |
 | 31 | [Spike: progress dashboard designs from git history](done/31-spike-progress-dashboard-designs-from-git-history.md) | spike | 2026-10-09 |
 | 32 | [Split a compound open question into separate questions](done/32-split-a-compound-open-question-into-separate-questions.md) | feature | 2026-10-09 |
+| 33 | [Milestones](done/33-milestones.md) | feature | 2026-10-20 |
 
 ### Closed
 

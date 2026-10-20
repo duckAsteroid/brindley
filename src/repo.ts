@@ -9,12 +9,15 @@ import {
   type Collection,
   type CollectionMeta,
   type Initiative,
+  type Milestone,
+  type MilestoneMember,
   type Ref,
   type Root,
   type Status,
   type Theme,
 } from "./model.js";
 import {
+  DELIVERED_BY,
   DEPENDENCIES,
   RELATED,
   h1,
@@ -309,7 +312,7 @@ export function loadRoot(repoRoot: string): Root {
     }
   });
 
-  const root: Root = { repoRoot, collections, themes: collections.flatMap((c) => findThemes(repoRoot, c)) };
+  const root: Root = { repoRoot, collections, themes: collections.flatMap((c) => findThemes(repoRoot, c)), milestones: [] };
   const all = collections.flatMap((c) => c.initiatives);
   const byFile = new Map(all.map((i) => [i.file, i]));
   const byName = new Map<string, Initiative[]>();
@@ -323,7 +326,7 @@ export function loadRoot(repoRoot: string): Root {
       const out: Ref[] = [];
       const seen = new Set<string>();
       for (const { href } of links) {
-        const r = resolveLink(i, href, byFile, byName);
+        const r = resolveLink(i.file, href, byFile, byName);
         if (!r) continue;
         const key = r.kind === "initiative" ? refKey(r.collection, r.number) : r.raw;
         if (seen.has(key) || (r.kind === "initiative" && r.collection === i.collection && r.number === i.number)) continue;
@@ -340,6 +343,7 @@ export function loadRoot(repoRoot: string): Root {
       if (target) i.supersededBy = { ...i.supersededBy, collection: target.name };
     }
   }
+  root.milestones = findMilestones(root, byFile, byName);
   return root;
 }
 
@@ -348,7 +352,7 @@ export function loadRoot(repoRoot: string): Root {
  * since moved, matched by filename), an external ticket (http/https), or nothing Brindley tracks.
  */
 function resolveLink(
-  from: Initiative,
+  fromFile: string,
   href: string,
   byFile: Map<string, Initiative>,
   byName: Map<string, Initiative[]>,
@@ -361,7 +365,7 @@ function resolveLink(
   } catch {
     /* keep as written */
   }
-  const abs = resolve(dirname(from.file), path);
+  const abs = resolve(dirname(fromFile), path);
   const hit = byFile.get(abs);
   if (hit) return { kind: "initiative", raw: href, collection: hit.collection, number: hit.number };
   if (existsSync(abs)) return undefined; // a real file, but not an initiative (e.g. a design doc)
@@ -401,6 +405,87 @@ export function findThemes(repoRoot: string, c: Collection): Theme[] {
     }
   }
   return out;
+}
+
+/**
+ * Milestone docs in every collection folder: non-numbered .md files (other than README.md) whose
+ * front-matter has `milestone: <slug>`, with the links under `## Delivered by` resolved to members.
+ */
+function findMilestones(root: Root, byFile: Map<string, Initiative>, byName: Map<string, Initiative[]>): Milestone[] {
+  const found: { m: Milestone; links: { href: string; line: number }[] }[] = [];
+  for (const c of root.collections) {
+    const ignored = ignoreMatcher(c.meta.ignore);
+    for (const e of readdirSync(c.dir).sort()) {
+      if (!e.endsWith(".md") || e === "README.md" || INITIATIVE_FILE.test(e) || ignored(e)) continue;
+      const file = join(c.dir, e);
+      if (!statSync(file).isFile()) continue;
+      const { fmText, body } = splitFrontMatter(readFileSync(file, "utf8"));
+      if (fmText === null) continue;
+      const data = parseFrontMatter(fmText).data;
+      const slug = str(data["milestone"]);
+      if (!slug) continue;
+      found.push({
+        m: {
+          slug,
+          title: h1(body) ?? e.replace(/\.md$/, ""),
+          summary: str(data["summary"]),
+          ...(str(data["icon"]) ? { icon: str(data["icon"]) } : {}),
+          file,
+          rel: toPosix(relative(root.repoRoot, file)),
+          collection: c.name,
+          members: [],
+          alsoTheme: data["theme"] !== undefined,
+        },
+        links: sectionLinks(withoutGeneratedBlock(body), DELIVERED_BY),
+      });
+    }
+  }
+  const pathOf = new Map(root.collections.map((c) => [c.name, c.path]));
+  const themeFiles = new Map<string, string[]>();
+  for (const t of root.themes) themeFiles.set(t.file, [...(themeFiles.get(t.file) ?? []), t.tag]);
+  const milestoneFiles = new Map(found.map(({ m }) => [m.file, m.slug]));
+  for (const { m, links } of found) {
+    for (const { href, line } of links) {
+      const member = ((): MilestoneMember | MilestoneMember[] => {
+        const r = resolveLink(m.file, href, byFile, byName);
+        if (r?.kind === "external") return { kind: "external", raw: href, line };
+        if (r?.kind === "initiative")
+          return { kind: "initiative", raw: href, key: `${pathOf.get(r.collection) ?? r.collection}#${r.number}`, line, ...(r.movedTo ? { movedTo: r.movedTo } : {}) };
+        let path = href.split("#")[0]!;
+        try {
+          path = decodeURIComponent(path);
+        } catch {
+          /* keep as written */
+        }
+        const abs = resolve(dirname(m.file), path);
+        const tags = themeFiles.get(abs);
+        if (tags) return tags.map((tag) => ({ kind: "theme" as const, raw: href, tag, line }));
+        const slug = milestoneFiles.get(abs);
+        if (slug) return { kind: "milestone", raw: href, slug, line };
+        return { kind: "unknown", raw: href, line };
+      })();
+      m.members.push(...(Array.isArray(member) ? member : [member]));
+    }
+  }
+  return found.map(({ m }) => m);
+}
+
+/** The body with Brindley's generated block blanked out (line for line), so its links aren't read as the doc's own. */
+function withoutGeneratedBlock(body: string): string {
+  let inside = false;
+  return body
+    .split("\n")
+    .map((l) => {
+      if (/^<!-- brindley:generated:begin\b/.test(l)) inside = true;
+      const blank = inside;
+      if (/^<!-- brindley:generated:end\b/.test(l)) inside = false;
+      return blank ? "" : l;
+    })
+    .join("\n");
+}
+
+export function milestoneFor(root: Root, slug: string): Milestone | undefined {
+  return root.milestones.find((m) => m.slug === slug);
 }
 
 export function themeFor(root: Root, tag: string): Theme | undefined {

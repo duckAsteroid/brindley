@@ -51,6 +51,7 @@ import { capacity, collectionWidth, nearFull, padNumber } from "./numbering.js";
 import { applyRelink, planRefs, planRelink, type Move, type Rewrite } from "./relink.js";
 import { movesFor, parseFolders } from "./folders.js";
 import { parseGraph } from "./graph.js";
+import { milestoneFlips, type MilestoneFlip } from "./milestones.js";
 
 export function today(): string {
   return process.env["BRINDLEY_TODAY"] ?? new Date().toISOString().slice(0, 10);
@@ -61,6 +62,8 @@ export interface OpResult<T = unknown> {
   /** Repo-relative paths written. */
   touched: string[];
   warnings: string[];
+  /** Milestones whose reached state this write flipped, either way. */
+  milestones?: MilestoneFlip[];
 }
 
 function rel(root: Root, abs: string): string {
@@ -71,12 +74,15 @@ function rel(root: Root, abs: string): string {
  * Reload, regenerate collection READMEs, and collect touched files. Every
  * collection is regenerated because cross-collection dependencies change other
  * collections' readiness; output is deterministic, so unaffected READMEs aren't rewritten.
+ * Milestones whose reached state the write flipped are reported; `cause` words the news
+ * ("By completing initiatives#15 you have reached …").
  */
-function finish<T>(root: Root, _collections: string[], written: string[], result: T, warnings: string[] = []): OpResult<T> {
+function finish<T>(root: Root, _collections: string[], written: string[], result: T, warnings: string[] = [], cause?: string): OpResult<T> {
   const fresh = loadRoot(root.repoRoot);
   const changes = regenerate(fresh);
   const touched = [...new Set([...written.map((w) => rel(root, w)), ...changes.map((c) => rel(root, c.path))])];
-  return { result, touched, warnings };
+  const flips = milestoneFlips(root, fresh, cause);
+  return { result, touched, warnings, ...(flips.length ? { milestones: flips } : {}) };
 }
 
 /**
@@ -495,7 +501,8 @@ export function update(root: Root, i: Initiative, input: UpdateInput): OpResult<
   const moves = changes["status"] !== undefined ? plannedMoves(root, i, changes["status"] as string) : [];
   writeInitiative(i, changes, body);
   const { written, moved } = relocate(root, i, moves);
-  return finish(root, [i.collection], written, { ref: initiativeKey(i), ...(moved ? { moved } : {}) }, warnings);
+  const cause = changes["status"] !== undefined ? `marking ${initiativeKey(i)} ${String(changes["status"])}` : undefined;
+  return finish(root, [i.collection], written, { ref: initiativeKey(i), ...(moved ? { moved } : {}) }, warnings, cause);
 }
 
 /** One entry of a batch_update: an initiative and the `update` fields for it; `status: "from-text"` reads it from the text. */
@@ -636,7 +643,7 @@ export function setStatus(
   const moves = plannedMoves(root, i, status);
   writeInitiative(i, changes, body);
   const { written, moved } = relocate(root, i, moves);
-  return finish(root, [i.collection], written, { ref: initiativeKey(i), status, ...(branch ? { branch } : {}), ...(moved ? { moved } : {}) }, warnings);
+  return finish(root, [i.collection], written, { ref: initiativeKey(i), status, ...(branch ? { branch } : {}), ...(moved ? { moved } : {}) }, warnings, `marking ${initiativeKey(i)} ${status}`);
 }
 
 /**
@@ -1001,6 +1008,7 @@ export function complete(
       questionsToRevisit?: { ref: string; title: string | null; questions: { index: number; text: string }[] }[];
     },
     warnings,
+    `completing ${initiativeKey(i)}`,
   );
   const fresh = loadRoot(root.repoRoot);
   const self = lookup(fresh, i.collection, i.number)!;

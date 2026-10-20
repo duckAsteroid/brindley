@@ -88,8 +88,15 @@ filter and order by them. Every collection has `priority`, `impact` and `complex
 declare its own, make one required, or give it a default. See
 [Scoring dimensions](/reference/front-matter#scoring-dimensions).
 
+## Milestones
+
+A milestone names a significant delivery — *the lock reopens to boats* — and lists what delivers
+it: initiatives and whole themes, from any collection, and other milestones. It is never worked
+on; it is reached when what delivers it is done, and Brindley says so when a change reaches it.
+See [Milestones](/guide/milestones).
+
 ## Generated READMEs
 
 Each collection's README keeps its own introduction, plus a block Brindley regenerates on every
-change: a table of active work, a Mermaid dependency graph, the themes in use, and completed work. You never edit
+change: a table of active work, a Mermaid dependency graph, the themes in use, the milestones its work counts towards, and completed work. You never edit
 that block by hand; on a merge conflict it is simply regenerated.

@@ -90,12 +90,13 @@ graph:
   show: [done]               # also include initiatives in these statuses (default: none)
   external: false            # leave out external dependencies and other collections' work (default: true)
   themes: [box, icon]        # box: group by first theme; icon or label: mark each node's themes (default: off)
+  milestones: icon           # mark each node with the icons of the milestones it counts towards (default: off)
   links: false               # don't make nodes links to their initiatives (default: true)
   enabled: true              # false: no graph in this README (default: true)
 ```
 
 A theme's icon comes from `icon:` in its [theme doc](#theme-doc); a theme without one shows as
-`[name]`. The settings also apply to the `graph` tool for this collection, which can override each
+`[name]`. A milestone's icon comes from its [milestone doc](#milestone-doc), else `[slug]`. The settings also apply to the `graph` tool for this collection, which can override each
 one. Unknown settings and unusable values are `graph-setting` warnings.
 
 ## Report settings
@@ -187,3 +188,25 @@ icon: 🔔
 
 Any non-numbered `.md` in a collection folder with `theme:` is that theme's overview. Its optional
 `icon` marks the theme's initiatives in graphs that set `themes: icon`.
+
+## Milestone doc
+
+```markdown
+---
+milestone: reopening
+summary: Boats can use the lock again after the winter stoppage
+icon: 🚤
+---
+# Lock reopens to boats
+
+## Delivered by
+
+- [Gates](gates.md)
+- [Resurface towpath](../towpath/01-resurface-towpath.md)
+```
+
+Any non-numbered `.md` in a collection folder with `milestone:` is a [milestone](/guide/milestones).
+`milestone` is its slug (kebab-case, unique), `summary` describes it, and the optional `icon` marks
+its members in graphs that set `milestones: icon`. Its members are the links under
+`## Delivered by`: initiatives, theme docs, other milestone docs and http links. A doc can't be
+both a theme doc and a milestone doc.

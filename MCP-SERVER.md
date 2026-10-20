@@ -98,11 +98,12 @@ All tools return structured JSON plus a short text rendering.
 | `version` | — | The server's version (from git tags + Conventional Commits) and build commit. |
 | `fields` | `collection?`, `ref?` | Every front-matter field an initiative can have in a collection (or a ref's collection; all collections with neither), and what each accepts: `status` (core statuses, built-in aliases and the collection's own words), `type` (declared, else suggested, with aliases), `tags` (declared), each scoring dimension (values in ranking order, `required`, `default`, built in or declared), and the free-text fields — each with the tool that sets it. |
 | `list` | `collection?`, `type?`, `status?`, `tag?`, `owner?`, `ready?`, `where?`, `order_by?` | Across the whole repo unless `collection` is given. Summaries: number, title, type, status, owner, scoring dimensions that have a value (each value and whether it was `set` or taken from the `default`; unset ones are left out), `ready`, blocking deps, open question counts. `where` keeps initiatives whose value for each named dimension is one of the listed values (`{ priority: [critical, high] }`); `order_by` sorts by dimensions in their declared order, later ones breaking ties, then by number (FORMAT §4.3). An unset value counts as the dimension's default, else matches nothing and sorts last. Unknown dimension names are refused. |
-| `get` | `ref` | Front-matter, title, body, parsed open questions and acceptance criteria, plus a **dependency report**: each dependency link classified `satisfied` / `blocking` / `external` (FORMAT §5), with the dependency's title and path; related links; dependants. This is the implementing agent's "select and validate" step in one call. Also every scoring dimension of its collection, with its value (and whether set or defaulted) and its allowed values, so what could be set is visible. |
+| `get` | `ref` | Front-matter, title, body, parsed open questions and acceptance criteria, plus a **dependency report**: each dependency link classified `satisfied` / `blocking` / `external` (FORMAT §5), with the dependency's title and path; related links; dependants. This is the implementing agent's "select and validate" step in one call. Also every scoring dimension of its collection, with its value (and whether set or defaulted) and its allowed values, so what could be set is visible; the theme docs for its tags; and the milestones it counts towards, each with how it belongs (listed, through a theme, or through an included milestone) and where it stands. |
 | `ready` | `collection?`, `type?` | Across the repo unless `collection` is given. Initiatives that are `designed` with nothing blocking (including cross-collection deps), in suggested order (topological, then number), each with its external deps listed. Leaves out initiatives already in progress elsewhere. |
 | `report` | `since?`, `until?`, `collection?`, `out?`, `palette?`, `mode?`, `branches?`, `worktrees?` | Writes the one-page progress report (FORMAT §8.4) — a self-contained HTML file, default `build/brindley-report.html` — and returns its path with the figures per collection and combined. See §6.2. Writes no initiative. |
-| `graph` | `collection?`, `ref?`, `tag?`, `include_done = false`, and overrides for the collection's graph settings (FORMAT §8.3): `related?`, `themes?`, `show?`, `external?`, `direction?`, `arrows?` — a collection or `ref` graph uses that collection's `graph:` settings, a `tag` graph the defaults | Dependency graph as adjacency list + Mermaid. With `tag`, the graph of that theme across all collections. |
+| `graph` | `collection?`, `ref?`, `tag?`, `include_done = false`, and overrides for the collection's graph settings (FORMAT §8.3): `related?`, `themes?`, `show?`, `external?`, `direction?`, `arrows?`, `milestones?` — a collection or `ref` graph uses that collection's `graph:` settings, a `tag` graph the defaults | Dependency graph as adjacency list + Mermaid. With `tag`, the graph of that theme across all collections. |
 | `tags` | — | Every tag in use (plus declared-but-unused ones), with description, initiative counts by status, and the theme overview doc if there is one (FORMAT §4.2). `get` also lists the theme docs for an initiative's tags, and the `design-review` / `implement` prompts tell the agent to read them. |
+| `milestones` | `milestone?` | Every milestone (FORMAT §4.4) and where it stands: `reached`, `unreached` or `unspecified`; done against counted members and how many are left out; what is still to do — initiatives (missing ones included) and included milestones not reached; unconfirmed external members; and `reachedAt`, when it last became reached on the checked-out branch's first-parent history (from the same history the report reads, §6.2). Reached only in the working tree says so in `reachedNote`. With `milestone` (a slug), just that one, with every member: its ref, status, whether it counts (`done`, `to do`, `left out`) and how it belongs (`listed`, `theme <tag>`, `milestone <slug>`). |
 | `questions` | `collection?`, `ref?`, `include_implementation = true` | Unresolved open questions, grouped by initiative. Abandoned and superseded initiatives are left out (dropping the work settles them) unless asked for by `ref`; deferred and done ones are included. |
 | `check_docs` | `paths?` | Lints project docs (default: those changed vs `HEAD`, else all matching `docs:`) against FORMAT §7.2: history phrasing, rejected-alternative/debate wording, links into collection folders. Returns findings with file/line and the offending phrase. Heuristic; warnings only. |
 | `next_question` | `ref`, `after?` | The next unresolved question in one initiative, with its index, related body sections and count remaining. Drives `design-review` (§5.1). |
@@ -113,6 +114,13 @@ All tools return structured JSON plus a short text rendering.
 
 Every write preserves unknown front-matter fields and the author's Markdown formatting, sets
 `updated`, and touches only the target file plus the generated README blocks (§6.1).
+
+Every write also compares each milestone (FORMAT §4.4) before and after it, and when one's reached
+state flips, the result lists it under `milestones` — slug, title, doc, `reached`, and a message for
+the user: "By completing lgm#22 you have reached milestone "Lock reopens to boats" (…)." or "This
+change means milestone … is no longer reached (lgm#31 is open)." Nothing is listed when no
+milestone flips. A status change (`complete`, `set_status`, `update`, `batch_update`) can reach or
+un-reach one; `create`, or a tag change, can un-reach one by adding open work to an included theme.
 
 | Tool | Params | Behaviour |
 |------|--------|-----------|
@@ -231,7 +239,8 @@ flags it in its list. These are hints, never refusals or `validate` findings.
 
 ### 6.1 Keeping READMEs current
 
-The server owns the generated block in every collection README (FORMAT §8).
+The server owns the generated block in every collection README, theme doc and milestone doc
+(FORMAT §8).
 
 **After every write.** Any tool that changes an initiative or collection regenerates, in the same
 call, every collection README's generated block. Usually only the edited collection's changes,
@@ -286,6 +295,11 @@ history the report shows the current files only, and says so.
   figures show in a box on `:hover`, and long lists fold behind `<details>`; the palette's and a
   palette file's `prefers-color-scheme: dark` blocks are rewritten to follow the switch.
   Links go to the files on the repository host when `origin` is GitHub, GitLab or Bitbucket.
+- **Milestones** (FORMAT §4.4) are judged across every collection as of `until`, by today's
+  milestone docs replayed over the history: a milestone's reached date is the commit after which
+  it has stayed reached. The page lists every milestone above the charts — reached and when, done
+  against counted, or unspecified — and marks each reached one on the full charts' timeline with a
+  dotted line and its icon and title.
 
 ## 7. Testing
 

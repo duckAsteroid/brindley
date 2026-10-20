@@ -1,7 +1,9 @@
-import { existsSync, readdirSync, statSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { dirname, join, relative, resolve } from "node:path";
 import { ASSET_DIR, COLLECTION_STATUSES, STATUSES, normaliseStatus, type Initiative, type Root } from "./model.js";
 import { cycles, target } from "./deps.js";
+import { milestoneCycles } from "./milestones.js";
+import { DELIVERED_BY, splitFrontMatter } from "./markdown.js";
 import { allInitiatives, declaredTags, elsewhereHint, findCollection, ignoreMatcher, initiativeKey, statusFromText, toPosix } from "./repo.js";
 import { stripCodeFences, withoutInlineCode } from "./markdown.js";
 import { FINDINGS, MEASURES, sectionIsBlank } from "./ops.js";
@@ -91,6 +93,28 @@ export function validate(root: Root, opts: { collection?: string; docs?: boolean
     else themeOwners.set(t.tag, t.rel);
     if (!KEBAB.test(t.tag)) warn("tag-format", t.rel, `Theme "${t.tag}" should be lowercase kebab-case (it is used as a tag).`);
   }
+
+  const milestoneOwners = new Map<string, string>();
+  for (const m of root.milestones) {
+    const prev = milestoneOwners.get(m.slug);
+    if (prev) err("duplicate-milestone", m.rel, `Milestone "${m.slug}" already has a doc: ${prev}.`);
+    else milestoneOwners.set(m.slug, m.rel);
+    if (!KEBAB.test(m.slug)) warn("milestone-format", m.rel, `Milestone "${m.slug}" should be lowercase kebab-case.`);
+    if (m.alsoTheme)
+      err("milestone-theme", m.rel, "A doc can be a theme doc or a milestone doc, not both: each gets its own generated block. Make the milestone a separate doc that links to this theme doc.");
+    if (!m.members.length)
+      warn("milestone-empty", m.rel, `No members: list the initiatives, theme docs or milestones that deliver it as links under "## ${DELIVERED_BY}". Until one counts, it is unspecified.`);
+    const { fmText } = splitFrontMatter(readFileSync(m.file, "utf8"));
+    const fmLines = fmText === null ? 0 : fmText.split("\n").length + 1;
+    for (const x of m.members) {
+      if (x.kind === "unknown")
+        err("milestone-member", m.rel, `"${x.raw}" under ## ${DELIVERED_BY} is not an initiative, a theme doc, a milestone doc or an http link.`, x.line + 1 + fmLines);
+      else if (x.kind === "initiative" && x.movedTo)
+        warn("broken-link", m.rel, `Link target does not exist: ${x.raw} — it is now at ${x.movedTo}`, x.line + 1 + fmLines);
+    }
+  }
+  for (const cycle of milestoneCycles(root))
+    err("milestone-cycle", milestoneOwners.get(cycle[0]!) ?? cycle[0]!, `Milestones include each other: ${cycle.join(" → ")}. A milestone can't be reached only when it is reached; remove one of these links.`);
 
   const collections = root.collections.filter((c) => !opts.collection || c.name === opts.collection || c.path === opts.collection);
   for (const c of collections) {

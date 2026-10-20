@@ -23,6 +23,8 @@ export interface GraphSettings {
   mark: "icon" | "label" | null;
   /** Make each node a link to its initiative (and external dependencies to their URL). */
   links: boolean;
+  /** Mark each node with the icons of the milestones it counts towards. */
+  milestones: boolean;
 }
 
 export const DEFAULT_GRAPH: Readonly<GraphSettings> = {
@@ -35,6 +37,7 @@ export const DEFAULT_GRAPH: Readonly<GraphSettings> = {
   box: false,
   mark: null,
   links: true,
+  milestones: false,
 };
 
 const DIRECTIONS: Record<string, Direction> = {
@@ -49,7 +52,7 @@ const DIRECTIONS: Record<string, Direction> = {
   bt: "bottom-to-top",
 };
 
-const KEYS = ["enabled", "direction", "arrows", "related", "show", "external", "themes", "links"];
+const KEYS = ["enabled", "direction", "arrows", "related", "show", "external", "themes", "links", "milestones"];
 
 /**
  * Read a `graph:` object leniently: anything unusable falls back to the default and is reported as a
@@ -102,6 +105,12 @@ export function parseGraph(raw: unknown, statuses?: Record<string, string>): { s
       problems.push("`graph.themes` has both icon and label, which say the same thing; label is used.");
       settings.mark = "label";
     } else settings.mark = marks[0] ?? null;
+  }
+  if (g["milestones"] !== undefined) {
+    const v = g["milestones"];
+    if (v === "icon" || v === true) settings.milestones = true;
+    else if (v === false) settings.milestones = false;
+    else problems.push(`\`graph.milestones\` value "${String(v)}" is not icon (or true / false).`);
   }
   return { settings, problems };
 }

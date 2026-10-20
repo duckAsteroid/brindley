@@ -28,6 +28,9 @@ rebuilt every time this site is.
 
 ## What's on the page
 
+- **Milestones** — every [milestone](/guide/milestones): reached and when, how far along, or
+  unspecified. Each reached milestone is also marked on the burn-ups' timeline, with its icon and
+  title.
 - **Headline** — percent complete, what was delivered this period, how scope changed, and what's in
   progress.
 - **Work complete against scope** — a burn-up over the whole history: Complete, In progress and Not

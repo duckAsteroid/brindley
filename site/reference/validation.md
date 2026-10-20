@@ -22,6 +22,10 @@
 | `dimension-value` | A scoring dimension value that isn't one of its declared values. |
 | `dimension-declaration` | A `dimensions:` entry with no values, a repeated value, a `default` that isn't one of them, or a reserved name like `status`. |
 | `duplicate-theme` | Two overview docs claim the same theme. |
+| `duplicate-milestone` | Two milestone docs have the same slug. |
+| `milestone-member` | A link under a milestone's `## Delivered by` isn't an initiative, a theme doc, a milestone doc or an http link. |
+| `milestone-cycle` | Milestones include each other in a loop. |
+| `milestone-theme` | One doc has both `theme:` and `milestone:`; make the milestone its own doc. |
 
 ## Warnings
 
@@ -34,6 +38,8 @@
 | `branch-missing` | In progress on a `branch` that doesn't exist, locally or as a remote-tracking branch. |
 | `readme-columns` | A collection README's `columns:` names an unknown table or column, or isn't a list; unknown columns are left out. |
 | `graph-setting` | A collection README's `graph:` has an unknown setting or a value it can't use. |
+| `milestone-empty` | A milestone doc lists no members under `## Delivered by`, so it is unspecified. |
+| `milestone-format` | A milestone slug that isn't lowercase kebab-case. |
 | `open-questions` | In progress or done, with questions still open. |
 | `docs-impact` | Done, with no `docs_impact` recorded. |
 | `status-folder-mismatch` | Front-matter says one status, the folder another. |

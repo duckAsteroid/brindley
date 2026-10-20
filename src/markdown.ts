@@ -357,6 +357,8 @@ export interface SectionLink {
 
 export const DEPENDENCIES = "Dependencies";
 export const RELATED = "Related";
+/** A milestone doc's member list. */
+export const DELIVERED_BY = "Delivered by";
 
 /** Markdown links (`[text](href)`) in a named section, outside code. */
 export function sectionLinks(body: string, name: string): SectionLink[] {

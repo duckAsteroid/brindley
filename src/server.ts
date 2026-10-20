@@ -11,6 +11,7 @@ import {
   canonicalCollection,
   declaredTags,
   themeFor,
+  milestoneFor,
   loadRoot,
   lookup,
   findRepoRoot,
@@ -27,6 +28,9 @@ import { graphSettings } from "./graph.js";
 import { elsewhereFor, type Elsewhere } from "./elsewhere.js";
 import { dimensionInfo, fieldsFor } from "./fields.js";
 import { figures, writeReport } from "./report.js";
+import { currentStates, displayKey, milestonesOf, progress, reachedDates, type Via } from "./milestones.js";
+import { defaultCacheFile, readHistory } from "./history.js";
+import { git } from "./git.js";
 import * as ops from "./ops.js";
 import { MEASURES, sectionIsBlank } from "./ops.js";
 import { COMMIT, VERSION } from "./version.js";
@@ -43,6 +47,7 @@ export const INSTRUCTIONS = `Brindley manages planned work as Markdown files in 
 - Status comes from front-matter \`status:\`, else the sub-folder name (completed/ → done, deferred/ → deferred, superseded/ → superseded). Core statuses: draft, designed (design complete, ready to implement), in-progress, deferred, done, abandoned, superseded. Common words are aliases (proposed → draft, completed → done, future → deferred, …); a collection can map its own with \`statuses:\`.
 - A spike (\`type: spike\`) builds just enough to measure what its \`## Measures\` section asks, then records \`## Findings\`. Its code stays on its own branch and may become the basis of the real implementation. Use the \`spike\` prompt to run one.
 - A theme overview doc is a non-numbered .md in a collection folder with \`theme: <tag>\` in its front-matter; initiatives join the theme with \`tags: [<tag>]\`. Brindley keeps a generated list of the theme's initiatives in the doc, and points to it from \`get\`, \`tags\` and the prompts.
+- A milestone doc is a non-numbered .md in a collection folder with \`milestone: <slug>\` in its front-matter. It names a significant delivery and lists what delivers it as links under \`## Delivered by\`: initiatives in any collection, theme docs (every initiative in the theme), other milestone docs (nested), and http links (not counted; confirm by hand). It is never worked on: it is reached when at least one member is done and every other member is done, deferred, abandoned or superseded; with no member counting it is unspecified. \`milestones\` shows where each stands and when it was reached, \`get\` names an initiative's milestones, and any write that reaches or un-reaches one says so in its result (\`milestones\`) — tell the user.
 - \`ignore:\` in the collection README holds .gitignore-style patterns (relative to the collection folder) for numbered files that are not initiatives, e.g. companion rationale notes. Use the \`ignore\` tool to add/remove/preview patterns; \`collections\` lists what is ignored.
 - Dependencies are the links under an initiative's \`## Dependencies\` heading (links to initiative files, in any collection, block it; http links are external prerequisites). Links under \`## Related\` are non-blocking. Use set_dependencies to add or remove them.
 - Initiatives can carry scoring dimensions — \`priority\`, \`impact\`, \`complexity\` by default, plus any a collection declares — each a front-matter field whose value comes from an ordered set. Set them with \`update\` (\`dimensions\`), filter and order with \`list\` (\`where\`, \`order_by\`). A ticket with none set simply hasn't been scored yet.
@@ -102,6 +107,20 @@ function themesOf(root: Root, i: Initiative) {
     .map((t) => ({ tag: t.tag, title: t.title, summary: t.summary ?? null, doc: t.rel }));
 }
 
+const viaText = (v: Via) => (v.kind === "listed" ? "listed" : v.kind === "theme" ? `theme ${v.tag}` : `milestone ${v.slug}`);
+
+/** The milestones an initiative counts towards, how, and where each stands. */
+function milestonesOfDetail(root: Root, i: Initiative) {
+  const states = currentStates(root);
+  return milestonesOf(root, i, states).map(({ milestone: m, via }) => ({
+    milestone: m.slug,
+    title: m.title,
+    doc: m.rel,
+    via: via.map(viaText),
+    state: progress(root, m, states).state,
+  }));
+}
+
 function detail(root: Root, i: Initiative) {
   return {
     ...summary(root, i),
@@ -110,6 +129,7 @@ function detail(root: Root, i: Initiative) {
       dimensionInfo(findCollection(root, i.collection)).map(({ name, ...d }) => [name, { ...dimensionReport(root, i)[name], ...d }]),
     ),
     themes: themesOf(root, i),
+    milestones: milestonesOfDetail(root, i),
     frontMatter: i.fm,
     dependencies: dependencyReport(root, i),
     related: i.related.map((r) => {
@@ -270,7 +290,7 @@ export function createServer(opts: ServerOptions): McpServer {
               ...r.warnings,
               `Written to ${checkout}, where this server started, but other worktrees exist (${others.map(describe).join("; ")}). If you are implementing in one, call use_worktree with its path first — these edits are here, not there.`,
             ];
-          return reply({ ...(r.result as object), touched: r.touched, warnings: r.warnings, ...(notes.length ? { notes } : {}) });
+          return reply({ ...(r.result as object), ...(r.milestones ? { milestones: r.milestones } : {}), touched: r.touched, warnings: r.warnings, ...(notes.length ? { notes } : {}) });
         }
         return reply(notes.length ? { result: out, notes } : out);
       } catch (e) {
@@ -514,6 +534,7 @@ export function createServer(opts: ServerOptions): McpServer {
       external: z.boolean().optional().describe("false leaves out external dependencies and other collections' initiatives."),
       direction: z.string().optional().describe("Where the do-first work goes: left-to-right, right-to-left, top-to-bottom, bottom-to-top."),
       arrows: z.enum(["from", "to"]).optional().describe("from: edges point at what an initiative needs (X depends on Y → X --> Y); to: the reverse."),
+      milestones: z.boolean().optional().describe("Mark each node with the icons of the milestones it counts towards."),
     },
     (root, a) => {
       let items: Initiative[];
@@ -532,7 +553,7 @@ export function createServer(opts: ServerOptions): McpServer {
       const own = a.tag && a.ref === undefined ? undefined : findCollection(root, from);
       const settings = graphSettings(
         own?.meta.graph,
-        { related: a.related, themes: a.themes, show: a.show, external: a.external, direction: a.direction, arrows: a.arrows },
+        { related: a.related, themes: a.themes, show: a.show, external: a.external, direction: a.direction, arrows: a.arrows, milestones: a.milestones },
         own?.meta.statuses,
       );
       if (!a.include_done && a.ref === undefined) items = items.filter((i) => isActive(i) || settings.show.includes(i.status ?? ""));
@@ -605,6 +626,51 @@ export function createServer(opts: ServerOptions): McpServer {
   );
 
   tool(
+    "milestones",
+    "Every milestone (a doc with `milestone: <slug>` front-matter) and where it stands: reached, not reached or unspecified; done against counted members; what is still to do (initiatives and included milestones); unconfirmed external members; and when it was reached, from git history. Give `milestone` (a slug) for just one, with its members.",
+    { milestone: z.string().optional() },
+    (root, a) => {
+      if (a.milestone !== undefined && !milestoneFor(root, a.milestone))
+        throw new BrindleyError(`No milestone "${a.milestone}". Known: ${root.milestones.map((m) => m.slug).join(", ") || "none — add a doc with \`milestone: <slug>\` front-matter to a collection folder"}.`);
+      const chosen = root.milestones.filter((m) => a.milestone === undefined || m.slug === a.milestone);
+      const head = git(root.repoRoot, ["rev-parse", "HEAD"]);
+      const dates = head ? reachedDates(root, readHistory(root, defaultCacheFile(root.repoRoot))) : new Map<string, string | undefined>();
+      const states = currentStates(root);
+      const describeKey = (key: string) => {
+        const at = key.lastIndexOf("#");
+        const i = findCollection(root, key.slice(0, at))?.initiatives.find((o) => o.number === Number(key.slice(at + 1)));
+        return { ref: displayKey(root, key), title: i?.title ?? null, status: i?.status ?? null };
+      };
+      return chosen.map((m) => {
+        const p = progress(root, m, states);
+        const reachedAt = p.state === "reached" ? (dates.get(m.slug) ?? null) : null;
+        return {
+          milestone: m.slug,
+          title: m.title,
+          summary: m.summary ?? null,
+          icon: m.icon ?? null,
+          doc: m.rel,
+          collection: m.collection,
+          state: p.state,
+          done: p.done,
+          counted: p.counted,
+          leftOut: p.ignored,
+          reachedAt,
+          ...(p.state === "reached" && reachedAt === null ? { reachedNote: "Reached in the working tree; not yet in a commit on this branch." } : {}),
+          outstanding: p.outstanding.map(describeKey),
+          missing: p.missing.map((k) => displayKey(root, k)),
+          milestonesOutstanding: p.milestonesOutstanding,
+          unconfirmedExternal: p.external,
+          ...(a.milestone !== undefined
+            ? { members: p.members.map((x) => ({ ...describeKey(x.key), counts: x.count === "open" ? "to do" : x.count === "ignored" ? "left out" : "done", via: x.via.map(viaText) })) }
+            : {}),
+        };
+      });
+    },
+    { readOnlyHint: true },
+  );
+
+  tool(
     "check_ready",
     "Is this initiative (ticket/issue) complete and ready to work on? Runs the preflight the implement and spike briefs start with: status, dependencies, blocking open questions, acceptance criteria (or ## Measures for a spike), validation errors. `ready: false` means stop and report, don't start.",
     { ref: refArg, collection: z.string().optional() },
@@ -636,7 +702,7 @@ export function createServer(opts: ServerOptions): McpServer {
 
   tool(
     "create",
-    "Create a new initiative (ticket/issue). The number is coined automatically by scanning the working tree, other worktrees, branches and history. A folder path that isn't a collection yet is marked as one.",
+    "Create a new initiative (ticket/issue). The number is coined automatically by scanning the working tree, other worktrees, branches and history. A folder path that isn't a collection yet is marked as one. A milestone this reaches, or stops being reached, is reported under `milestones`.",
     {
       collection: z.string().describe("Collection name, or a folder path"),
       title: z.string(),
@@ -653,7 +719,7 @@ export function createServer(opts: ServerOptions): McpServer {
 
   tool(
     "update",
-    "Edit an initiative's (ticket's/issue's) front-matter fields or H1, or replace a named body section — including on a done initiative, which is how settled work is refined (no status change needed). `status` records the status an initiative already has when its front-matter has none (no lifecycle checks); to change a recorded status, use set_status. Cannot change its number or filename.",
+    "Edit an initiative's (ticket's/issue's) front-matter fields or H1, or replace a named body section — including on a done initiative, which is how settled work is refined (no status change needed). `status` records the status an initiative already has when its front-matter has none (no lifecycle checks); to change a recorded status, use set_status. Cannot change its number or filename. A milestone this reaches, or stops being reached, is reported under `milestones`.",
     {
       ref: refArg,
       collection: z.string().optional(),
@@ -724,7 +790,7 @@ export function createServer(opts: ServerOptions): McpServer {
 
   tool(
     "batch_update",
-    "Apply update-style changes to many initiatives (tickets/issues) in one call — e.g. recording statuses across an adopted folder. Each entry is a ref plus any of status, reason, type, owner, tags, status_note, docs, dimensions; `status: \"from-text\"` takes the status from the initiative's **Status:** line or ## Status section. Every entry is checked first: if any fails, nothing is written and every failure is returned. `dry_run: true` shows what each file would get.",
+    "Apply update-style changes to many initiatives (tickets/issues) in one call — e.g. recording statuses across an adopted folder. Each entry is a ref plus any of status, reason, type, owner, tags, status_note, docs, dimensions; `status: \"from-text\"` takes the status from the initiative's **Status:** line or ## Status section. Every entry is checked first: if any fails, nothing is written and every failure is returned. `dry_run: true` shows what each file would get. A milestone this reaches, or stops being reached, is reported under `milestones`.",
     {
       entries: z
         .array(
@@ -749,7 +815,7 @@ export function createServer(opts: ServerOptions): McpServer {
 
   tool(
     "set_status",
-    "Change an initiative's (ticket's/issue's) status, enforcing the lifecycle: designed needs no blocking open questions; in-progress needs ready; done goes through `complete`. Abandoning needs a `reason`; abandoned, superseded and deferred work gets a callout under its title saying so, which is removed when it is reopened.",
+    "Change an initiative's (ticket's/issue's) status, enforcing the lifecycle: designed needs no blocking open questions; in-progress needs ready; done goes through `complete`. Abandoning needs a `reason`; abandoned, superseded and deferred work gets a callout under its title saying so, which is removed when it is reopened. A milestone this reaches, or stops being reached, is reported under `milestones`.",
     {
       ref: refArg,
       collection: z.string().optional(),
@@ -822,7 +888,7 @@ export function createServer(opts: ServerOptions): McpServer {
 
   tool(
     "complete",
-    'Mark an initiative (ticket/issue) done — "close" it. `docs_impact` is required: the project doc paths updated in this change, or "none: <reason>". Reports which initiatives became ready.',
+    'Mark an initiative (ticket/issue) done — "close" it. `docs_impact` is required: the project doc paths updated in this change, or "none: <reason>". Reports which initiatives became ready, and any milestone it reaches (`milestones`).',
     {
       ref: refArg,
       collection: z.string().optional(),
