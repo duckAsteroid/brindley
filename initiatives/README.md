@@ -29,6 +29,7 @@ Planned work on Brindley itself: tools specified in MCP-SERVER.md but not yet bu
 | 27 | [Inline the collection's agent file in the implement brief](27-inline-the-collection-s-agent-file-in-the-implement-brief.md) | feature | draft | — | 1 | — |
 | 28 | [Write and keep the agent rules in AGENTS.md / CLAUDE.md](28-write-and-keep-the-agent-rules-in-agents-md-claude-md.md) | feature | draft | — | 1 | — |
 | 29 | [Tag cloud in the collection README](29-tag-cloud-in-the-collection-readme.md) | feature | draft | — | 3 | — |
+| 34 | [Serve the progress report live over local HTTP](34-serve-the-progress-report-live-over-local-http.md) | feature | draft | — | 7 (+1 impl.) | — |
 | 35 | [Stable question labels instead of positional indexes](35-stable-question-labels-instead-of-positional-indexes.md) | feature | draft | — | 5 | — |
 
 ### Dependencies
@@ -41,6 +42,7 @@ flowchart RL
   n27["✏️ 27 Inline the collection's agent file in the implement brief"]
   n28["✏️ 28 Write and keep the agent rules in AGENTS.md / CLAUDE.md"]
   n29["✏️ 29 Tag cloud in the collection README"]
+  n34["✏️ 34 Serve the progress report live over local HTTP"]
   n35["✏️ 35 Stable question labels instead of positional indexes"]
   n19["✅ <s>19 Scoring dimensions on initiatives</s>"]
   n21 --> n19
@@ -50,6 +52,7 @@ flowchart RL
   click n27 href "27-inline-the-collection-s-agent-file-in-the-implement-brief.md"
   click n28 href "28-write-and-keep-the-agent-rules-in-agents-md-claude-md.md"
   click n29 href "29-tag-cloud-in-the-collection-readme.md"
+  click n34 href "34-serve-the-progress-report-live-over-local-http.md"
   click n35 href "35-stable-question-labels-instead-of-positional-indexes.md"
   click n19 href "done/19-rank-initiatives-by-scoring-dimensions.md"
 ```
