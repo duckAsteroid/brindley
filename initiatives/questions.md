@@ -17,11 +17,12 @@ counted as open, with only one-at-a-time tools to tidy them.
 
 ### Initiatives in this theme
 
-Tagged `questions`: 1 open, 2 closed or deferred.
+Tagged `questions`: 2 open, 2 closed or deferred.
 
 | Ref | Initiative | Type | Status | Ready / blocked by |
 |-----|------------|------|--------|--------------------|
 | `initiatives#16` | [Resolve settled questions in bulk](16-resolve-settled-questions-in-bulk.md) | feature | draft | — |
+| `initiatives#35` | [Stable question labels instead of positional indexes](35-stable-question-labels-instead-of-positional-indexes.md) | feature | draft | — |
 | `initiatives#15` | [Show in-progress work blocked on an open question](15-show-in-progress-work-blocked-on-an-open-question.md) | feature | abandoned | — |
 | `initiatives#32` | [Split a compound open question into separate questions](done/32-split-a-compound-open-question-into-separate-questions.md) | feature | done | — |
 
