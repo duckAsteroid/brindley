@@ -12,6 +12,7 @@ tags:
   adoption: "Bringing an existing hand-written folder under Brindley with less hand-editing (GitHub #5)"
   questions: "Open questions during design and implementation, and tidying settled ones (GitHub #6, #7)"
   text: Changes only to what tools say — messages, findings and prompts — not to what they do
+  security: Keeping a hijacked account, token or dependency from releasing a compromised Brindley
 ---
 # Brindley roadmap
 
@@ -31,6 +32,13 @@ Planned work on Brindley itself: tools specified in MCP-SERVER.md but not yet bu
 | 29 | [Tag cloud in the collection README](29-tag-cloud-in-the-collection-readme.md) | feature | draft | — | 3 | — |
 | 34 | [Serve the progress report live over local HTTP](34-serve-the-progress-report-live-over-local-http.md) | feature | draft | — | 7 (+1 impl.) | — |
 | 35 | [Stable question labels instead of positional indexes](35-stable-question-labels-instead-of-positional-indexes.md) | feature | draft | — | 5 | — |
+| 36 | [Check initiatives against the project's design principles](36-check-initiatives-against-the-project-s-design-principles.md) | feature | draft | — | 4 (+1 impl.) | — |
+| 37 | [Publish to npm only through trusted publishing](37-publish-to-npm-only-through-trusted-publishing.md) | chore | draft | — | 0 | — |
+| 38 | [Protect release tags and main](38-protect-release-tags-and-main.md) | chore | draft | — | 1 | — |
+| 39 | [Restrict the npm deployment environment](39-restrict-the-npm-deployment-environment.md) | chore | draft | — | 0 | — |
+| 40 | [Release only commits on main](40-release-only-commits-on-main.md) | chore | draft | — | 0 | — |
+| 41 | [Pin the release toolchain and keep it updated](41-pin-the-release-toolchain-and-keep-it-updated.md) | chore | draft | — | 1 (+1 impl.) | — |
+| 42 | [Harden the maintainer's GitHub and npm accounts](42-harden-the-maintainer-s-github-and-npm-accounts.md) | chore | draft | — | 1 | — |
 
 ### Dependencies
 
@@ -44,6 +52,13 @@ flowchart RL
   n29["✏️ 29 Tag cloud in the collection README"]
   n34["✏️ 34 Serve the progress report live over local HTTP"]
   n35["✏️ 35 Stable question labels instead of positional indexes"]
+  n36["✏️ 36 Check initiatives against the project's design principles"]
+  n37["✏️ 37 Publish to npm only through trusted publishing"]
+  n38["✏️ 38 Protect release tags and main"]
+  n39["✏️ 39 Restrict the npm deployment environment"]
+  n40["✏️ 40 Release only commits on main"]
+  n41["✏️ 41 Pin the release toolchain and keep it updated"]
+  n42["✏️ 42 Harden the maintainer's GitHub and npm accounts"]
   n19["✅ <s>19 Scoring dimensions on initiatives</s>"]
   n21 --> n19
   click n16 href "16-resolve-settled-questions-in-bulk.md"
@@ -54,6 +69,13 @@ flowchart RL
   click n29 href "29-tag-cloud-in-the-collection-readme.md"
   click n34 href "34-serve-the-progress-report-live-over-local-http.md"
   click n35 href "35-stable-question-labels-instead-of-positional-indexes.md"
+  click n36 href "36-check-initiatives-against-the-project-s-design-principles.md"
+  click n37 href "37-publish-to-npm-only-through-trusted-publishing.md"
+  click n38 href "38-protect-release-tags-and-main.md"
+  click n39 href "39-restrict-the-npm-deployment-environment.md"
+  click n40 href "40-release-only-commits-on-main.md"
+  click n41 href "41-pin-the-release-toolchain-and-keep-it-updated.md"
+  click n42 href "42-harden-the-maintainer-s-github-and-npm-accounts.md"
   click n19 href "done/19-rank-initiatives-by-scoring-dimensions.md"
 ```
 
@@ -62,6 +84,7 @@ flowchart RL
 - [**adoption**](adoption.md) — Bringing an existing hand-written folder under Brindley with less hand-editing (GitHub #5) · 1 open, 8 closed or deferred
 - [**dependency-links**](dependency-links.md) — Telling blocking dependencies from other cross-references, and editing them (GitHub #3) · 0 open, 2 closed or deferred
 - [**questions**](questions.md) — Open questions during design and implementation, and tidying settled ones (GitHub #6, #7) · 2 open, 2 closed or deferred
+- [**security**](security.md) — Keeping a hijacked account, token or dependency from releasing a compromised Brindley · 6 open, 0 closed or deferred
 - [**status-recording**](status-recording.md) — Recording an initiative's status outside a lifecycle transition (GitHub #4) · 0 open, 3 closed or deferred
 - **text** — Changes only to what tools say — messages, findings and prompts — not to what they do · 0 open, 5 closed or deferred
 
