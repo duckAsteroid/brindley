@@ -1,0 +1,30 @@
+name: Plugin
+
+# Validates the Claude Code plugin and its marketplace whenever either changes.
+on:
+  push:
+    paths: ["plugin/**", ".claude-plugin/**", ".github/workflows/plugin.yml"]
+  pull_request:
+    paths: ["plugin/**", ".claude-plugin/**", ".github/workflows/plugin.yml"]
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Validate the marketplace
+        run: npx -y @anthropic-ai/claude-code@2.1.308 plugin validate --strict .
+
+      - name: Validate the plugin
+        run: npx -y @anthropic-ai/claude-code@2.1.308 plugin validate --strict plugin
+
+      - name: Check both plugin files pin the same server version
+        run: node scripts/plugin-version.mjs --check "$(node -p 'require("./plugin/.claude-plugin/plugin.json").version')"

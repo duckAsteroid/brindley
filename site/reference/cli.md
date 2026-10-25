@@ -1,7 +1,9 @@
 # CLI
 
 ```
-brindley [serve] [--no-auto-readme]     Run the MCP server on stdio (default)
+brindley [serve] [--no-auto-readme] [--cwd <dir>]
+                                        Run the MCP server on stdio (default), on the git repository
+                                        at <dir> (default: the current directory)
 brindley init [<folder>] [--name <n>]   Mark a folder (default: the current one) as a collection
 brindley validate [--docs]              Check every collection; exits 1 on errors
 brindley validate --fix [--write]       Plan (or with --write, make) the repairs with one obvious fix:

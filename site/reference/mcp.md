@@ -36,6 +36,7 @@ accepts a name, an alias or a folder path.
 | `milestones` | `milestone?` | Every [milestone](/guide/milestones): reached, not reached or unspecified, done against counted, what's still to do, unconfirmed external members, and when it was reached. With `milestone`, one, with all its members. |
 | `validate` | `collection?`, `rules?`, `docs?` | Problems with initiatives and collection structure. See [Validation rules](/reference/validation). |
 | `check_docs` | `paths?` | History phrasing, design debate and initiative links in project docs. |
+| `brief` | `workflow`, `ref?`, `collection?` | The text of a [prompt](#prompts) — `design-review`, `implement`, `spike` or `triage` — for agents and skills that cannot fetch prompts. `ref` is required except for `triage`. |
 | `version` | — | The server's version. |
 
 ## Writing
@@ -66,7 +67,7 @@ README blocks — and reports every file it touched, ready to commit. When a wri
 | `spike` | `ref` | Running a spike: measure, record findings, keep the code on its own branch. |
 | `triage` | `collection?` | Reviewing what's stale, blocked, undecided and next. |
 
-Whether prompts appear as slash commands depends on your MCP client.
+Whether prompts appear as slash commands depends on your MCP client. The `brief` tool returns the same text, and the Claude Code plugin's skills (`/brindley:design-review` and so on) are built on it.
 
 ## Resources
 

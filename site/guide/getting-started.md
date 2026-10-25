@@ -6,15 +6,47 @@ git.
 
 ## 1. Connect your agent
 
-Brindley is published to [npm](https://www.npmjs.com/package/brindley), so there is nothing to
-install: your MCP client runs it with `npx`, which fetches the latest release on first use. The
-server talks MCP over stdio and works on the git repository it is started in.
+### Claude Code: the plugin
+
+```sh
+claude plugin install brindley --marketplace duckAsteroid/brindley
+```
+
+or, inside a session, `/plugin marketplace add duckAsteroid/brindley` then
+`/plugin install brindley@brindley`. Installed once, the plugin works in every repo and brings:
+
+- the Brindley MCP server, working on the repository the session is started in;
+- the workflows as skills: `/brindley:design-review <ref>`, `/brindley:implement <ref>`,
+  `/brindley:spike <ref>` and `/brindley:triage [collection]`;
+- an implementer agent, `brindley:implementer`, that builds one initiative from its brief through
+  to `complete`.
+
+The plugin runs an exact server version, not the latest one on npm; `claude plugin update
+brindley@brindley` moves you to the newest release.
+
+A plugin cannot grant itself permissions, so Claude Code asks before each Brindley tool call. To
+allow them all, add the rule to `.claude/settings.json` (for everyone in the repo) or
+`~/.claude/settings.json` (for you):
+
+```json
+{
+  "permissions": {
+    "allow": ["mcp__plugin_brindley_brindley"]
+  }
+}
+```
+
+### Any MCP client
+
+Brindley is published to [npm](https://www.npmjs.com/package/brindley), so your MCP client runs it
+with `npx`; `brindley@latest` fetches the newest release on first use. The server talks MCP over
+stdio and works on the git repository it is started in.
 
 ::: code-group
 
 ```sh [Claude Code]
-# run inside the repo you want to plan in
-claude mcp add brindley -- npx -y brindley@latest
+# without the plugin; -s user applies it to every repo
+claude mcp add -s user brindley -- npx -y brindley@latest
 ```
 
 ```jsonc [opencode]
@@ -42,10 +74,14 @@ claude mcp add brindley -- npx -y brindley@latest
 
 :::
 
-To share the setup with everyone who clones the repo, commit the "Other MCP clients" snippet as
+Added with `claude mcp add`, the tools are named `mcp__brindley__<tool>`; allow them with the rule
+`mcp__brindley`, and run the workflows as the prompts `/mcp__brindley__design-review` and so on. To
+share the setup with everyone who clones the repo, commit the "Other MCP clients" snippet as
 `.mcp.json` at the repo root — Claude Code picks it up from there. Check it with
-`opencode mcp list` (or your client's equivalent). On connect, the server sends
-your agent a short explanation of how Brindley works, so it can use the tools straight away.
+`opencode mcp list` (or your client's equivalent).
+
+On connect, the server sends your agent a short explanation of how Brindley works, so it can use
+the tools straight away.
 
 ## 2. Mark a collection
 

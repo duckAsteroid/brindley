@@ -1,0 +1,14 @@
+{
+  "name": "brindley",
+  "displayName": "Brindley",
+  "version": "2.8.0",
+  "description": "Design fully before anyone digs: plan work as Markdown initiatives in git, with the Brindley MCP server, its design-review, implement, spike and triage workflows as skills, and an implementer agent",
+  "author": {
+    "name": "Chris Senior",
+    "url": "https://github.com/duckAsteroid"
+  },
+  "homepage": "https://duckasteroid.github.io/brindley/",
+  "repository": "https://github.com/duckAsteroid/brindley",
+  "license": "MIT",
+  "keywords": ["planning", "initiatives", "tickets", "markdown", "mcp"]
+}

@@ -10,7 +10,9 @@ import { writeReport } from "./report.js";
 const USAGE = `brindley ${VERSION} — Design fully before anyone digs.
 
 Usage:
-  brindley [serve] [--no-auto-readme]     Run the MCP server on stdio (default)
+  brindley [serve] [--no-auto-readme] [--cwd <dir>]
+                                          Run the MCP server on stdio (default), on the git
+                                          repository at <dir> (default: the current directory)
   brindley init [<folder>] [--name <n>]   Mark a folder (default: the current one) as a collection
   brindley validate [--docs]              Check every collection; exits 1 on errors
   brindley validate --fix [--write]       Plan (or with --write, make) the repairs with one obvious fix:
@@ -73,7 +75,8 @@ async function main() {
   const cmd = args.shift() ?? "serve";
   switch (cmd) {
     case "serve": {
-      const server = createServer({ cwd: process.cwd(), autoReadme: !flag(args, "--no-auto-readme") });
+      const cwd = resolve(option(args, "--cwd") ?? ".");
+      const server = createServer({ cwd, autoReadme: !flag(args, "--no-auto-readme") });
       await server.connect(new StdioServerTransport());
       return;
     }

@@ -45,7 +45,7 @@ export const INSTRUCTIONS = `Brindley manages planned work as Markdown files in 
 - A collection is any folder whose README.md front-matter has \`brindley: 1\`. Mark one with create_collection (existing files are adopted; nothing moves). There is no repo-level file.
 - Initiatives are \`<number>-<slug>.md\` files in the collection folder or its immediate sub-folders. Refer to them as \`<collection>#<number>\`, where the collection is its name (front-matter \`name:\`, else the folder name), an alias (\`aliases:\` in front-matter, or the automatic initials of the folder name, e.g. lock-gate-maintenance → lgm), or its path; or a bare number when unambiguous.
 - Status comes from front-matter \`status:\`, else the sub-folder name (completed/ → done, deferred/ → deferred, superseded/ → superseded). Core statuses: draft, designed (design complete, ready to implement), in-progress, deferred, done, abandoned, superseded. Common words are aliases (proposed → draft, completed → done, future → deferred, …); a collection can map its own with \`statuses:\`.
-- A spike (\`type: spike\`) builds just enough to measure what its \`## Measures\` section asks, then records \`## Findings\`. Its code stays on its own branch and may become the basis of the real implementation. Use the \`spike\` prompt to run one.
+- A spike (\`type: spike\`) builds just enough to measure what its \`## Measures\` section asks, then records \`## Findings\`. Its code stays on its own branch and may become the basis of the real implementation. Use the \`spike\` prompt (or \`brief\` with \`workflow: spike\`) to run one.
 - A theme overview doc is a non-numbered .md in a collection folder with \`theme: <tag>\` in its front-matter; initiatives join the theme with \`tags: [<tag>]\`. Brindley keeps a generated list of the theme's initiatives in the doc, and points to it from \`get\`, \`tags\` and the prompts.
 - A milestone doc is a non-numbered .md in a collection folder with \`milestone: <slug>\` in its front-matter. It names a significant delivery and lists what delivers it as links under \`## Delivered by\`: initiatives in any collection, theme docs (every initiative in the theme), other milestone docs (nested), and http links (not counted; confirm by hand). It is never worked on: it is reached when at least one member is done and every other member is done, deferred, abandoned or superseded; with no member counting it is unspecified. \`milestones\` shows where each stands and when it was reached, \`get\` names an initiative's milestones, and any write that reaches or un-reaches one says so in its result (\`milestones\`) — tell the user.
 - \`ignore:\` in the collection README holds .gitignore-style patterns (relative to the collection folder) for numbered files that are not initiatives, e.g. companion rationale notes. Use the \`ignore\` tool to add/remove/preview patterns; \`collections\` lists what is ignored.
@@ -56,6 +56,7 @@ export const INSTRUCTIONS = `Brindley manages planned work as Markdown files in 
 - If you implement in a git worktree, call \`use_worktree\` with its path first, so your edits land there; every result ends with the checkout it worked on.
 - Brindley moves files only for a collection that declares \`folders:\` (status → folder); then status changes move them and rewrite links. Every write regenerates the collection README's generated block. \`validate\` reports structural problems (missing or conflicting statuses, files outside their status folder, duplicate numbers, broken links, …).
 - One decision per open question. If a question poses several (several "?", or a list of sub-questions), split it with \`split_question\` before discussing it — answering any part already settled in the same call.
+- The workflow prompts (\`design-review\`, \`implement\`, \`spike\`, \`triage\`) are also available as text from the \`brief\` tool, for agents that cannot fetch prompts.
 - When discussing open questions with the user: one at a time, in open chat (no form or multiple-choice prompts), grounded in the actual code, with concrete examples.`;
 
 export interface ServerOptions {
@@ -213,6 +214,114 @@ ${p.ready
 
 function agentFile(root: Root, i: Initiative): string | undefined {
   return findCollection(root, i.collection)?.meta.agent;
+}
+
+function designReviewBrief(root: Root, i: Initiative): string {
+  const d = detail(root, i);
+  const blocking = i.questions.filter((q) => !q.resolved && !q.implementation);
+  const impl = i.questions.filter((q) => !q.resolved && q.implementation);
+  return `We are going to work through the open questions of initiative ${initiativeKey(i)} "${i.title}" together, until it is design-complete.
+
+## How to run this conversation
+
+1. **Open chat, not forms.** Ask in the normal conversation, in prose. Never use a structured question, multiple-choice or form tool, even if one is available — I want to reply freely, push back and redirect.
+2. **One question at a time**, in order unless I pick another. Say which question we are on and how many remain. **One decision per question:** if a question poses several (\`next_question\` marks it \`compound\`), split it with \`split_question\` first — settling any part I've already decided in the same call — then take the parts one at a time.
+3. **Grounded in the code, not theory.** Before discussing a question, read the code that owns the behaviour: classes, queries, tests and docs. Cite every claim about how the system works (\`path:line\`, test name, doc section). If the code doesn't establish something, say *unclear from code* and what you checked — never fill the gap with how such systems usually work.
+4. **Clear, concrete examples** drawn from the real domain and code: actual types, fields and data, and what a caller sees before and after. No \`Foo\`/\`x\` placeholders.
+5. **Recommend, then let me decide.** Lay out the realistic options (usually 2–3) with their consequences in this codebase, recommend one and say why, then ask. Don't move on until I have decided, deferred it, or marked it \`(implementation)\`.
+6. **Record as you go** with the Brindley tools: \`resolve_question\` (removes the question and records the decision — pass \`record_in\` to choose the section, e.g. "Agreed direction"), \`add_question\` for new questions, \`update\` for acceptance criteria. Show me the edited text. If a decision changes documented behaviour, add the doc to the initiative's \`docs\` list. Rationale and rejected options stay in the initiative, never in project docs.
+7. **Finish cleanly.** When no blocking questions remain, offer to \`set_status\` to designed; don't do it unprompted.
+
+Use \`next_question\` to step through.
+
+## The initiative
+
+Status: ${i.status}${i.type ? ` · type: ${i.type}` : ""}${i.tags.length ? ` · tags: ${i.tags.join(", ")}` : ""}
+${themesOf(root, i).map((t) => `Theme "${t.tag}": read the overview \`${t.doc}\` first — it explains how this initiative fits the wider theme.`).join("\n")}
+
+Dependencies:
+${d.dependencies.length ? d.dependencies.map((x) => `- ${x.ref} — ${x.classification}${x.title ? ` (${x.title}, ${x.status})` : ""}`).join("\n") : "- none"}
+
+Related:
+${d.related.length ? d.related.map((x) => `- ${x.ref}${x.title ? ` — ${x.title} (${x.status})` : ""}`).join("\n") : "- none"}
+
+Blocking open questions (${blocking.length}):
+${blocking.map((q) => `${q.index}. ${q.text}${ops.compoundQuestion(i, q) ? " _(looks like more than one decision: split it first)_" : ""}`).join("\n") || "- none"}
+
+Delegated to implementation (${impl.length}, not discussed unless I ask):
+${impl.map((q) => `${q.index}. ${q.text}`).join("\n") || "- none"}
+
+<initiative path="${i.rel}">
+${readFileSync(i.file, "utf8")}
+</initiative>`;
+}
+
+function implementBrief(root: Root, i: Initiative): string {
+  if (i.type === "spike") return spikeBrief(root, i);
+  const report = dependencyReport(root, i);
+  const done = report.filter((x) => x.classification === "satisfied");
+  const agent = agentFile(root, i);
+  const docs = i.docs.length ? i.docs : (findCollection(root, i.collection)?.meta.docs ?? []);
+  return `Implement initiative ${initiativeKey(i)} "${i.title}" — this one only; do not pick up other initiatives.
+
+${themesOf(root, i).map((t) => `**Theme "${t.tag}":** read the overview \`${t.doc}\` for how this fits the wider theme; if your change alters the theme's model, update that doc too.\n`).join("")}${agent ? `**Repo workflow:** read and follow \`${agent}\` (worktrees, verification, commits). Where it conflicts with the generic rules below on repo specifics, it wins.\n` : ""}
+${verifyStep(root, i)}
+## Step 2 — before writing code
+
+- Ask about any product, data or API choice the initiative doesn't settle before writing code. \`(implementation)\` questions are yours to settle — record each decision in the initiative (\`resolve_question\`).
+- Set \`status\` to in-progress (\`set_status\`) when you begin.
+- If you work in a git worktree: once it exists, call \`use_worktree\` with its path, so every Brindley edit (status, questions, \`complete\`) lands in that worktree and its commit. After merging, call \`use_worktree()\` with no path before removing the worktree.
+
+## While building
+
+- If you reach a decision the initiative doesn't settle and that matters to what you build — a placement, a contract detail, an ordering — don't guess and build on the guess. Record it with \`add_question\` as an ordinary question (not \`implementation\`) and stop to ask. The initiative stays in-progress; \`check_ready\` fails until you settle it with \`resolve_question\`, then carry on.
+- \`(implementation)\` questions are only for choices that are genuinely yours, such as naming or internal structure.
+
+## Finishing (same commit as the code)
+
+1. Update the project docs so they describe the code **as it now is**: present tense, what exists, how callers use it, constraints and failure modes. No history ("previously", "now", "we added"), no rejected alternatives, no links to initiatives. Say *unclear from code* rather than guess.
+   Docs this initiative is expected to touch: ${docs.length ? docs.map((x) => `\`${x}\``).join(", ") : "none listed — decide and state."}
+2. Settle the initiative's wording into a concise account of what was decided and built; move rejected alternatives and design debate into \`## Appendix: Rejected alternatives\`.
+3. Call \`complete\` with \`docs_impact\`: the doc paths you updated, or \`"none: <reason>"\`. Run \`check_docs\` on what you wrote.
+4. Commit the code, docs, initiative and regenerated READMEs together.
+
+${done.length ? `## Done dependencies (for context)\n\n${done.map((x) => `- ${x.ref} ${x.title} — ${x.path}`).join("\n")}\n\n` : ""}<initiative path="${i.rel}">
+${readFileSync(i.file, "utf8")}
+</initiative>`;
+}
+
+function triageBrief(root: Root, collection?: string): string {
+  const items = allInitiatives(root).filter((i) => !collection || i.collection === canonicalCollection(root, collection));
+  const lines = items.filter(isActive).map((i) => {
+    const s = summary(root, i);
+    return `- ${s.ref} "${s.title}" — ${s.type ?? "untyped"}, ${s.status}${s.ready ? ", READY" : ""}${s.blockedBy.length ? `, blocked by ${s.blockedBy.join(", ")}` : ""}, ${s.openQuestions} open question(s), updated ${i.updated ?? "unknown"}`;
+  });
+  return `Triage ${collection ? `collection ${collection}` : "all initiatives"}. Using the Brindley tools (\`get\`, \`questions\`, \`graph\`, \`validate\`), report:
+
+1. Drafts that look stale (old \`updated\`, no progress on questions).
+2. Unresolved blocking questions, grouped by initiative — which would unblock the most work if settled?
+3. Blocked chains: what is waiting on what, and the shortest path to unblocking them.
+4. External dependencies nobody has confirmed.
+5. Your suggested next pick from what is ready, and why.
+
+Talk it through with me in open chat; don't change anything without asking.
+
+Active initiatives:
+${lines.join("\n") || "- none"}`;
+}
+
+/** The workflows a prompt (and the `brief` tool) hands to an agent. */
+export const WORKFLOWS = ["design-review", "implement", "spike", "triage"] as const;
+export type Workflow = (typeof WORKFLOWS)[number];
+
+/** The text of a workflow's prompt: what the MCP prompt returns, and what `brief` returns. */
+export function briefText(root: Root, workflow: Workflow, args: { ref?: string | number; collection?: string }): string {
+  if (workflow === "triage") return triageBrief(root, args.collection);
+  if (args.ref === undefined) throw new BrindleyError(`The ${workflow} brief needs a ref.`);
+  const i = resolveRef(root, String(args.ref));
+  if (workflow === "design-review") return designReviewBrief(root, i);
+  if (workflow === "spike") return spikeBrief(root, i);
+  return implementBrief(root, i);
 }
 
 export function createServer(opts: ServerOptions): McpServer {
@@ -996,6 +1105,36 @@ export function createServer(opts: ServerOptions): McpServer {
     },
   );
 
+  // Not a `tool`: the brief is Markdown for the agent to follow, so it is returned as text, not JSON.
+  server.registerTool(
+    "brief",
+    {
+      description:
+        "The brief for one of Brindley's workflows — the text of the prompt of the same name, for agents and skills that cannot fetch MCP prompts: `design-review` (work through an initiative's open questions with the user), `implement` (hand-off brief for implementing one initiative), `spike` (build and measure a spike) or `triage` (review the initiatives). `ref` is required except for `triage`, which takes an optional `collection`. Follow the brief it returns.",
+      inputSchema: {
+        workflow: z.enum(WORKFLOWS),
+        ref: refArg.optional(),
+        collection: z.string().optional().describe("triage: just this collection"),
+      },
+      annotations: { readOnlyHint: true },
+    },
+    (async (a: { workflow: Workflow; ref?: string | number; collection?: string }) => {
+      try {
+        const { root, notes } = open();
+        const text = briefText(root, a.workflow, a);
+        return {
+          content: [
+            { type: "text" as const, text },
+            ...(notes.length ? [{ type: "text" as const, text: notes.join("\n") }] : []),
+            { type: "text" as const, text: checkoutLine() },
+          ],
+        };
+      } catch (e) {
+        return fail(e);
+      }
+    }) as never,
+  );
+
   // --- Prompts ----------------------------------------------------------------
 
   const prompt = (text: string) => ({ messages: [{ role: "user" as const, content: { type: "text" as const, text } }] });
@@ -1006,47 +1145,7 @@ export function createServer(opts: ServerOptions): McpServer {
       description: "Work through an initiative's (ticket's/issue's) open questions with the user, one at a time, grounded in the code.",
       argsSchema: { ref: z.string().describe('Initiative: "collection#n" or a number') },
     },
-    ({ ref }) => {
-      const root = open().root;
-      const i = resolveRef(root, ref);
-      const d = detail(root, i);
-      const blocking = i.questions.filter((q) => !q.resolved && !q.implementation);
-      const impl = i.questions.filter((q) => !q.resolved && q.implementation);
-      return prompt(`We are going to work through the open questions of initiative ${initiativeKey(i)} "${i.title}" together, until it is design-complete.
-
-## How to run this conversation
-
-1. **Open chat, not forms.** Ask in the normal conversation, in prose. Never use a structured question, multiple-choice or form tool, even if one is available — I want to reply freely, push back and redirect.
-2. **One question at a time**, in order unless I pick another. Say which question we are on and how many remain. **One decision per question:** if a question poses several (\`next_question\` marks it \`compound\`), split it with \`split_question\` first — settling any part I've already decided in the same call — then take the parts one at a time.
-3. **Grounded in the code, not theory.** Before discussing a question, read the code that owns the behaviour: classes, queries, tests and docs. Cite every claim about how the system works (\`path:line\`, test name, doc section). If the code doesn't establish something, say *unclear from code* and what you checked — never fill the gap with how such systems usually work.
-4. **Clear, concrete examples** drawn from the real domain and code: actual types, fields and data, and what a caller sees before and after. No \`Foo\`/\`x\` placeholders.
-5. **Recommend, then let me decide.** Lay out the realistic options (usually 2–3) with their consequences in this codebase, recommend one and say why, then ask. Don't move on until I have decided, deferred it, or marked it \`(implementation)\`.
-6. **Record as you go** with the Brindley tools: \`resolve_question\` (removes the question and records the decision — pass \`record_in\` to choose the section, e.g. "Agreed direction"), \`add_question\` for new questions, \`update\` for acceptance criteria. Show me the edited text. If a decision changes documented behaviour, add the doc to the initiative's \`docs\` list. Rationale and rejected options stay in the initiative, never in project docs.
-7. **Finish cleanly.** When no blocking questions remain, offer to \`set_status\` to designed; don't do it unprompted.
-
-Use \`next_question\` to step through.
-
-## The initiative
-
-Status: ${i.status}${i.type ? ` · type: ${i.type}` : ""}${i.tags.length ? ` · tags: ${i.tags.join(", ")}` : ""}
-${themesOf(root, i).map((t) => `Theme "${t.tag}": read the overview \`${t.doc}\` first — it explains how this initiative fits the wider theme.`).join("\n")}
-
-Dependencies:
-${d.dependencies.length ? d.dependencies.map((x) => `- ${x.ref} — ${x.classification}${x.title ? ` (${x.title}, ${x.status})` : ""}`).join("\n") : "- none"}
-
-Related:
-${d.related.length ? d.related.map((x) => `- ${x.ref}${x.title ? ` — ${x.title} (${x.status})` : ""}`).join("\n") : "- none"}
-
-Blocking open questions (${blocking.length}):
-${blocking.map((q) => `${q.index}. ${q.text}${ops.compoundQuestion(i, q) ? " _(looks like more than one decision: split it first)_" : ""}`).join("\n") || "- none"}
-
-Delegated to implementation (${impl.length}, not discussed unless I ask):
-${impl.map((q) => `${q.index}. ${q.text}`).join("\n") || "- none"}
-
-<initiative path="${i.rel}">
-${readFileSync(i.file, "utf8")}
-</initiative>`);
-    },
+    ({ ref }) => prompt(briefText(open().root, "design-review", { ref })),
   );
 
   server.registerPrompt(
@@ -1055,41 +1154,7 @@ ${readFileSync(i.file, "utf8")}
       description: "Hand-off brief for an agent implementing one initiative (ticket/issue).",
       argsSchema: { ref: z.string().describe('Initiative: "collection#n" or a number') },
     },
-    ({ ref }) => {
-      const root = open().root;
-      const i = resolveRef(root, ref);
-      if (i.type === "spike") return prompt(spikeBrief(root, i));
-      const report = dependencyReport(root, i);
-      const done = report.filter((x) => x.classification === "satisfied");
-      const agent = agentFile(root, i);
-      const docs = i.docs.length ? i.docs : (findCollection(root, i.collection)?.meta.docs ?? []);
-      return prompt(`Implement initiative ${initiativeKey(i)} "${i.title}" — this one only; do not pick up other initiatives.
-
-${themesOf(root, i).map((t) => `**Theme "${t.tag}":** read the overview \`${t.doc}\` for how this fits the wider theme; if your change alters the theme's model, update that doc too.\n`).join("")}${agent ? `**Repo workflow:** read and follow \`${agent}\` (worktrees, verification, commits). Where it conflicts with the generic rules below on repo specifics, it wins.\n` : ""}
-${verifyStep(root, i)}
-## Step 2 — before writing code
-
-- Ask about any product, data or API choice the initiative doesn't settle before writing code. \`(implementation)\` questions are yours to settle — record each decision in the initiative (\`resolve_question\`).
-- Set \`status\` to in-progress (\`set_status\`) when you begin.
-- If you work in a git worktree: once it exists, call \`use_worktree\` with its path, so every Brindley edit (status, questions, \`complete\`) lands in that worktree and its commit. After merging, call \`use_worktree()\` with no path before removing the worktree.
-
-## While building
-
-- If you reach a decision the initiative doesn't settle and that matters to what you build — a placement, a contract detail, an ordering — don't guess and build on the guess. Record it with \`add_question\` as an ordinary question (not \`implementation\`) and stop to ask. The initiative stays in-progress; \`check_ready\` fails until you settle it with \`resolve_question\`, then carry on.
-- \`(implementation)\` questions are only for choices that are genuinely yours, such as naming or internal structure.
-
-## Finishing (same commit as the code)
-
-1. Update the project docs so they describe the code **as it now is**: present tense, what exists, how callers use it, constraints and failure modes. No history ("previously", "now", "we added"), no rejected alternatives, no links to initiatives. Say *unclear from code* rather than guess.
-   Docs this initiative is expected to touch: ${docs.length ? docs.map((x) => `\`${x}\``).join(", ") : "none listed — decide and state."}
-2. Settle the initiative's wording into a concise account of what was decided and built; move rejected alternatives and design debate into \`## Appendix: Rejected alternatives\`.
-3. Call \`complete\` with \`docs_impact\`: the doc paths you updated, or \`"none: <reason>"\`. Run \`check_docs\` on what you wrote.
-4. Commit the code, docs, initiative and regenerated READMEs together.
-
-${done.length ? `## Done dependencies (for context)\n\n${done.map((x) => `- ${x.ref} ${x.title} — ${x.path}`).join("\n")}\n\n` : ""}<initiative path="${i.rel}">
-${readFileSync(i.file, "utf8")}
-</initiative>`);
-    },
+    ({ ref }) => prompt(briefText(open().root, "implement", { ref })),
   );
 
   server.registerPrompt(
@@ -1099,10 +1164,7 @@ ${readFileSync(i.file, "utf8")}
         "Hand-off brief for a spike (type: spike): build enough to measure what the initiative's ## Measures asks, record ## Findings, and keep the code on its own branch — it may become the basis of the real implementation.",
       argsSchema: { ref: z.string().describe('Spike initiative: "collection#n" or a number') },
     },
-    ({ ref }) => {
-      const root = open().root;
-      return prompt(spikeBrief(root, resolveRef(root, ref)));
-    },
+    ({ ref }) => prompt(briefText(open().root, "spike", { ref })),
   );
 
   server.registerPrompt(
@@ -1111,26 +1173,7 @@ ${readFileSync(i.file, "utf8")}
       description: "Review the initiatives (tickets/issues): stale drafts, unresolved questions, blocked chains, unconfirmed external dependencies, and what to pick next.",
       argsSchema: { collection: z.string().optional() },
     },
-    ({ collection }) => {
-      const root = open().root;
-      const items = allInitiatives(root).filter((i) => !collection || i.collection === canonicalCollection(root, collection));
-      const lines = items.filter(isActive).map((i) => {
-        const s = summary(root, i);
-        return `- ${s.ref} "${s.title}" — ${s.type ?? "untyped"}, ${s.status}${s.ready ? ", READY" : ""}${s.blockedBy.length ? `, blocked by ${s.blockedBy.join(", ")}` : ""}, ${s.openQuestions} open question(s), updated ${i.updated ?? "unknown"}`;
-      });
-      return prompt(`Triage ${collection ? `collection ${collection}` : "all initiatives"}. Using the Brindley tools (\`get\`, \`questions\`, \`graph\`, \`validate\`), report:
-
-1. Drafts that look stale (old \`updated\`, no progress on questions).
-2. Unresolved blocking questions, grouped by initiative — which would unblock the most work if settled?
-3. Blocked chains: what is waiting on what, and the shortest path to unblocking them.
-4. External dependencies nobody has confirmed.
-5. Your suggested next pick from what is ready, and why.
-
-Talk it through with me in open chat; don't change anything without asking.
-
-Active initiatives:
-${lines.join("\n") || "- none"}`);
-    },
+    ({ collection }) => prompt(briefText(open().root, "triage", { collection })),
   );
 
   return server;

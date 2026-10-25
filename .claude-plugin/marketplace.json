@@ -1,0 +1,15 @@
+{
+  "name": "brindley",
+  "description": "Brindley: in-repo Markdown initiatives for AI-agent workflows",
+  "owner": {
+    "name": "Chris Senior",
+    "url": "https://github.com/duckAsteroid"
+  },
+  "plugins": [
+    {
+      "name": "brindley",
+      "source": "./plugin",
+      "description": "Plan work as Markdown initiatives in git: the Brindley MCP server, its workflows as skills, and an implementer agent"
+    }
+  ]
+}

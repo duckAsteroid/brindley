@@ -21,6 +21,7 @@
     "typecheck": "node scripts/version.mjs --write && tsc -p tsconfig.json --noEmit",
     "version:explain": "node scripts/version.mjs --explain",
     "version:sync": "node scripts/version.mjs --sync",
+    "release:prepare": "node scripts/plugin-version.mjs --prepare",
     "prepack": "npm run build",
     "prepare": "npm run build"
   },

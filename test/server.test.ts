@@ -128,6 +128,23 @@ describe("MCP server", () => {
     expect(spike).toContain("not `spike`");
   });
 
+  it("returns each workflow prompt's text from the brief tool", async () => {
+    fx = fixture({ files: lockExample });
+    const client = await connect(fx.repo);
+    const promptText = async (name: string, args: Record<string, string>) =>
+      ((await client.getPrompt({ name, arguments: args })).messages[0]!.content as { text: string }).text;
+    const briefText = async (args: Record<string, unknown>) => {
+      const r = (await client.callTool({ name: "brief", arguments: args })) as { content: { text: string }[]; isError?: boolean };
+      if (r.isError) throw new Error(r.content[0]!.text);
+      return r.content[0]!.text;
+    };
+    await briefText({ workflow: "triage" }); // the first call may self-heal READMEs, which a prompt doesn't report
+    for (const workflow of ["design-review", "implement", "spike"])
+      expect(await briefText({ workflow, ref: "sb#22" })).toBe(await promptText(workflow, { ref: "sb#22" }));
+    expect(await briefText({ workflow: "triage", collection: "sb" })).toBe(await promptText("triage", { collection: "sb" }));
+    await expect(briefText({ workflow: "implement" })).rejects.toThrow(/needs a ref/);
+  });
+
   it("reads an initiative resource", async () => {
     fx = fixture({ files: lockExample });
     const client = await connect(fx.repo);

@@ -33,8 +33,14 @@
 
 - **Language:** TypeScript on Node, using the official MCP TypeScript SDK.
 - **Transport:** stdio.
-- **Install:** `npx -y brindley` — no global install, nothing added to the repo's build.
-- **Repo:** the nearest git root above the server's working directory. A server started inside a
+- **Install:** `npx -y brindley` — no global install, nothing added to the repo's build. For Claude
+  Code, the plugin in `plugin/` (listed by this repo's marketplace, `.claude-plugin/marketplace.json`)
+  runs the server at the exact version its `.mcp.json` names, and wraps the §5 workflows as skills
+  (on the `brief` tool) and an implementer agent. `npm run release:prepare` commits the next
+  release's version into the plugin before it is tagged, and the release refuses a tag the plugin
+  doesn't name.
+- **Repo:** the nearest git root above the server's working directory, or above `--cwd <dir>` when
+  given (the plugin passes `${CLAUDE_PROJECT_DIR}`). A server started inside a
   worktree therefore operates on that worktree's files. An agent that creates a worktree mid-session
   calls `use_worktree` to switch the server to it; the switch lasts for the server process (one
   client session) and every result names the checkout it worked on, with its branch. While the
@@ -96,6 +102,7 @@ All tools return structured JSON plus a short text rendering.
 |------|--------|---------|
 | `collections` | — | Every collection: name, folder path, details, counts by initiative status, number ready, and the numbered files it ignores. |
 | `version` | — | The server's version (from git tags + Conventional Commits) and build commit. |
+| `brief` | `workflow`, `ref?`, `collection?` | The text of the §5 prompt named by `workflow` (`design-review`, `implement`, `spike`, `triage`), built by the same code as the prompt, as Markdown text rather than JSON — for agents and skills that cannot fetch MCP prompts. `ref` is required except for `triage`, which takes `collection?`. |
 | `fields` | `collection?`, `ref?` | Every front-matter field an initiative can have in a collection (or a ref's collection; all collections with neither), and what each accepts: `status` (core statuses, built-in aliases and the collection's own words), `type` (declared, else suggested, with aliases), `tags` (declared), each scoring dimension (values in ranking order, `required`, `default`, built in or declared), and the free-text fields — each with the tool that sets it. |
 | `list` | `collection?`, `type?`, `status?`, `tag?`, `owner?`, `ready?`, `where?`, `order_by?` | Across the whole repo unless `collection` is given. Summaries: number, title, type, status, owner, scoring dimensions that have a value (each value and whether it was `set` or taken from the `default`; unset ones are left out), `ready`, blocking deps, open question counts. `where` keeps initiatives whose value for each named dimension is one of the listed values (`{ priority: [critical, high] }`); `order_by` sorts by dimensions in their declared order, later ones breaking ties, then by number (FORMAT §4.3). An unset value counts as the dimension's default, else matches nothing and sorts last. Unknown dimension names are refused. |
 | `get` | `ref` | Front-matter, title, body, parsed open questions and acceptance criteria, plus a **dependency report**: each dependency link classified `satisfied` / `blocking` / `external` (FORMAT §5), with the dependency's title and path; related links; dependants. This is the implementing agent's "select and validate" step in one call. Also every scoring dimension of its collection, with its value (and whether set or defaulted) and its allowed values, so what could be set is visible; the theme docs for its tags; and the milestones it counts towards, each with how it belongs (listed, through a theme, or through an included milestone) and where it stands. |
@@ -153,7 +160,7 @@ un-reach one; `create`, or a tag change, can un-reach one by adding open work to
 
 ## 5. Prompts
 
-Reusable workflows, so hand-off instructions live in the tool rather than being retyped per repo:
+Reusable workflows, so hand-off instructions live in the tool rather than being retyped per repo. The `brief` tool (§3) returns the same text:
 
 | Prompt | Args | Content |
 |--------|------|---------|

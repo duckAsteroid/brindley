@@ -1,7 +1,8 @@
 name: Release
 
 # Publishes to npm when a release tag (vX.Y.Z) is pushed:
-#   git tag v1.2.3 && git push origin v1.2.3
+#   npm run release:prepare   (commits the plugin at the next version)
+#   git tag -a v1.2.3 -m "<highlights>" && git push origin main v1.2.3
 on:
   push:
     tags: ["v*.*.*"]
@@ -40,6 +41,15 @@ jobs:
             echo "::error::Computed version $computed does not match tag $GITHUB_REF_NAME"
             exit 1
           fi
+
+      # Claude Code reads the plugin from main, so the release commit must already pin this version.
+      - name: Check the plugin pins the tagged version
+        run: node scripts/plugin-version.mjs --check "${GITHUB_REF_NAME#v}"
+
+      - name: Validate the Claude Code plugin
+        run: |
+          npx -y @anthropic-ai/claude-code@2.1.308 plugin validate --strict .
+          npx -y @anthropic-ai/claude-code@2.1.308 plugin validate --strict plugin
 
       - run: npm test
 

@@ -39,6 +39,9 @@ Planned work on Brindley itself: tools specified in MCP-SERVER.md but not yet bu
 | 40 | [Release only commits on main](40-release-only-commits-on-main.md) | chore | draft | — | 0 | — |
 | 41 | [Pin the release toolchain and keep it updated](41-pin-the-release-toolchain-and-keep-it-updated.md) | chore | draft | — | 1 (+1 impl.) | — |
 | 42 | [Harden the maintainer's GitHub and npm accounts](42-harden-the-maintainer-s-github-and-npm-accounts.md) | chore | draft | — | 1 | — |
+| 43 | [Writes no longer regenerate READMEs](43-writes-no-longer-regenerate-readmes.md) | feature | draft | — | 3 | — |
+| 44 | [A JSON snapshot that every view renders from](44-a-json-snapshot-that-every-view-renders-from.md) | feature | draft | — | 3 (+1 impl.) | — |
+| 46 | [Submit the Brindley plugin to Anthropic's directory](46-submit-the-brindley-plugin-to-anthropic-s-directory.md) | feature | draft | — | 1 (+1 impl.) | — |
 
 ### Dependencies
 
@@ -59,8 +62,13 @@ flowchart RL
   n40["✏️ 40 Release only commits on main"]
   n41["✏️ 41 Pin the release toolchain and keep it updated"]
   n42["✏️ 42 Harden the maintainer's GitHub and npm accounts"]
+  n43["✏️ 43 Writes no longer regenerate READMEs"]
+  n44["✏️ 44 A JSON snapshot that every view renders from"]
+  n46["✏️ 46 Submit the Brindley plugin to Anthropic's directory"]
   n19["✅ <s>19 Scoring dimensions on initiatives</s>"]
+  n45["✅ <s>45 Install Brindley as a Claude Code plugin</s>"]
   n21 --> n19
+  n46 --> n45
   click n16 href "16-resolve-settled-questions-in-bulk.md"
   click n21 href "21-computed-scores-such-as-wsjf.md"
   click n26 href "26-record-the-merge-commit-or-pr-when-work-is-done.md"
@@ -76,7 +84,11 @@ flowchart RL
   click n40 href "40-release-only-commits-on-main.md"
   click n41 href "41-pin-the-release-toolchain-and-keep-it-updated.md"
   click n42 href "42-harden-the-maintainer-s-github-and-npm-accounts.md"
+  click n43 href "43-writes-no-longer-regenerate-readmes.md"
+  click n44 href "44-a-json-snapshot-that-every-view-renders-from.md"
+  click n46 href "46-submit-the-brindley-plugin-to-anthropic-s-directory.md"
   click n19 href "done/19-rank-initiatives-by-scoring-dimensions.md"
+  click n45 href "done/45-install-brindley-as-a-claude-code-plugin.md"
 ```
 
 ### Themes
@@ -121,6 +133,7 @@ flowchart RL
 | 31 | [Spike: progress dashboard designs from git history](done/31-spike-progress-dashboard-designs-from-git-history.md) | spike | 2026-10-09 |
 | 32 | [Split a compound open question into separate questions](done/32-split-a-compound-open-question-into-separate-questions.md) | feature | 2026-10-09 |
 | 33 | [Milestones](done/33-milestones.md) | feature | 2026-10-20 |
+| 45 | [Install Brindley as a Claude Code plugin](done/45-install-brindley-as-a-claude-code-plugin.md) | feature | 2026-10-25 |
 
 ### Closed
 
