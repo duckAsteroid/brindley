@@ -27,6 +27,13 @@ jobs:
           registry-url: https://registry.npmjs.org
           cache: npm
 
+      # Before the npm upgrade below: under npm@latest, npx skips Claude Code's postinstall,
+      # which fetches its native binary.
+      - name: Validate the Claude Code plugin
+        run: |
+          npx -y @anthropic-ai/claude-code@2.1.308 plugin validate --strict .
+          npx -y @anthropic-ai/claude-code@2.1.308 plugin validate --strict plugin
+
       # Trusted publishing needs npm 11.5.1 or later.
       - run: npm install -g npm@latest
 
@@ -45,11 +52,6 @@ jobs:
       # Claude Code reads the plugin from main, so the release commit must already pin this version.
       - name: Check the plugin pins the tagged version
         run: node scripts/plugin-version.mjs --check "${GITHUB_REF_NAME#v}"
-
-      - name: Validate the Claude Code plugin
-        run: |
-          npx -y @anthropic-ai/claude-code@2.1.308 plugin validate --strict .
-          npx -y @anthropic-ai/claude-code@2.1.308 plugin validate --strict plugin
 
       - run: npm test
 
