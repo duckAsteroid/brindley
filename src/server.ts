@@ -55,6 +55,7 @@ export const INSTRUCTIONS = `Brindley manages planned work as Markdown files in 
 - For progress at a glance — for managers or anyone outside the team — \`report\` writes a one-page HTML report from the collections and their git history (work complete against scope over time, what was delivered, added and taken out this period) and returns the figures.
 - If you implement in a git worktree, call \`use_worktree\` with its path first, so your edits land there; every result ends with the checkout it worked on.
 - Brindley moves files only for a collection that declares \`folders:\` (status → folder); then status changes move them and rewrite links. Every write regenerates the collection README's generated block. \`validate\` reports structural problems (missing or conflicting statuses, files outside their status folder, duplicate numbers, broken links, …).
+- Every open question has a label written in the file (\`**Q3**\`; split parts are Q3.1, Q3.2). Address questions by label (\`id: "Q3"\`) or \`match\`: labels never change when other questions are resolved or split, and are never reused in a file. A label marked \`provisional\` is not written yet; the first question write (or \`fix\`) writes it.
 - One decision per open question. If a question poses several (several "?", or a list of sub-questions), split it with \`split_question\` before discussing it — answering any part already settled in the same call.
 - The workflow prompts (\`design-review\`, \`implement\`, \`spike\`, \`triage\`) are also available as text from the \`brief\` tool, for agents that cannot fetch prompts.
 - When discussing open questions with the user: one at a time, in open chat (no form or multiple-choice prompts), grounded in the actual code, with concrete examples.`;
@@ -138,7 +139,7 @@ function detail(root: Root, i: Initiative) {
       return { ref: displayRef(r, i.collection), title: t?.title ?? null, status: t?.status ?? null };
     }),
     dependants: dependants(root, i).map((d) => ({ ref: initiativeKey(d), title: d.title, status: d.status })),
-    questions: i.questions.map((q) => ({ index: q.index, text: q.text, resolved: q.resolved, implementation: q.implementation })),
+    questions: i.questions.map((q) => ({ ...ops.questionRef(q), resolved: q.resolved, implementation: q.implementation })),
     acceptanceCriteria: i.acceptance,
     docs: i.docs,
     docsImpact: i.docsImpact ?? null,
@@ -229,7 +230,7 @@ function designReviewBrief(root: Root, i: Initiative): string {
 3. **Grounded in the code, not theory.** Before discussing a question, read the code that owns the behaviour: classes, queries, tests and docs. Cite every claim about how the system works (\`path:line\`, test name, doc section). If the code doesn't establish something, say *unclear from code* and what you checked — never fill the gap with how such systems usually work.
 4. **Clear, concrete examples** drawn from the real domain and code: actual types, fields and data, and what a caller sees before and after. No \`Foo\`/\`x\` placeholders.
 5. **Recommend, then let me decide.** Lay out the realistic options (usually 2–3) with their consequences in this codebase, recommend one and say why, then ask. Don't move on until I have decided, deferred it, or marked it \`(implementation)\`.
-6. **Record as you go** with the Brindley tools: \`resolve_question\` (removes the question and records the decision — pass \`record_in\` to choose the section, e.g. "Agreed direction"), \`add_question\` for new questions, \`update\` for acceptance criteria. Show me the edited text. If a decision changes documented behaviour, add the doc to the initiative's \`docs\` list. Rationale and rejected options stay in the initiative, never in project docs.
+6. **Record as you go** with the Brindley tools: \`resolve_question\` with the question's label (\`id\`; removes the question and records the decision under its label — pass \`record_in\` to choose the section, e.g. "Agreed direction"), \`add_question\` for new questions, \`update\` for acceptance criteria. Show me the edited text. If a decision changes documented behaviour, add the doc to the initiative's \`docs\` list. Rationale and rejected options stay in the initiative, never in project docs.
 7. **Finish cleanly.** When no blocking questions remain, offer to \`set_status\` to designed; don't do it unprompted.
 
 Use \`next_question\` to step through.
@@ -246,10 +247,10 @@ Related:
 ${d.related.length ? d.related.map((x) => `- ${x.ref}${x.title ? ` — ${x.title} (${x.status})` : ""}`).join("\n") : "- none"}
 
 Blocking open questions (${blocking.length}):
-${blocking.map((q) => `${q.index}. ${q.text}${ops.compoundQuestion(i, q) ? " _(looks like more than one decision: split it first)_" : ""}`).join("\n") || "- none"}
+${blocking.map((q) => `- ${ops.questionLabel(q)} ${q.text}${ops.compoundQuestion(i, q) ? " _(looks like more than one decision: split it first)_" : ""}`).join("\n") || "- none"}
 
 Delegated to implementation (${impl.length}, not discussed unless I ask):
-${impl.map((q) => `${q.index}. ${q.text}`).join("\n") || "- none"}
+${impl.map((q) => `- ${ops.questionLabel(q)} ${q.text}`).join("\n") || "- none"}
 
 <initiative path="${i.rel}">
 ${readFileSync(i.file, "utf8")}
@@ -694,7 +695,7 @@ export function createServer(opts: ServerOptions): McpServer {
           status: i.status,
           questions: i.questions
             .filter((q) => !q.resolved && (a.include_implementation !== false || !q.implementation))
-            .map((q) => ({ index: q.index, text: q.text, implementation: q.implementation, ...ops.compoundFields(i, q) })),
+            .map((q) => ({ ...ops.questionRef(q), implementation: q.implementation, ...ops.compoundFields(i, q) })),
         }))
         .filter((x) => x.questions.length > 0);
     },
@@ -703,8 +704,8 @@ export function createServer(opts: ServerOptions): McpServer {
 
   tool(
     "next_question",
-    "The next unresolved blocking question in one initiative (after `after`, if given), with the count remaining. Drives the design-review conversation.",
-    { ref: refArg, collection: z.string().optional(), after: z.number().int().optional() },
+    "The next unresolved blocking question in one initiative (the first labelled after `after`, if given), with its label (`id`) and the count remaining. Drives the design-review conversation.",
+    { ref: refArg, collection: z.string().optional(), after: z.string().optional().describe('A question label, e.g. "Q3": return the first open question labelled after it.') },
     (root, a) => ops.nextQuestion(resolveRef(root, a.ref, a.collection), a.after),
     { readOnlyHint: true },
   );
@@ -855,7 +856,7 @@ export function createServer(opts: ServerOptions): McpServer {
 
   tool(
     "fix",
-    "Repair the validate findings that have one obvious fix, editing text in place (never renaming or moving a file): a broken link whose filename matches exactly one initiative in its collection, and `depends_on` / `related` front-matter (turned into links under ## Dependencies / ## Related). Anything ambiguous is listed in `unfixed`. Dry run by default: returns each edit (file, line, before, after); pass dry_run: false to write. Padding is fixed by repad, numbers by renumber.",
+    "Repair the validate findings that have one obvious fix, editing text in place (never renaming or moving a file): a broken link whose filename matches exactly one initiative in its collection, `depends_on` / `related` front-matter (turned into links under ## Dependencies / ## Related), and open questions without a label (given the labels they are reported with). Anything ambiguous is listed in `unfixed`. Dry run by default: returns each edit (file, line, before, after); pass dry_run: false to write. Padding is fixed by repad, numbers by renumber.",
     { collection: z.string().optional(), dry_run: z.boolean().optional() },
     (root, a) => ops.fix(root, { collection: a.collection, dry_run: a.dry_run }),
   );
@@ -943,18 +944,18 @@ export function createServer(opts: ServerOptions): McpServer {
 
   tool(
     "add_question",
-    "Add an open question — one decision per question: pose several as separate questions (warns when the text looks like more than one). A blocking question moves a designed initiative back to draft. Use implementation=true for questions deliberately left to the implementer.",
+    "Add an open question — one decision per question: pose several as separate questions (warns when the text looks like more than one). It is labelled with the next free label (returned as `id`); don't write one yourself. A blocking question moves a designed initiative back to draft. Use implementation=true for questions deliberately left to the implementer.",
     { ref: refArg, collection: z.string().optional(), text: z.string(), implementation: z.boolean().optional() },
     (root, a) => ops.addQuestion(root, resolveRef(root, a.ref, a.collection), a.text, a.implementation),
   );
 
   tool(
     "split_question",
-    "Split an open question that poses several decisions into one question per decision, in its place and order, in one write. Each part is text or { text, implementation?, answer? }: parts inherit the question's (implementation) marker unless they set their own, and a part with an `answer` is settled as it is written — recorded in `record_in` (default \"Decisions\"), or kept ticked with mode \"tick\", as resolve_question does. Returns the parts left open with their new indexes.",
+    "Split an open question that poses several decisions into one question per decision, in its place and order, in one write. Each part is text or { text, implementation?, answer? }: parts inherit the question's (implementation) marker unless they set their own, and a part with an `answer` is settled as it is written — recorded in `record_in` (default \"Decisions\"), or kept ticked with mode \"tick\", as resolve_question does. Parts are labelled under the question's label (Q3 → Q3.1, Q3.2), and Q3 stops existing. Returns the parts left open with their labels.",
     {
       ref: refArg,
       collection: z.string().optional(),
-      index: z.number().int().optional(),
+      id: z.string().optional().describe('The question\'s label, e.g. "Q3" (as `get`, `questions` and `next_question` report it).'),
       match: z.string().optional(),
       into: z
         .array(z.union([z.string(), z.object({ text: z.string(), implementation: z.boolean().optional(), answer: z.string().optional() })]))
@@ -967,11 +968,11 @@ export function createServer(opts: ServerOptions): McpServer {
 
   tool(
     "resolve_question",
-    'Resolve an open question. Default mode "remove": delete it and record the decision in `record_in` (default "Decisions", e.g. "Agreed direction"). Mode "tick": keep it as "- [x] … — answer".',
+    'Resolve an open question, named by its label (`id`, e.g. "Q3") or `match`. Default mode "remove": delete it and record the decision under its label in `record_in` (default "Decisions", e.g. "Agreed direction"). Mode "tick": keep it as "- [x] **Q3** … — answer".',
     {
       ref: refArg,
       collection: z.string().optional(),
-      index: z.number().int().optional(),
+      id: z.string().optional().describe('The question\'s label, e.g. "Q3" (as `get`, `questions` and `next_question` report it).'),
       match: z.string().optional(),
       answer: z.string(),
       record_in: z.string().optional(),

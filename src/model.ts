@@ -58,8 +58,11 @@ export type Ref =
   | { kind: "external"; raw: string };
 
 export interface Question {
-  /** 1-based position among the section's top-level list items. */
-  index: number;
+  /** Its label (Q3, Q3.1, Q3a): written in the file, or the one labelling the file would write. */
+  id: string;
+  /** True when the label is not written yet (see `provisional` in markdown.ts parseQuestions). */
+  provisional: boolean;
+  /** The question, without its label. */
   text: string;
   /** null for a plain bullet, true/false for a task-list item. */
   checked: boolean | null;

@@ -124,16 +124,17 @@ describe("questions", () => {
     });
     const text = read(`${C}/22-opening-hours-change-impact.md`);
     expect(text).not.toContain("Should an ascending");
-    expect(text).toContain("Validate synchronously.\n- Paired: alternate up and down slots.");
+    expect(text).toContain("Validate synchronously.\n- **Q2** Paired: alternate up and down slots.");
+    expect(r.result.id).toBe("Q2");
     expect(r.result.recordedIn).toBe("Agreed direction");
   });
 
   it("can tick instead of removing", () => {
     fx = fixture({ files: lockExample });
     const root = fx.load();
-    ops.resolveQuestion(root, resolveRef(root, 22), { index: 1 }, "Timetable update is enough.", { mode: "tick" });
+    ops.resolveQuestion(root, resolveRef(root, 22), { id: "Q1" }, "Timetable update is enough.", { mode: "tick" });
     expect(read(`${C}/22-opening-hours-change-impact.md`)).toContain(
-      "- [x] Must captains with a booked slot be re-notified when a lock's opening hours change, or is\n  updating the published timetable enough? — Timetable update is enough.",
+      "- [x] **Q1** Must captains with a booked slot be re-notified when a lock's opening hours change, or is\n  updating the published timetable enough? — Timetable update is enough.",
     );
   });
 
@@ -142,16 +143,18 @@ describe("questions", () => {
     const root = fx.load();
     const r = ops.addQuestion(root, resolveRef(root, 21), "Which CSV dialect do the sensors emit?");
     expect(r.result.status).toBe("draft");
-    expect(read(`${C}/21-lock-sensor-import.md`)).toMatch(/## Open questions\n\n- Which CSV dialect[^\n]*\n\n## Acceptance criteria/);
+    expect(read(`${C}/21-lock-sensor-import.md`)).toMatch(/## Open questions\n\n- \*\*Q1\*\* Which CSV dialect[^\n]*\n\n## Acceptance criteria/);
+    expect(r.result.id).toBe("Q1");
   });
 
   it("steps through blocking questions", () => {
     fx = fixture({ files: lockExample });
     const root = fx.load();
     const first = ops.nextQuestion(resolveRef(root, 22));
-    expect(first.question?.index).toBe(1);
+    expect(first.question).toMatchObject({ id: "Q1", provisional: true });
     expect(first.remaining).toBe(2);
-    expect(ops.nextQuestion(resolveRef(root, 22), 1).question?.index).toBe(2);
+    expect(ops.nextQuestion(resolveRef(root, 22), "Q1").question?.id).toBe("Q2");
+    expect(ops.nextQuestion(resolveRef(root, 22), "q2").question).toBeNull();
     expect(first.implementationQuestions).toHaveLength(1);
   });
 });
@@ -250,11 +253,11 @@ describe("section placeholders", () => {
     root = fx.load();
     expect(ops.preflight(root, resolveRef(root, r.result.ref)).checks.find((c) => c.check === "Acceptance criteria")?.result).toBe("fail");
     ops.addQuestion(root, resolveRef(root, r.result.ref), "Who keeps the lock open after dark?");
-    expect(text()).toContain("## Open questions\n\n- Who keeps the lock open after dark?\n\n## Acceptance");
+    expect(text()).toContain("## Open questions\n\n- **Q1** Who keeps the lock open after dark?\n\n## Acceptance");
     root = fx.load();
-    ops.resolveQuestion(root, resolveRef(root, r.result.ref), { index: 1 }, "The lock keeper on call.");
+    ops.resolveQuestion(root, resolveRef(root, r.result.ref), { id: "Q1" }, "The lock keeper on call.");
     expect(text()).toContain("## Open questions\n\n_None._\n");
-    expect(text()).toContain("- The lock keeper on call.");
+    expect(text()).toContain("- **Q1** The lock keeper on call.");
   });
 });
 
@@ -263,11 +266,11 @@ describe("add_question", () => {
     fx = fixture({ files: lockExample });
     const root = fx.load();
     ops.addQuestion(root, resolveRef(root, 23), "Which shape?\n`a` or `b`?");
-    expect(read(`${C}/23-passage-recorded-event.md`)).toContain("- Which shape?\n  `a` or `b`?");
+    expect(read(`${C}/23-passage-recorded-event.md`)).toContain("- **Q1** Which shape?\n  `a` or `b`?");
     const q = resolveRef(fx.load(), 23).questions.at(-1)!;
     expect(q.text).toContain("`a` or `b`?");
     ops.addQuestion(fx.load(), resolveRef(fx.load(), 23), "Like this?\n```yaml\ncolumns:\n  active: [number]\n```");
-    expect(read(`${C}/23-passage-recorded-event.md`)).toContain("- Like this?\n  ```yaml\n  columns:\n    active: [number]\n  ```"); // nested indentation kept
+    expect(read(`${C}/23-passage-recorded-event.md`)).toContain("- **Q2** Like this?\n  ```yaml\n  columns:\n    active: [number]\n  ```"); // nested indentation kept
   });
 });
 

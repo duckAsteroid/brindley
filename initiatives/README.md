@@ -31,7 +31,6 @@ Planned work on Brindley itself: tools specified in MCP-SERVER.md but not yet bu
 | 28 | [Write and keep the agent rules in AGENTS.md / CLAUDE.md](28-write-and-keep-the-agent-rules-in-agents-md-claude-md.md) | feature | draft | — | 1 | — |
 | 29 | [Tag cloud in the collection README](29-tag-cloud-in-the-collection-readme.md) | feature | draft | — | 3 | — |
 | 34 | [Serve the progress report live over local HTTP](34-serve-the-progress-report-live-over-local-http.md) | feature | draft | — | 7 (+1 impl.) | — |
-| 35 | [Stable question labels instead of positional indexes](35-stable-question-labels-instead-of-positional-indexes.md) | feature | designed | ✅ ready | 0 | — |
 | 36 | [Check initiatives against the project's design principles](36-check-initiatives-against-the-project-s-design-principles.md) | feature | draft | — | 4 (+1 impl.) | — |
 | 37 | [Publish to npm only through trusted publishing](37-publish-to-npm-only-through-trusted-publishing.md) | chore | draft | — | 0 | — |
 | 38 | [Protect release tags and main](38-protect-release-tags-and-main.md) | chore | draft | — | 1 | — |
@@ -54,7 +53,6 @@ flowchart RL
   n28["✏️ 28 Write and keep the agent rules in AGENTS.md / CLAUDE.md"]
   n29["✏️ 29 Tag cloud in the collection README"]
   n34["✏️ 34 Serve the progress report live over local HTTP"]
-  n35["🟢 35 Stable question labels instead of positional indexes"]
   n36["✏️ 36 Check initiatives against the project's design principles"]
   n37["✏️ 37 Publish to npm only through trusted publishing"]
   n38["✏️ 38 Protect release tags and main"]
@@ -76,7 +74,6 @@ flowchart RL
   click n28 href "28-write-and-keep-the-agent-rules-in-agents-md-claude-md.md"
   click n29 href "29-tag-cloud-in-the-collection-readme.md"
   click n34 href "34-serve-the-progress-report-live-over-local-http.md"
-  click n35 href "35-stable-question-labels-instead-of-positional-indexes.md"
   click n36 href "36-check-initiatives-against-the-project-s-design-principles.md"
   click n37 href "37-publish-to-npm-only-through-trusted-publishing.md"
   click n38 href "38-protect-release-tags-and-main.md"
@@ -95,7 +92,7 @@ flowchart RL
 
 - [**adoption**](adoption.md) — Bringing an existing hand-written folder under Brindley with less hand-editing (GitHub #5) · 1 open, 8 closed or deferred
 - [**dependency-links**](dependency-links.md) — Telling blocking dependencies from other cross-references, and editing them (GitHub #3) · 0 open, 2 closed or deferred
-- [**questions**](questions.md) — Open questions during design and implementation, and tidying settled ones (GitHub #6, #7) · 2 open, 2 closed or deferred
+- [**questions**](questions.md) — Open questions during design and implementation, and tidying settled ones (GitHub #6, #7) · 1 open, 3 closed or deferred
 - [**security**](security.md) — Keeping a hijacked account, token or dependency from releasing a compromised Brindley · 6 open, 0 closed or deferred
 - [**status-recording**](status-recording.md) — Recording an initiative's status outside a lifecycle transition (GitHub #4) · 0 open, 3 closed or deferred
 - **text** — Changes only to what tools say — messages, findings and prompts — not to what they do · 0 open, 5 closed or deferred
@@ -133,6 +130,7 @@ flowchart RL
 | 31 | [Spike: progress dashboard designs from git history](done/31-spike-progress-dashboard-designs-from-git-history.md) | spike | 2026-10-09 |
 | 32 | [Split a compound open question into separate questions](done/32-split-a-compound-open-question-into-separate-questions.md) | feature | 2026-10-09 |
 | 33 | [Milestones](done/33-milestones.md) | feature | 2026-10-20 |
+| 35 | [Stable question labels instead of positional indexes](done/35-stable-question-labels-instead-of-positional-indexes.md) | feature | 2026-10-30 |
 | 45 | [Install Brindley as a Claude Code plugin](done/45-install-brindley-as-a-claude-code-plugin.md) | feature | 2026-10-25 |
 
 ### Closed

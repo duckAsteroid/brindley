@@ -41,6 +41,8 @@
 | `milestone-empty` | A milestone doc lists no members under `## Delivered by`, so it is unspecified. |
 | `milestone-format` | A milestone slug that isn't lowercase kebab-case. |
 | `open-questions` | In progress or done, with questions still open. |
+| `question-unlabelled` | An open question with no `**Q<n>**` label; `fix`, or any question write, labels it. |
+| `question-label-duplicate` | The same question label starts more than one list item in the file. |
 | `docs-impact` | Done, with no `docs_impact` recorded. |
 | `status-folder-mismatch` | Front-matter says one status, the folder another. |
 | `status-not-in-folder` | The file isn't where its status belongs: with `folders:` declared, a listed status in its folder and everything else at the top (`tidy` moves it); otherwise, the collection keeps this status in a folder (e.g. done in `completed/`) but this file is elsewhere. |

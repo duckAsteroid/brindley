@@ -7,7 +7,8 @@ brindley [serve] [--no-auto-readme] [--cwd <dir>]
 brindley init [<folder>] [--name <n>]   Mark a folder (default: the current one) as a collection
 brindley validate [--docs]              Check every collection; exits 1 on errors
 brindley validate --fix [--write]       Plan (or with --write, make) the repairs with one obvious fix:
-                                        broken links to a moved initiative, front-matter dependencies
+                                        broken links to a moved initiative, front-matter dependencies,
+                                        unlabelled open questions
 brindley readmes [--check]              Regenerate collection README blocks; --check exits 1 if stale
 brindley tidy <collection> [--write]    Move a collection's initiatives into the folders its `folders:`
                                         declares, rewriting links; plans only unless --write

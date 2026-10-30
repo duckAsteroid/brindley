@@ -92,7 +92,7 @@ describe("MCP server", () => {
     const p = await client.getPrompt({ name: "design-review", arguments: { ref: "22" } });
     const text = (p.messages[0]!.content as { text: string }).text;
     expect(text).toContain("Open chat, not forms");
-    expect(text).toContain("1. Must captains with a booked slot");
+    expect(text).toContain("- Q1 (provisional) Must captains with a booked slot");
     expect(text).toContain("Delegated to implementation (1");
   });
 

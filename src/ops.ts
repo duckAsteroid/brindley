@@ -1,6 +1,6 @@
 import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { dirname, isAbsolute, join, posix, relative, resolve, sep } from "node:path";
-import { ASSET_DIR, COLLECTION_STATUSES, STATUSES, normaliseStatus, type Collection, type Initiative, type Root } from "./model.js";
+import { ASSET_DIR, COLLECTION_STATUSES, STATUSES, normaliseStatus, type Collection, type Initiative, type Question, type Root } from "./model.js";
 import {
   DEPENDENCIES,
   NONE,
@@ -11,8 +11,15 @@ import {
   editFrontMatter,
   findSection,
   headings,
+  highWaterMark,
   joinFrontMatter,
+  LABEL,
+  compareLabels,
+  itemLabels,
+  labelQuestions,
+  labelsIn,
   lines,
+  normaliseLabel,
   parseFrontMatter,
   parseQuestions,
   replaceLines,
@@ -146,8 +153,9 @@ thing: folders whose \`README.md\` front-matter contains
   \`(implementation)\` only when the choice is genuinely yours to make.
 - When discussing open questions with the user: one at a time, in open chat (no form or
   multiple-choice prompts), grounded in the actual code (cite \`path:line\`; say "unclear from
-  code" rather than guess), with concrete examples from the real domain. Record each decision
-  in the initiative as it is made.
+  code" rather than guess), with concrete examples from the real domain. Refer to a
+  question by its label (\`**Q3**\`), which never changes; record each decision in the
+  initiative, under that label, as it is made.
 - On completion, in the same commit as the code: update the project docs to describe the code
   as it now is — present tense, no history, no rejected alternatives, no links to initiatives —
   and record \`docs_impact\` (files updated, or \`none: <reason>\`); settle the initiative's
@@ -668,17 +676,35 @@ export function compoundQuestion(i: Initiative, q: { start: number; end: number 
   return compoundReason(lines(i.body).slice(q.start, q.end));
 }
 
-/** One open-question list item: the marker, an optional (implementation) prefix, continuation lines indented. */
-function questionItem(text: string, implementation: boolean, marker = "-"): string {
-  const clean = text.trim().replace(/^[-*+]\s+/, "");
+/** One open-question list item: the marker, its label, an optional (implementation) prefix, continuation lines indented. */
+function questionItem(text: string, implementation: boolean, label: string, marker = "-"): string {
+  const clean = withoutLabel(text.trim().replace(/^[-*+]\s+/, ""));
   const prefix = implementation && !/^\(implementation\)/i.test(clean) ? "(implementation) " : "";
-  return `${marker} ${prefix}${clean.split("\n").map((l, k) => (k === 0 || l.trim() === "" ? l : `  ${l}`)).join("\n")}`;
+  return `${marker} **${label}** ${prefix}${clean.split("\n").map((l, k) => (k === 0 || l.trim() === "" ? l : `  ${l}`)).join("\n")}`;
 }
 
-export function addQuestion(root: Root, i: Initiative, text: string, implementation = false): OpResult<{ ref: string; index: number; status: string | undefined }> {
+/** Text with any label the caller wrote at its start removed: the tools choose labels. */
+function withoutLabel(text: string): string {
+  return text.trim().replace(LABEL, "");
+}
+
+/** A decision recorded under its question's label, continuation lines indented. */
+function decisionItem(label: string, answer: string): string {
+  return `**${label}** ${withoutLabel(answer)}`.split("\n").map((l, k) => (k === 0 ? `- ${l}` : `  ${l}`)).join("\n");
+}
+
+/** The body with every unlabelled question labelled, and its questions: what a question write starts from. */
+function pinnedQuestions(i: Initiative): { body: string; questions: Question[] } {
+  const { body } = labelQuestions(i.body);
+  return { body, questions: parseQuestions(body) };
+}
+
+export function addQuestion(root: Root, i: Initiative, text: string, implementation = false): OpResult<{ ref: string; id: string; status: string | undefined }> {
+  const pinned = pinnedQuestions(i);
+  const id = `Q${highWaterMark(pinned.body) + 1}`;
   // Indent continuation lines so a multi-line question stays one list item, as decisions are.
-  const item = questionItem(text, implementation);
-  const body = appendToSection(i.body, OPEN_QUESTIONS, item, ["Acceptance criteria"]);
+  const item = questionItem(text, implementation, id);
+  const body = appendToSection(pinned.body, OPEN_QUESTIONS, item, ["Acceptance criteria"]);
   const warnings: string[] = [];
   const compound = compoundReason(item.split("\n"));
   if (compound) warnings.push(compoundHint(compound));
@@ -690,86 +716,105 @@ export function addQuestion(root: Root, i: Initiative, text: string, implementat
     warnings.push("A blocking question was added to a designed initiative; it is back to draft.");
   }
   writeInitiative(i, changes, body);
-  const index = parseQuestions(body).length;
-  return finish(root, [i.collection], [i.file], { ref: initiativeKey(i), index, status }, warnings);
+  return finish(root, [i.collection], [i.file], { ref: initiativeKey(i), id, status }, warnings);
 }
 
-export function findQuestion(i: Initiative, sel: { index?: number; match?: string }) {
-  const q =
-    sel.index !== undefined
-      ? i.questions.find((x) => x.index === sel.index)
-      : sel.match
-        ? i.questions.find((x) => x.text.toLowerCase().includes(sel.match!.toLowerCase()))
-        : undefined;
-  if (!q) throw new BrindleyError("No matching open question (give `index` or `match`).");
-  return q;
+/** The open question `sel` names, by label (`id`) or by text (`match`); explains a label that is resolved, split or unknown. */
+export function findQuestion(questions: Question[], body: string, sel: { id?: string; match?: string }): Question {
+  const open = questions.filter((x) => !x.resolved).map((x) => x.id);
+  const openList = open.length ? `Open: ${open.join(", ")}.` : "No questions are open.";
+  if (sel.id !== undefined) {
+    const id = normaliseLabel(sel.id);
+    const q = questions.find((x) => x.id === id);
+    if (q?.resolved) throw new BrindleyError(`${id} is already resolved: ${q.text}`);
+    if (q) return q;
+    const recorded = itemLabels(body).find((x) => x.label === id);
+    if (recorded) throw new BrindleyError(`${id} is already resolved: ${lines(body)[recorded.line]!.replace(/^\s*\S+\s+(?:\[[ xX]\]\s+)?/, "").replace(LABEL, "")}`);
+    const parts = open.filter((x) => x.startsWith(`${id}.`));
+    if (parts.length) throw new BrindleyError(`${id} was split into ${parts.join(", ")}.`);
+    throw new BrindleyError(`No open question ${id}. ${openList}`);
+  }
+  if (sel.match) {
+    const q = questions.find((x) => x.text.toLowerCase().includes(sel.match!.toLowerCase()));
+    if (q?.resolved) throw new BrindleyError(`${q.id} is already resolved: ${q.text}`);
+    if (q) return q;
+    throw new BrindleyError(`No open question matches "${sel.match}". ${openList}`);
+  }
+  throw new BrindleyError(`Give the question's label (\`id\`, e.g. "Q3") or \`match\`. ${openList}`);
 }
 
 export function resolveQuestion(
   root: Root,
   i: Initiative,
-  sel: { index?: number; match?: string },
+  sel: { id?: string; match?: string },
   answer: string,
   opts: { record_in?: string; mode?: "remove" | "tick" } = {},
-): OpResult<{ ref: string; question: string; recordedIn: string | null; section: string }> {
-  const q = findQuestion(i, sel);
-  if (q.resolved) throw new BrindleyError(`Question ${q.index} is already resolved.`);
+): OpResult<{ ref: string; id: string; question: string; recordedIn: string | null; section: string }> {
+  const pinned = pinnedQuestions(i);
+  const q = findQuestion(pinned.questions, pinned.body, sel);
   const mode = opts.mode ?? "remove";
   let body: string;
   let recordedIn: string | null = null;
   if (mode === "tick") {
-    const ls = lines(i.body);
+    const ls = lines(pinned.body);
     ls[q.start] = ls[q.start]!.replace(/^([-*+]|\d+[.)])\s+(?:\[[ xX]\]\s+)?/, "$1 [x] ");
     ls[q.end - 1] = `${ls[q.end - 1]!.replace(/\s+$/, "")} — ${answer.trim()}`;
     body = ls.join("\n");
   } else {
-    const ls = lines(i.body);
+    const ls = lines(pinned.body);
     let end = q.end;
     // Swallow one blank line so removing an item doesn't leave a gap.
     if (ls[end] !== undefined && ls[end]!.trim() === "" && (q.start === 0 || ls[q.start - 1]!.trim() === "")) end++;
-    body = replaceLines(i.body, q.start, end, []);
+    body = replaceLines(pinned.body, q.start, end, []);
     const s = findSection(body, OPEN_QUESTIONS);
     if (s && lines(body).slice(s.start, s.end).every((l) => l.trim() === "")) body = setSection(body, OPEN_QUESTIONS, NONE);
     recordedIn = opts.record_in ?? "Decisions";
-    const decision = answer.trim().split("\n").map((l, k) => (k === 0 ? `- ${l}` : `  ${l}`)).join("\n");
-    body = appendToSection(body, recordedIn, decision, [OPEN_QUESTIONS, "Acceptance criteria"]);
+    body = appendToSection(body, recordedIn, decisionItem(q.id, answer), [OPEN_QUESTIONS, "Acceptance criteria"]);
   }
   writeInitiative(i, {}, body);
   const sectionName = recordedIn ?? OPEN_QUESTIONS;
   const s = findSection(body, sectionName);
   const section = s ? lines(body).slice(s.heading.line, s.end).join("\n").trim() : "";
-  return finish(root, [i.collection], [i.file], { ref: initiativeKey(i), question: q.text, recordedIn, section });
+  return finish(root, [i.collection], [i.file], { ref: initiativeKey(i), id: q.id, question: q.text, recordedIn, section });
 }
 
 /** A part of a split question: its text, and optionally its own (implementation) marker and an answer. */
 export type QuestionPart = string | { text: string; implementation?: boolean; answer?: string };
 
 /**
- * Replace one open question with its parts, in its place and order, in one write. A part with an
+ * Replace one open question with its parts, in its place and order, in one write. Parts are
+ * labelled under the question's label (Q3 → Q3.1, Q3.2), and Q3 stops existing. A part with an
  * answer is settled as it is written: recorded in `record_in` (default Decisions), or kept ticked
  * with `mode: tick`. Parts inherit the question's (implementation) marker unless they set their own.
  */
 export function splitQuestion(
   root: Root,
   i: Initiative,
-  sel: { index?: number; match?: string },
+  sel: { id?: string; match?: string },
   into: QuestionPart[],
   opts: { record_in?: string; mode?: "remove" | "tick" } = {},
-): OpResult<{ ref: string; question: string; open: { index: number; text: string; implementation: boolean }[]; decisions: string[]; recordedIn: string | null; status: string | undefined }> {
-  const q = findQuestion(i, sel);
-  if (q.resolved) throw new BrindleyError(`Question ${q.index} is already resolved.`);
+): OpResult<{ ref: string; id: string; question: string; open: { id: string; text: string; implementation: boolean }[]; decisions: string[]; recordedIn: string | null; status: string | undefined }> {
+  const pinned = pinnedQuestions(i);
+  const q = findQuestion(pinned.questions, pinned.body, sel);
+  const used = new Set(labelsIn(pinned.body));
+  let n = 0;
+  const nextPart = () => {
+    while (used.has(`${q.id}.${++n}`));
+    return `${q.id}.${n}`;
+  };
   const parts = into
     .map((p) => (typeof p === "string" ? { text: p } : p))
-    .map((p) => ({ text: p.text.trim(), implementation: p.implementation ?? q.implementation, answer: p.answer?.trim() || undefined }))
+    .map((p) => ({ text: withoutLabel(p.text), implementation: p.implementation ?? q.implementation, answer: p.answer?.trim() || undefined }))
     .filter((p) => p.text);
   if (parts.length < 2) throw new BrindleyError("Give at least two parts to split a question into (`into`).");
+  const labelled = parts.map((p) => ({ ...p, id: nextPart() }));
   const mode = opts.mode ?? "remove";
-  const ls = lines(i.body);
+  const ls = lines(pinned.body);
   const marker = /^\s*([-*+]|\d+[.)])/.exec(ls[q.start]!)?.[1] ?? "-";
   // What goes in the question's place: open parts, and answered ones too when ticking.
-  const written = parts.filter((p) => !p.answer || mode === "tick");
+  const written = labelled.filter((p) => !p.answer || mode === "tick");
   const items = written.map((p) => {
-    const item = questionItem(p.text, p.implementation, marker);
+    const item = questionItem(p.text, p.implementation, p.id, marker);
     if (!p.answer) return item;
     const [first, ...rest] = item.split("\n");
     const ticked = first!.replace(/^(\S+)\s+/, "$1 [x] ");
@@ -778,39 +823,37 @@ export function splitQuestion(
   let end = q.end;
   // Every part settled and removed: swallow one blank line, as resolve_question does.
   if (!items.length && ls[end] !== undefined && ls[end]!.trim() === "" && (q.start === 0 || ls[q.start - 1]!.trim() === "")) end++;
-  let body = replaceLines(i.body, q.start, end, items.length ? items.join("\n").split("\n") : []);
+  let body = replaceLines(pinned.body, q.start, end, items.length ? items.join("\n").split("\n") : []);
   if (!items.length) {
     const s = findSection(body, OPEN_QUESTIONS);
     if (s && lines(body).slice(s.start, s.end).every((l) => l.trim() === "")) body = setSection(body, OPEN_QUESTIONS, NONE);
   }
-  const answered = parts.filter((p) => p.answer);
+  const answered = labelled.filter((p) => p.answer);
   let recordedIn: string | null = null;
   if (mode === "remove" && answered.length) {
     recordedIn = opts.record_in ?? "Decisions";
-    for (const p of answered) {
-      const decision = p.answer!.split("\n").map((l, k) => (k === 0 ? `- ${l}` : `  ${l}`)).join("\n");
-      body = appendToSection(body, recordedIn, decision, [OPEN_QUESTIONS, "Acceptance criteria"]);
-    }
+    for (const p of answered) body = appendToSection(body, recordedIn, decisionItem(p.id, p.answer!), [OPEN_QUESTIONS, "Acceptance criteria"]);
   }
   const warnings: string[] = [];
   const changes: Record<string, unknown> = {};
   let status = i.status;
-  const open = written.map((p, k) => ({ index: q.index + k, text: p.text, implementation: p.implementation, answered: !!p.answer })).filter((p) => !p.answered);
+  const open = written.filter((p) => !p.answer);
   if (i.status === "designed" && open.some((p) => !p.implementation)) {
     changes["status"] = "draft";
     status = "draft";
     warnings.push("A blocking question is open on a designed initiative; it is back to draft.");
   }
   for (const p of open) {
-    const why = compoundReason(questionItem(p.text, false).split("\n"));
-    if (why) warnings.push(`Part ${p.index}: ${compoundHint(why)}`);
+    const why = compoundReason(questionItem(p.text, false, p.id).split("\n"));
+    if (why) warnings.push(`Part ${p.id}: ${compoundHint(why)}`);
   }
   writeInitiative(i, changes, body);
   return finish(root, [i.collection], [i.file], {
     ref: initiativeKey(i),
+    id: q.id,
     question: q.text,
-    open: open.map(({ index, text, implementation }) => ({ index, text, implementation })),
-    decisions: answered.map((p) => p.answer!),
+    open: open.map(({ id, text, implementation }) => ({ id, text, implementation })),
+    decisions: answered.map((p) => decisionItem(p.id, p.answer!).slice(2)),
     recordedIn,
     status,
   }, warnings);
@@ -822,15 +865,26 @@ export function compoundFields(i: Initiative, q: { start: number; end: number })
   return why ? { compound: true, hint: compoundHint(why) } : {};
 }
 
-export function nextQuestion(i: Initiative, after?: number) {
+/** A question as results report it: its label, `provisional: true` while the label isn't written, and its text. */
+export function questionRef(q: Question): { id: string; provisional?: true; text: string } {
+  return { id: q.id, ...(q.provisional ? { provisional: true as const } : {}), text: q.text };
+}
+
+/** A question's label for prose: `Q3`, or `Q3 (provisional)` while it isn't written. */
+export function questionLabel(q: Question): string {
+  return q.provisional ? `${q.id} (provisional)` : q.id;
+}
+
+export function nextQuestion(i: Initiative, after?: string) {
   const open = i.questions.filter((q) => !q.resolved);
   const blocking = open.filter((q) => !q.implementation);
-  const q = blocking.find((x) => after === undefined || x.index > after) ?? null;
+  const later = blocking.filter((x) => after === undefined || compareLabels(x.id, normaliseLabel(after)) > 0);
+  const q = later[0] ?? null;
   return {
     ref: initiativeKey(i),
-    question: q ? { index: q.index, text: q.text, ...compoundFields(i, q) } : null,
-    remaining: blocking.filter((x) => after === undefined || x.index > after).length,
-    implementationQuestions: open.filter((x) => x.implementation).map((x) => ({ index: x.index, text: x.text })),
+    question: q ? { ...questionRef(q), ...compoundFields(i, q) } : null,
+    remaining: later.length,
+    implementationQuestions: open.filter((x) => x.implementation).map(questionRef),
     sections: headings(i.body).filter((h) => h.level === 2).map((h) => h.text),
   };
 }
@@ -948,7 +1002,7 @@ export function complete(
   ref: string;
   becameReady: string[];
   docFindings: unknown[];
-  questionsToRevisit?: { ref: string; title: string | null; questions: { index: number; text: string }[] }[];
+  questionsToRevisit?: { ref: string; title: string | null; questions: { id: string; provisional?: true; text: string }[] }[];
 }> {
   const warnings: string[] = [];
   const collection = requireCollection(root, i.collection);
@@ -1005,7 +1059,7 @@ export function complete(
       ref: string;
       becameReady: string[];
       docFindings: unknown[];
-      questionsToRevisit?: { ref: string; title: string | null; questions: { index: number; text: string }[] }[];
+      questionsToRevisit?: { ref: string; title: string | null; questions: { id: string; provisional?: true; text: string }[] }[];
     },
     warnings,
     `completing ${initiativeKey(i)}`,
@@ -1025,7 +1079,7 @@ export function complete(
       .map((o) => ({
         ref: initiativeKey(o),
         title: o.title,
-        questions: o.questions.filter((q) => !q.resolved).map((q) => ({ index: q.index, text: q.text })),
+        questions: o.questions.filter((q) => !q.resolved).map(questionRef),
       }))
       .filter((x) => x.questions.length > 0);
   }
@@ -1187,7 +1241,7 @@ export function renameCollection(root: Root, collection: string, to: string, opt
 export interface FixEdit {
   file: string;
   line: number;
-  rule: "broken-link" | "front-matter-dependencies";
+  rule: "broken-link" | "front-matter-dependencies" | "question-label";
   before: string;
   after: string;
 }
@@ -1196,7 +1250,8 @@ export interface FixEdit {
  * Repair the validate findings that have one obvious fix, editing text in place — never renaming
  * or moving a file: a broken link whose filename matches exactly one initiative in its collection
  * (relinked to it), and `depends_on` / `related` front-matter (turned into links under
- * `## Dependencies` / `## Related`, field removed). Anything else is reported, not fixed.
+ * `## Dependencies` / `## Related`, field removed), and unlabelled open questions (given the next free
+ * labels, in order). Anything else is reported, not fixed.
  * Dry run by default.
  */
 export function fix(root: Root, opts: { collection?: string; dry_run?: boolean } = {}): OpResult<{ dryRun: boolean; edits: FixEdit[]; unfixed: { file: string; line: number; message: string }[] }> {
@@ -1262,6 +1317,16 @@ export function fix(root: Root, opts: { collection?: string; dry_run?: boolean }
             edits.push({ file: i.rel, line: fmLineOf(fmText, k), rule: "front-matter-dependencies", before: `${k}: ${JSON.stringify(i.fm[k])}`, after: `${bullets[k]!.join(" ")} under ## ${section}` });
           }
           text = joinFrontMatter(editFrontMatter(fmText, changes), newBody);
+        }
+      }
+      // Unlabelled open questions: write the labels they are given provisionally.
+      {
+        const { fmText, body } = splitFrontMatter(text);
+        const { body: labelledBody, labelled } = labelQuestions(body);
+        if (labelled.length) {
+          const offset = lines(text).length - lines(body).length;
+          for (const l of labelled) edits.push({ file: i.rel, line: offset + l.line + 1, rule: "question-label", before: l.before.trim(), after: l.after.trim() });
+          text = joinFrontMatter(fmText, labelledBody);
         }
       }
       if (!dryRun && text !== original) {
@@ -1343,10 +1408,10 @@ export function preflight(root: Root, i: Initiative, problems: { level: string; 
   const open = i.questions.filter((q) => !q.resolved);
   const blockingQs = open.filter((q) => !q.implementation);
   add("Open questions", blockingQs.length === 0, blockingQs.length
-    ? `${blockingQs.length} unresolved: ${blockingQs.map((q) => `${q.index}. ${q.text.slice(0, 80)}${q.text.length > 80 ? "…" : ""}`).join(" | ")}`
+    ? `${blockingQs.length} unresolved: ${blockingQs.map((q) => `${questionLabel(q)} ${q.text.slice(0, 80)}${q.text.length > 80 ? "…" : ""}`).join(" | ")}`
     : "none blocking");
   const implQs = open.filter((q) => q.implementation);
-  if (implQs.length) add("Implementation questions", "note", `${implQs.length} left to you to settle and record: ${implQs.map((q) => q.index).join(", ")}`);
+  if (implQs.length) add("Implementation questions", "note", `${implQs.length} left to you to settle and record: ${implQs.map(questionLabel).join(", ")}`);
 
   if (spike) {
     add("Measures", !sectionIsBlank(i.body, MEASURES), sectionIsBlank(i.body, MEASURES)

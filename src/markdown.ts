@@ -174,14 +174,62 @@ export function listItems(body: string, start: number, end: number): ListItem[] 
 export const OPEN_QUESTIONS = "Open questions";
 export const ACCEPTANCE = "Acceptance criteria";
 
+/** A question label at the start of an item's text: `**Q3**`, `**Q3.1**`, `**Q3a**`. */
+export const LABEL = /^\*\*(Q\d+(?:[a-z]+|\.\d+)*)\*\*(?=\s|$)\s*/;
+const ANY_LABEL = /\*\*(Q\d+(?:[a-z]+|\.\d+)*)\*\*/g;
+/** The start of a list item, up to where its label goes (after any task box). */
+const ITEM_LEAD = /^(\s*(?:[-*+]|\d+[.)])\s+(?:\[[ xX]\]\s+)?)/;
+
+/** Every bold label written anywhere in the body, in order. */
+export function labelsIn(body: string): string[] {
+  return [...body.matchAll(ANY_LABEL)].map((m) => m[1]!);
+}
+
+/** The highest leading number of any bold label in the body (Q3.2.1 and Q3a count as 3); 0 if none. */
+export function highWaterMark(body: string): number {
+  return Math.max(0, ...labelsIn(body).map((l) => parseInt(l.slice(1), 10)));
+}
+
+/** A label as a caller may write it (`q3`, `**Q3**`, ` Q3a `), in canonical form. */
+export function normaliseLabel(s: string): string {
+  const l = s.trim().replace(/^\*\*|\*\*$/g, "").trim();
+  return /^q\d/i.test(l) ? `Q${l.slice(1).toLowerCase()}` : l;
+}
+
+/** Order of labels: by number, then suffix by suffix (Q3 < Q3.1 < Q3.2 < Q4). */
+export function compareLabels(a: string, b: string): number {
+  const parts = (l: string) => l.slice(1).match(/\d+|[a-z]+/g) ?? [];
+  const pa = parts(a);
+  const pb = parts(b);
+  for (let k = 0; k < Math.min(pa.length, pb.length); k++) {
+    const x = pa[k]!;
+    const y = pb[k]!;
+    if (x === y) continue;
+    const nx = /^\d/.test(x);
+    const ny = /^\d/.test(y);
+    if (nx && ny) return parseInt(x, 10) - parseInt(y, 10);
+    if (nx !== ny) return nx ? -1 : 1;
+    return x < y ? -1 : 1;
+  }
+  return pa.length - pb.length;
+}
+
+/**
+ * The open questions. A question without a written label gets a provisional one: the next free
+ * labels after the body's high-water mark, in order — what `labelQuestions` would write.
+ */
 export function parseQuestions(body: string): Question[] {
   const s = findSection(body, OPEN_QUESTIONS);
   if (!s) return [];
+  let next = highWaterMark(body);
   return listItems(body, s.start, s.end).map((item) => {
-    const implementation = /^\(implementation\)/i.test(item.text);
+    const label = LABEL.exec(item.text);
+    const text = label ? item.text.slice(label[0].length) : item.text;
+    const implementation = /^\(implementation\)/i.test(text);
     return {
-      index: item.index,
-      text: item.text,
+      id: label ? label[1]! : `Q${++next}`,
+      provisional: !label,
+      text,
       checked: item.checked,
       implementation,
       resolved: item.checked === true,
@@ -189,6 +237,29 @@ export function parseQuestions(body: string): Question[] {
       end: item.end,
     };
   });
+}
+
+/** Write the provisional labels of the body's unlabelled questions into it. */
+export function labelQuestions(body: string): { body: string; labelled: { line: number; before: string; after: string }[] } {
+  const ls = lines(body);
+  const labelled: { line: number; before: string; after: string }[] = [];
+  for (const q of parseQuestions(body).filter((x) => x.provisional)) {
+    const before = ls[q.start]!;
+    ls[q.start] = before.replace(ITEM_LEAD, `$1**${q.id}** `);
+    labelled.push({ line: q.start, before, after: ls[q.start]! });
+  }
+  return { body: labelled.length ? ls.join("\n") : body, labelled };
+}
+
+/** Labels written at the start of a list item anywhere in the body (outside code fences), with their lines. */
+export function itemLabels(body: string): { label: string; line: number }[] {
+  const out: { label: string; line: number }[] = [];
+  for (const { line, text } of stripCodeFences(body)) {
+    const lead = ITEM_LEAD.exec(text);
+    const label = lead && LABEL.exec(text.slice(lead[0].length));
+    if (label) out.push({ label: label[1]!, line });
+  }
+  return out;
 }
 
 export function parseAcceptance(body: string): string[] {

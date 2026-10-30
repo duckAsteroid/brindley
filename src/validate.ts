@@ -5,7 +5,7 @@ import { cycles, target } from "./deps.js";
 import { milestoneCycles } from "./milestones.js";
 import { DELIVERED_BY, splitFrontMatter } from "./markdown.js";
 import { allInitiatives, declaredTags, elsewhereHint, findCollection, ignoreMatcher, initiativeKey, statusFromText, toPosix } from "./repo.js";
-import { stripCodeFences, withoutInlineCode } from "./markdown.js";
+import { itemLabels, stripCodeFences, withoutInlineCode } from "./markdown.js";
 import { FINDINGS, MEASURES, sectionIsBlank } from "./ops.js";
 import { readmeColumns, regenerate } from "./readme.js";
 import { checkDocs } from "./docs.js";
@@ -269,6 +269,14 @@ function checkInitiative(
     warn("designed-open-questions", f, `Designed, but ${blocking.length} blocking open question(s) remain.`);
   if ((i.status === "in-progress" || i.status === "done") && open.length > 0)
     warn("open-questions", f, `${i.status}, but ${open.length} open question(s) remain.`);
+  const qLines = i.fmText === null ? 0 : i.fmText.split("\n").length + 1;
+  for (const q of i.questions.filter((x) => x.provisional))
+    warn("question-unlabelled", f, `Open question has no label; \`fix\` (or any question write) labels it ${q.id}.`, q.start + 1 + qLines);
+  const seen = new Map<string, number>();
+  for (const { label, line } of itemLabels(i.body)) {
+    if (seen.has(label)) warn("question-label-duplicate", f, `${label} is used again (first on line ${seen.get(label)! + 1 + qLines}); labels must be unique in a file.`, line + 1 + qLines);
+    else seen.set(label, line);
+  }
   if (i.status === "in-progress" && i.branch && !branchExists(root, i.branch))
     warn("branch-missing", f, `In progress on branch ${i.branch}, which no longer exists here or as a remote-tracking branch: finish it with \`complete\`, or correct \`branch:\` to where it is built now.`);
   if (i.status === "abandoned" && !i.statusNote && i.statusSource !== "folder")

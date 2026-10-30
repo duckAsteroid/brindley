@@ -17,8 +17,9 @@ thing: folders whose `README.md` front-matter contains
   `(implementation)` only when the choice is genuinely yours to make.
 - When discussing open questions with the user: one at a time, in open chat (no form or
   multiple-choice prompts), grounded in the actual code (cite `path:line`; say "unclear from
-  code" rather than guess), with concrete examples from the real domain. Record each decision
-  in the initiative as it is made.
+  code" rather than guess), with concrete examples from the real domain. Refer to a
+  question by its label (`**Q3**`), which never changes; record each decision in the
+  initiative, under that label, as it is made.
 - On completion, in the same commit as the code: update the project docs to describe the code
   as it now is — present tense, no history, no rejected alternatives, no links to initiatives —
   and record `docs_impact` (files updated, or `none: <reason>`); settle the initiative's

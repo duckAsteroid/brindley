@@ -48,7 +48,7 @@ _None._
 
 ## Related
 
-- [Stable question labels instead of positional indexes](35-stable-question-labels-instead-of-positional-indexes.md) — conflicts are recorded as open questions
+- [Stable question labels instead of positional indexes](done/35-stable-question-labels-instead-of-positional-indexes.md) — conflicts are recorded as open questions
 
 ## Open questions
 

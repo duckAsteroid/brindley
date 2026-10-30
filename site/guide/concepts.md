@@ -80,6 +80,10 @@ Non-blocking links ("relates to", "informed by") go under `## Related`. An initi
 Undecided points are list items under `## Open questions`. A designed initiative has none left,
 except questions marked `(implementation)`, which are deliberately left to whoever builds it.
 
+Each question has a label, written in bold at its start: `- **Q3** Should slots be paired?`.
+Brindley writes the labels, and they never change or get reused: settle Q2 and Q3 is still Q3, and
+its decision is recorded as `**Q2** …`. Splitting Q3 into two decisions gives Q3.1 and Q3.2.
+
 ## Scoring dimensions
 
 Initiatives can say how important, valuable or hard they are with fields like `priority: high` or

@@ -484,22 +484,39 @@ case-insensitively):
 ```markdown
 ## Open questions
 
-- Must captains with a booked slot be re-notified when a lock's opening hours change, or is
+- **Q1** Must captains with a booked slot be re-notified when a lock's opening hours change, or is
   updating the published timetable enough?
-- Should an ascending and a descending slot be paired, so the descending boat uses the water level
-  the ascending boat leaves behind, or are slots in each direction booked independently?
-- (implementation) One shared filter contract for slot listings, or per-endpoint typed filters?
-- [x] Slot length? — 20 minutes per lock cycle, see Design.
+- **Q2** Should an ascending and a descending slot be paired, so the descending boat uses the water
+  level the ascending boat leaves behind, or are slots in each direction booked independently?
+- **Q4** (implementation) One shared filter contract for slot listings, or per-endpoint typed filters?
+- [x] **Q5** Slot length? — 20 minutes per lock cycle, see Design.
 ```
 
 - Each top-level list item is one question, posing one decision. Items may run over several lines
   and contain inline context, links and code — questions are often paragraphs, not one-liners —
   but several decisions are several items, so each can be settled on its own.
+- Each question carries a **label**: `**Q<n>**`, bold, as the first thing in the item after any task
+  box. Tools address questions by label, so resolving or splitting one never changes which
+  question another label names.
+  - A label is `Q` and a number, optionally followed by dotted parts (`Q3.1`, `Q3.2.1`) or letters
+    (`Q3a`). Splitting a question gives its parts dotted labels under its own (Q3 → Q3.1, Q3.2), and
+    the original label stops naming an open question. Tools write only dotted parts; lettered labels
+    written by hand are read the same way, and their parts are dotted too (Q3a → Q3a.1).
+  - Labels are never reused in a file. The **high-water mark** is the highest leading number of any
+    bold label anywhere in the body — open, ticked, recorded with a decision, or in an example
+    (Q3.2.1 and Q3a count as 3) — and the next free label is one more. Gaps are fine. A bare `Q3` in
+    prose is not a label.
+  - Bold text that doesn't match the pattern (`- **Blocker:** does the API page?`) is ordinary
+    question text.
+  - A question without a label is valid. Until a label is written, tools report it with a
+    **provisional** label: the next free labels after the high-water mark, in list order. The
+    first question write to the file (or `fix`) writes those labels in.
 - A plain bullet (`-`) or an unchecked task (`- [ ]`) is **unresolved**.
-- **Resolving** a question, preferred: delete the item and record the decision where it belongs in
-  the body (e.g. an `## Agreed direction` or `## Decisions` section, or a row in a rejected
-  alternatives table). This keeps the document describing what is decided, not the history of
-  deciding it. Alternative: keep it as `- [x] … — answer`.
+- **Resolving** a question, preferred: delete the item and record the decision under its label where
+  it belongs in the body (e.g. `- **Q2** Slots in each direction are booked independently.` in an
+  `## Agreed direction` or `## Decisions` section, or a row in a rejected alternatives table). This
+  keeps the document describing what is decided, not the history of deciding it. Alternative: keep
+  it as `- [x] **Q2** … — answer`.
 - A question prefixed `(implementation)` is **deliberately delegated to the implementer** and does
   not block `designed` — including fact-finding the implementer can do better (e.g. "volumes are
   *unclear from code*"). It should be mirrored by an acceptance criterion requiring the decision to
@@ -798,8 +815,9 @@ Two layers:
      question `(implementation)` only when the choice is genuinely yours to make.
    - When discussing open questions with the user: one at a time, in open chat (no form or
      multiple-choice prompts), grounded in the actual code (cite `path:line`; say "unclear from
-     code" rather than guess), with concrete examples from the real domain. Record each decision
-     in the initiative as it is made.
+     code" rather than guess), with concrete examples from the real domain. Refer to a
+     question by its label (`**Q3**`), which never changes; record each decision in the
+     initiative, under that label, as it is made.
    - On completion, in the same commit as the code: update the project docs to describe the code
      as it now is — present tense, no history, no rejected alternatives, no links to initiatives —
      and record `docs_impact` (files updated, or `none: <reason>`); settle the initiative's
@@ -864,6 +882,8 @@ Warnings:
     for a value the dimension doesn't have, word values without points, or labels the report doesn't use (§8.4).
 36. A milestone doc that lists no members under `## Delivered by` (it is unspecified), or a milestone slug
     that isn't kebab-case.
+37. An open question without a label (§6).
+38. A question label used at the start of more than one list item in a file (§6).
 
 Broken-link warnings name the new location when the linked file has moved within the collection.
 
