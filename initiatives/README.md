@@ -31,7 +31,7 @@ Planned work on Brindley itself: tools specified in MCP-SERVER.md but not yet bu
 | 28 | [Write and keep the agent rules in AGENTS.md / CLAUDE.md](28-write-and-keep-the-agent-rules-in-agents-md-claude-md.md) | feature | draft | — | 1 | — |
 | 29 | [Tag cloud in the collection README](29-tag-cloud-in-the-collection-readme.md) | feature | draft | — | 3 | — |
 | 34 | [Serve the progress report live over local HTTP](34-serve-the-progress-report-live-over-local-http.md) | feature | draft | — | 7 (+1 impl.) | — |
-| 35 | [Stable question labels instead of positional indexes](35-stable-question-labels-instead-of-positional-indexes.md) | feature | draft | — | 5 | — |
+| 35 | [Stable question labels instead of positional indexes](35-stable-question-labels-instead-of-positional-indexes.md) | feature | designed | ✅ ready | 0 | — |
 | 36 | [Check initiatives against the project's design principles](36-check-initiatives-against-the-project-s-design-principles.md) | feature | draft | — | 4 (+1 impl.) | — |
 | 37 | [Publish to npm only through trusted publishing](37-publish-to-npm-only-through-trusted-publishing.md) | chore | draft | — | 0 | — |
 | 38 | [Protect release tags and main](38-protect-release-tags-and-main.md) | chore | draft | — | 1 | — |
@@ -54,7 +54,7 @@ flowchart RL
   n28["✏️ 28 Write and keep the agent rules in AGENTS.md / CLAUDE.md"]
   n29["✏️ 29 Tag cloud in the collection README"]
   n34["✏️ 34 Serve the progress report live over local HTTP"]
-  n35["✏️ 35 Stable question labels instead of positional indexes"]
+  n35["🟢 35 Stable question labels instead of positional indexes"]
   n36["✏️ 36 Check initiatives against the project's design principles"]
   n37["✏️ 37 Publish to npm only through trusted publishing"]
   n38["✏️ 38 Protect release tags and main"]
