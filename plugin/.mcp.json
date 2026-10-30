@@ -2,7 +2,13 @@
   "mcpServers": {
     "brindley": {
       "command": "npx",
-      "args": ["-y", "brindley@2.8.0", "serve", "--cwd", "${CLAUDE_PROJECT_DIR}"]
+      "args": [
+        "-y",
+        "brindley@3.0.0",
+        "serve",
+        "--cwd",
+        "${CLAUDE_PROJECT_DIR}"
+      ]
     }
   }
 }
