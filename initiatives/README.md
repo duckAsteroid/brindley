@@ -41,6 +41,7 @@ Planned work on Brindley itself: tools specified in MCP-SERVER.md but not yet bu
 | 43 | [Writes no longer regenerate READMEs](43-writes-no-longer-regenerate-readmes.md) | feature | draft | — | 3 | — |
 | 44 | [A JSON snapshot that every view renders from](44-a-json-snapshot-that-every-view-renders-from.md) | feature | draft | — | 3 (+1 impl.) | — |
 | 46 | [Submit the Brindley plugin to Anthropic's directory](46-submit-the-brindley-plugin-to-anthropic-s-directory.md) | feature | draft | — | 1 (+1 impl.) | — |
+| 47 | [Package and release the OpenCode sidebar plugin with Brindley](47-package-and-release-the-opencode-sidebar-plugin-with-brindle.md) | feature | draft | — | 6 | — |
 
 ### Dependencies
 
@@ -63,6 +64,7 @@ flowchart RL
   n43["✏️ 43 Writes no longer regenerate READMEs"]
   n44["✏️ 44 A JSON snapshot that every view renders from"]
   n46["✏️ 46 Submit the Brindley plugin to Anthropic's directory"]
+  n47["✏️ 47 Package and release the OpenCode sidebar plugin with Brindley"]
   n19["✅ <s>19 Scoring dimensions on initiatives</s>"]
   n45["✅ <s>45 Install Brindley as a Claude Code plugin</s>"]
   n21 --> n19
@@ -84,6 +86,7 @@ flowchart RL
   click n43 href "43-writes-no-longer-regenerate-readmes.md"
   click n44 href "44-a-json-snapshot-that-every-view-renders-from.md"
   click n46 href "46-submit-the-brindley-plugin-to-anthropic-s-directory.md"
+  click n47 href "47-package-and-release-the-opencode-sidebar-plugin-with-brindle.md"
   click n19 href "done/19-rank-initiatives-by-scoring-dimensions.md"
   click n45 href "done/45-install-brindley-as-a-claude-code-plugin.md"
 ```
