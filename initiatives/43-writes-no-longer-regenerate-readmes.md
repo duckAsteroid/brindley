@@ -1,7 +1,7 @@
 ---
 type: feature
-status: draft
-updated: 2026-10-24
+status: designed
+updated: 2026-11-04
 ---
 # Writes no longer regenerate READMEs
 
@@ -24,9 +24,17 @@ Generation is deterministic, so this avoids *spurious* conflicts, but not real o
   (plus moved files and rewritten links, for `folders:` collections). Milestone flips are still
   computed and reported.
 - The start-of-call self-heal is removed, except for blocks containing conflict markers: those are
-  still regenerated, since a conflicted block is unusable and either side is disposable.
+  still regenerated, since a conflicted block is unusable and either side is disposable. The
+  `--no-auto-readme` serve flag is removed.
+- This applies to every collection; there is no switch to keep the old behaviour. It ships as a
+  breaking change.
 - `regenerate_readmes` is the only thing that refreshes generated blocks. It is run deliberately —
-  by a person, by an agent asked to, or in CI on `main`.
+  by a person, by an agent before pushing to a shared remote, or in CI on `main`.
+- The agent guidance Brindley serves (server instructions and the implement workflow's commit
+  step) says: run `regenerate_readmes` and commit the result before pushing to a shared remote
+  such as GitHub; don't regenerate on local branches or worktrees.
+- `validate` no longer reports `readme-stale`. Staleness is checked with `regenerate_readmes`'s
+  `check` argument (`brindley readmes --check` on the CLI, for CI); there is no separate tool.
 - Generated blocks do not record when they were last regenerated: output stays deterministic
   (FORMAT §8).
 
@@ -45,22 +53,27 @@ _None._
 - [A JSON snapshot that every view renders from](44-a-json-snapshot-that-every-view-renders-from.md) — moves README generation onto the snapshot
 - [Check initiatives against the project's design principles](36-check-initiatives-against-the-project-s-design-principles.md) — defines `## Principle changes`
 
+## Decisions
+
+- **Q1** Every collection, with no opt-in or opt-out switch. Released as a breaking change (next major version): an opt-in switch would leave the parallel-agent conflicts in place for anyone who hadn't found it, and would mean keeping and testing both paths.
+- **Q2** `readme-stale` is dropped from `validate`: after this change a stale README is the expected state on a working branch. Freshness is kept at the point of sharing instead. The agent guidance Brindley serves (server instructions, `src/server.ts:57`, and the implement workflow's commit step, `src/server.ts:287`) tells agents to run `regenerate_readmes` and commit the result before pushing to a shared remote (e.g. GitHub), and not to regenerate on local branches or worktrees. `brindley readmes --check` stays available for CI.
+- **Q3** `--no-auto-readme` is removed in the same breaking release. Its only remaining effect would be leaving conflict markers in generated blocks, which nobody needs (either side is disposable, and the server already heals conflicted blocks during merges), and its documented purpose — leaving staleness to `validate` — goes with Q2. The CLI ignores unrecognised flags (`flag()`, `src/cli.ts:44-49`), so existing `serve --no-auto-readme` configs keep working.
+
 ## Open questions
 
-- Is this the behaviour for every collection, or opt-in per collection (e.g. `readme: manual` in
-  the README front-matter) with today's behaviour as the default? Changing it for everyone is
-  simpler; opt-in avoids surprising existing users whose READMEs would quietly go stale.
-- What does `validate` do with `readme-stale` (`src/validate.ts:157-158`)? Keep it as a warning
-  everywhere (it would fire on most branches), drop it from `validate` and leave staleness to
-  `regenerate_readmes check=true` in CI, or report it only on `main`?
-- Does `--no-auto-readme` go away, or does it come to mean "don't even heal conflicted blocks"?
+_None._
 
 ## Acceptance criteria
 
 - `create`, `update`, `set_status`, `complete` and every other write leave collection READMEs,
   theme docs and milestone docs unchanged; their `touched` lists show it.
 - A tool call no longer rewrites a stale generated block; it still regenerates a conflicted one.
+- `brindley serve` no longer documents `--no-auto-readme`; MCP-SERVER.md no longer mentions it.
 - `regenerate_readmes` brings every generated block up to date, as now.
+- `validate` reports no `readme-stale` finding; `brindley readmes --check` still exits 1 when a
+  block is stale.
+- The server instructions and implement prompt tell agents to regenerate and commit READMEs before
+  pushing to a shared remote, and not on local branches.
 - MCP-SERVER.md §6.1 and FORMAT §8 describe when generated blocks are refreshed; FORMAT §1
   "Readable on GitHub" reflects the change.
 - Tests cover two writes in sequence leaving the README untouched, and a conflicted block being

@@ -38,10 +38,12 @@ Planned work on Brindley itself: tools specified in MCP-SERVER.md but not yet bu
 | 40 | [Release only commits on main](40-release-only-commits-on-main.md) | chore | draft | — | 0 | — |
 | 41 | [Pin the release toolchain and keep it updated](41-pin-the-release-toolchain-and-keep-it-updated.md) | chore | draft | — | 1 (+1 impl.) | — |
 | 42 | [Harden the maintainer's GitHub and npm accounts](42-harden-the-maintainer-s-github-and-npm-accounts.md) | chore | draft | — | 1 | — |
-| 43 | [Writes no longer regenerate READMEs](43-writes-no-longer-regenerate-readmes.md) | feature | draft | — | 3 | — |
+| 43 | [Writes no longer regenerate READMEs](43-writes-no-longer-regenerate-readmes.md) | feature | designed | ✅ ready | 0 | — |
 | 44 | [A JSON snapshot that every view renders from](44-a-json-snapshot-that-every-view-renders-from.md) | feature | draft | — | 3 (+1 impl.) | — |
 | 46 | [Submit the Brindley plugin to Anthropic's directory](46-submit-the-brindley-plugin-to-anthropic-s-directory.md) | feature | draft | — | 1 (+1 impl.) | — |
 | 47 | [Package and release the OpenCode sidebar plugin with Brindley](47-package-and-release-the-opencode-sidebar-plugin-with-brindle.md) | feature | draft | — | 6 | — |
+| 48 | [Flag commits that close an initiative that isn't done](48-flag-commits-that-close-an-initiative-that-isn-t-done.md) | feature | draft | — | 7 | — |
+| 49 | [Return tool results as structured content](49-return-tool-results-as-structured-content.md) | bug | draft | — | 5 | — |
 
 ### Dependencies
 
@@ -61,10 +63,12 @@ flowchart RL
   n40["✏️ 40 Release only commits on main"]
   n41["✏️ 41 Pin the release toolchain and keep it updated"]
   n42["✏️ 42 Harden the maintainer's GitHub and npm accounts"]
-  n43["✏️ 43 Writes no longer regenerate READMEs"]
+  n43["🟢 43 Writes no longer regenerate READMEs"]
   n44["✏️ 44 A JSON snapshot that every view renders from"]
   n46["✏️ 46 Submit the Brindley plugin to Anthropic's directory"]
   n47["✏️ 47 Package and release the OpenCode sidebar plugin with Brindley"]
+  n48["✏️ 48 Flag commits that close an initiative that isn't done"]
+  n49["✏️ 49 Return tool results as structured content"]
   n19["✅ <s>19 Scoring dimensions on initiatives</s>"]
   n45["✅ <s>45 Install Brindley as a Claude Code plugin</s>"]
   n21 --> n19
@@ -87,6 +91,8 @@ flowchart RL
   click n44 href "44-a-json-snapshot-that-every-view-renders-from.md"
   click n46 href "46-submit-the-brindley-plugin-to-anthropic-s-directory.md"
   click n47 href "47-package-and-release-the-opencode-sidebar-plugin-with-brindle.md"
+  click n48 href "48-flag-commits-that-close-an-initiative-that-isn-t-done.md"
+  click n49 href "49-return-tool-results-as-structured-content.md"
   click n19 href "done/19-rank-initiatives-by-scoring-dimensions.md"
   click n45 href "done/45-install-brindley-as-a-claude-code-plugin.md"
 ```

@@ -1,7 +1,7 @@
 ---
 type: feature
 status: draft
-updated: 2026-10-24
+updated: 2026-11-03
 ---
 # A JSON snapshot that every view renders from
 
@@ -15,6 +15,8 @@ Each view currently derives its own data from the parsed repo: the README genera
 
 The snapshot is a build output, not a store. The Markdown files stay the only source of truth, and the snapshot can be deleted and rebuilt at any time. A database (SQLite in `.brindley/`) was considered and is not needed: a full parse of this repo's 48 initiatives takes about 80 ms, every view reads the whole thing anyway, and the snapshot has a single writer — the build.
 
+Generated output currently goes to `build/`: the progress report (default `build/brindley-report.html`, `src/report.ts:109`) and its git-history replay cache (`build/.brindley-report-cache.json`, `src/history.ts:228`). `build/` is shared with the project's own build tool — `gradle clean` or `mvn clean` deletes the report and cache, and Brindley's files mix with the project's build output.
+
 ## Design
 
 - **Build.** A `build` CLI command and MCP tool writes `.brindley/index.json` in the checkout it
@@ -22,6 +24,9 @@ The snapshot is a build output, not a store. The Markdown files stay the only so
   tags, dimensions, columns), initiatives (ref, path, title, front-matter, status, readiness and
   what blocks it, open questions, acceptance criteria), dependency and related edges, themes and
   milestones with where they stand.
+- **One output folder.** Everything Brindley generates lives in `.brindley/`: the snapshot, the
+  progress report (default `.brindley/report.html`), its history cache and the interactive HTML
+  page. Nothing is written to `build/`.
 - **Ignored.** `.brindley/` is gitignored; Brindley adds the entry when it first writes there if
   the repo's `.gitignore` lacks it.
 - **Versioned.** The snapshot carries a `schema` version, and its shape is documented, because
@@ -64,6 +69,8 @@ _None._
   identical bytes.
 - `.brindley/` is gitignored in this repo, and Brindley adds it to a repo's `.gitignore` when it
   first writes there.
+- `report` writes `.brindley/report.html` by default and caches history in `.brindley/`; no
+  Brindley command writes to `build/`.
 - The snapshot carries a schema version, and its shape is documented.
 - `regenerate_readmes` output is unchanged for this repo when rendered from the snapshot.
 - An HTML page rendered from the snapshot opens from `file://` and shows every collection's
