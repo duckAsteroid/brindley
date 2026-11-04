@@ -10,7 +10,7 @@ import { writeReport } from "./report.js";
 const USAGE = `brindley ${VERSION} — Design fully before anyone digs.
 
 Usage:
-  brindley [serve] [--no-auto-readme] [--cwd <dir>]
+  brindley [serve] [--cwd <dir>]
                                           Run the MCP server on stdio (default), on the git
                                           repository at <dir> (default: the current directory)
   brindley init [<folder>] [--name <n>]   Mark a folder (default: the current one) as a collection
@@ -77,7 +77,7 @@ async function main() {
   switch (cmd) {
     case "serve": {
       const cwd = resolve(option(args, "--cwd") ?? ".");
-      const server = createServer({ cwd, autoReadme: !flag(args, "--no-auto-readme") });
+      const server = createServer({ cwd });
       await server.connect(new StdioServerTransport());
       return;
     }

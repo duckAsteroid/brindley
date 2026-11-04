@@ -1,7 +1,7 @@
 # CLI
 
 ```
-brindley [serve] [--no-auto-readme] [--cwd <dir>]
+brindley [serve] [--cwd <dir>]
                                         Run the MCP server on stdio (default), on the git repository
                                         at <dir> (default: the current directory)
 brindley init [<folder>] [--name <n>]   Mark a folder (default: the current one) as a collection
@@ -52,8 +52,9 @@ full history:
 - run: npx -y brindley@latest report --out site/public/progress.html
 ```
 
-## Self-healing READMEs
+## Generated README blocks
 
-While the server runs, every tool call first regenerates any README block that is stale — after
-hand edits, `git pull` or a merge — and says so in its result. During a merge or rebase only
-blocks with conflict markers are rewritten. `--no-auto-readme` turns this off.
+Tool calls don't refresh generated README blocks; `brindley readmes` does. Run it, and commit
+what it changes, before pushing to a shared remote. In CI, `brindley readmes --check` exits 1 when
+a block is stale. While the server runs, every tool call first regenerates any block left with
+conflict markers, and says so in its result.

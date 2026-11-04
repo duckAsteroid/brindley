@@ -319,6 +319,7 @@ describe("why work was closed or parked", () => {
     expect(text).toContain("status_note: Mermaid can't draw a word cloud");
     expect(text).toContain("# Tag cloud\n\n> [!WARNING]\n> **Abandoned** (2026-10-06): Mermaid can't draw a word cloud\n\n## Goal");
     expect(text).toContain("## Outcome\n\nTried pie charts; unreadable past six tags.");
+    ops.regenerateReadmes(fx.load());
     expect(read("plans/README.md")).toContain("- 1 [Tag cloud](1-cloud.md) (abandoned — Mermaid can't draw a word cloud)");
     // A changed note rewrites the callout; only Brindley's callout changes.
     root = fx.load();
@@ -932,6 +933,7 @@ describe("theme overview docs", () => {
     fx = fixture({ files });
     let root = fx.load();
     ops.setStatus(root, resolveRef(root, "plans#1"), "abandoned", { reason: "Captains prefer the lock keeper's board" });
+    ops.regenerateReadmes(fx.load());
     expect(read(`${C}/NOTIFICATIONS.md`)).toContain("1 open, 1 closed or deferred");
     root = fx.load();
     expect(rootBlock(root)).toContain("Overview: [Notifications — orientation map](docs/initiatives/LOCK-42/slot-booking/NOTIFICATIONS.md) — How captains hear about changes");
@@ -984,5 +986,42 @@ describe("spikes", () => {
     expect(r.result.questionsToRevisit?.map((q) => q.ref)).toEqual(["slot-booking#22"]);
     expect(read(`${C}/24-pairing-viability.md`)).toContain('docs_impact: "none: spike — findings recorded in the initiative"');
     expect(() => ops.complete(fx.load(), resolveRef(fx.load(), "sb#21"), undefined)).toThrow(/docs_impact/);
+  });
+});
+
+describe("generated blocks", () => {
+  const theme = { [`${C}/NOTIFICATIONS.md`]: "---\ntheme: notifications\n---\n# Notifications\n" };
+
+  it("leaves READMEs and theme docs alone on writes; regenerate_readmes brings them up to date", () => {
+    fx = fixture({ files: { ...lockExample, ...theme } });
+    ops.regenerateReadmes(fx.load());
+    const readme = read(`${C}/README.md`);
+    const overview = read(`${C}/NOTIFICATIONS.md`);
+    let root = fx.load();
+    const created = ops.create(root, { collection: "slot-booking", title: "Slot pairing", type: "feature", tags: ["notifications"] });
+    expect(created.touched).toEqual([`${C}/24-slot-pairing.md`]);
+    root = fx.load();
+    const status = ops.setStatus(root, resolveRef(root, "slot-booking#24"), "abandoned", { reason: "Lock keepers pair by hand" });
+    expect(status.touched).toEqual([`${C}/24-slot-pairing.md`]);
+    expect(read(`${C}/README.md`)).toBe(readme);
+    expect(read(`${C}/NOTIFICATIONS.md`)).toBe(overview);
+
+    expect(ops.regenerateReadmes(fx.load(), undefined, true).map((c) => c.path)).toEqual([`${C}/README.md`, `${C}/NOTIFICATIONS.md`]);
+    expect(validate(fx.load()).map((f) => f.rule)).not.toContain("readme-stale");
+    ops.regenerateReadmes(fx.load());
+    expect(read(`${C}/README.md`)).toContain("Slot pairing");
+    expect(ops.regenerateReadmes(fx.load(), undefined, true)).toEqual([]);
+  });
+
+  it("refreshes the block of a collection README the write itself changes, and nothing else", () => {
+    fx = fixture({ files: { ...lockExample, ...theme } });
+    const overview = read(`${C}/NOTIFICATIONS.md`);
+    const created = ops.createCollection(fx.load(), "plans", { title: "Plans" });
+    expect(created.touched).toEqual(["plans/README.md"]);
+    expect(read("plans/README.md")).toContain("brindley:generated:begin");
+    const updated = ops.updateCollection(fx.load(), "slot-booking", { summary: "Booking passages through LOCK-42." });
+    expect(updated.touched).toEqual([`${C}/README.md`]);
+    expect(read(`${C}/README.md`)).toContain("brindley:generated:begin");
+    expect(read(`${C}/NOTIFICATIONS.md`)).toBe(overview);
   });
 });

@@ -30,3 +30,5 @@ thing: folders whose `README.md` front-matter contains
   implementation, so write it to be built on.
 - New initiative: next number in the collection, filename `<number>-<slug>.md`,
   `status: draft`, and a `type` (e.g. `feature`, `bug`, `refactor`).
+- Generated README blocks are refreshed only by `regenerate_readmes`: run it and commit the
+  result before pushing to a shared remote, not on local branches.

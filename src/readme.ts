@@ -517,12 +517,12 @@ export interface ReadmeChange {
 
 /**
  * Regenerate generated blocks: each collection README's, each theme doc's member list, and each
- * milestone doc's progress. With onlyConflicted,
- * only blocks containing conflict markers are rewritten (used during merges/rebases).
+ * milestone doc's progress. With onlyConflicted, only blocks containing conflict markers are
+ * rewritten; with readmesOnly, only the collection READMEs (not theme or milestone docs).
  */
 export function regenerate(
   root: Root,
-  opts: { collections?: Collection[]; onlyConflicted?: boolean; check?: boolean } = {},
+  opts: { collections?: Collection[]; onlyConflicted?: boolean; check?: boolean; readmesOnly?: boolean } = {},
 ): ReadmeChange[] {
   const changes: ReadmeChange[] = [];
   const handle = (path: string, block: string, initial: string) => {
@@ -536,6 +536,7 @@ export function regenerate(
   };
   const collections = opts.collections ?? root.collections;
   for (const c of collections) handle(c.readme, collectionBlock(root, c), `# ${c.meta.title}\n`);
+  if (opts.readmesOnly) return changes;
   // Theme docs in those collections get their member list kept current too.
   const names = new Set(collections.map((c) => c.name));
   for (const t of root.themes) if (names.has(t.collection)) handle(t.file, themeBlock(root, t), `# ${t.title}\n`);

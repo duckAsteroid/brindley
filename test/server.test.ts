@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
+import { BEGIN, END } from "../src/readme.js";
 import { createServer } from "../src/server.js";
 import { C, fixture, git, lockExample, type Fixture } from "./helpers.js";
 
@@ -38,14 +39,34 @@ describe("MCP server", () => {
     expect(resources).toContain("brindley://tag/notifications");
   });
 
-  it("answers what is ready and self-heals stale READMEs", async () => {
+  it("answers what is ready and leaves a stale README alone", async () => {
     fx = fixture({ files: lockExample });
+    const before = readFileSync(join(fx.repo, C, "README.md"), "utf8");
     const client = await connect(fx.repo);
     const res = json(await client.callTool({ name: "ready", arguments: {} }));
-    expect(res.result.map((r: { ref: string }) => r.ref)).toEqual(["slot-booking#21", "slot-booking#23"]);
-    expect(res.notes.join(" ")).toMatch(/stale; regenerated/);
-    const again = json(await client.callTool({ name: "ready", arguments: {} }));
-    expect(again.notes).toBeUndefined();
+    expect(res.map((r: { ref: string }) => r.ref)).toEqual(["slot-booking#21", "slot-booking#23"]);
+    expect(readFileSync(join(fx.repo, C, "README.md"), "utf8")).toBe(before);
+  });
+
+  it("heals a generated block left with conflict markers", async () => {
+    const conflicted = [
+      BEGIN,
+      "",
+      "<<<<<<< HEAD",
+      "| 24 | Slot pairing |",
+      "=======",
+      "| 24 | Lock-keeper rota |",
+      ">>>>>>> agent-b",
+      "",
+      END,
+    ].join("\n");
+    fx = fixture({ files: { ...lockExample, [`${C}/README.md`]: `${lockExample[`${C}/README.md`]}\n${conflicted}\n` } });
+    const client = await connect(fx.repo);
+    const res = json(await client.callTool({ name: "list", arguments: {} }));
+    expect(res.notes.join(" ")).toMatch(/README\.md was conflicted; regenerated/);
+    const text = readFileSync(join(fx.repo, C, "README.md"), "utf8");
+    expect(text).not.toMatch(/^(<<<<<<<|=======|>>>>>>>)/m);
+    expect(text).toContain(BEGIN);
   });
 
   it("creates, reads and reports touched files", async () => {
@@ -102,8 +123,7 @@ describe("MCP server", () => {
     });
     const client = await connect(fx.repo);
     const res = json(await client.callTool({ name: "get", arguments: { ref: "sb#22" } }));
-    const got = res.result ?? res; // first call self-heals the stale theme doc, so it carries notes
-    expect(got.themes).toEqual([expect.objectContaining({ tag: "notifications", doc: `${C}/NOTIFICATIONS.md` })]);
+    expect(res.themes).toEqual([expect.objectContaining({ tag: "notifications", doc: `${C}/NOTIFICATIONS.md` })]);
     const p = await client.getPrompt({ name: "implement", arguments: { ref: "sb#22" } });
     expect((p.messages[0]!.content as { text: string }).text).toContain(`read the overview \`${C}/NOTIFICATIONS.md\``);
   });
@@ -138,7 +158,6 @@ describe("MCP server", () => {
       if (r.isError) throw new Error(r.content[0]!.text);
       return r.content[0]!.text;
     };
-    await briefText({ workflow: "triage" }); // the first call may self-heal READMEs, which a prompt doesn't report
     for (const workflow of ["design-review", "implement", "spike"])
       expect(await briefText({ workflow, ref: "sb#22" })).toBe(await promptText(workflow, { ref: "sb#22" }));
     expect(await briefText({ workflow: "triage", collection: "sb" })).toBe(await promptText("triage", { collection: "sb" }));

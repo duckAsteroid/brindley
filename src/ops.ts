@@ -78,15 +78,16 @@ function rel(root: Root, abs: string): string {
 }
 
 /**
- * Reload, regenerate collection READMEs, and collect touched files. Every
- * collection is regenerated because cross-collection dependencies change other
- * collections' readiness; output is deterministic, so unaffected READMEs aren't rewritten.
+ * Reload and collect touched files. Generated blocks are left alone — `regenerate_readmes`
+ * refreshes them — so a write touches only the files it wrote, except that a write to a
+ * collection README (`readme`, the collection's name) refreshes that README's own block.
  * Milestones whose reached state the write flipped are reported; `cause` words the news
  * ("By completing initiatives#15 you have reached …").
  */
-function finish<T>(root: Root, _collections: string[], written: string[], result: T, warnings: string[] = [], cause?: string): OpResult<T> {
+function finish<T>(root: Root, written: string[], result: T, warnings: string[] = [], cause?: string, readme?: string): OpResult<T> {
   const fresh = loadRoot(root.repoRoot);
-  const changes = regenerate(fresh);
+  const own = readme ? findCollection(fresh, readme) : undefined;
+  const changes = own ? regenerate(fresh, { collections: [own], readmesOnly: true }) : [];
   const touched = [...new Set([...written.map((w) => rel(root, w)), ...changes.map((c) => rel(root, c.path))])];
   const flips = milestoneFlips(root, fresh, cause);
   return { result, touched, warnings, ...(flips.length ? { milestones: flips } : {}) };
@@ -166,6 +167,8 @@ thing: folders whose \`README.md\` front-matter contains
   implementation, so write it to be built on.
 - New initiative: next number in the collection, filename \`<number>-<slug>.md\`,
   \`status: draft\`, and a \`type\` (e.g. \`feature\`, \`bug\`, \`refactor\`).
+- Generated README blocks are refreshed only by \`regenerate_readmes\`: run it and commit the
+  result before pushing to a shared remote, not on local branches.
 `;
 
 export interface CollectionInput {
@@ -264,12 +267,12 @@ export function createCollection(
 ): OpResult<{ collection: string; path: string; agentSnippet?: string }> {
   const first = root.collections.length === 0;
   const m = markCollection(root, path, meta);
-  return finish(root, [m.name], [m.readme], {
+  return finish(root, [m.readme], {
     collection: m.name,
     path: m.path,
     // The first collection in a repo: hand back the instructions for AGENTS.md / CLAUDE.md.
     ...(first ? { agentSnippet: AGENT_SNIPPET } : {}),
-  });
+  }, [], undefined, m.name);
 }
 
 export function updateCollection(root: Root, nameOrPath: string, changes: CollectionInput): OpResult<{ collection: string }> {
@@ -289,7 +292,7 @@ export function updateCollection(root: Root, nameOrPath: string, changes: Collec
   const defined = collectionFields({ ...changes, name: undefined });
   const newBody = changes.title ? setH1(body, changes.title) : body;
   writeFileSync(c.readme, joinFrontMatter(editFrontMatter(fmText, defined), newBody));
-  return finish(root, [c.name], [c.readme], { collection: c.name }, warnings);
+  return finish(root, [c.readme], { collection: c.name }, warnings, undefined, c.name);
 }
 
 /**
@@ -319,7 +322,7 @@ export function setIgnore(
   if (input.dryRun) return { result, touched: [], warnings };
   const { fmText, body } = splitFrontMatter(readFileSync(c.readme, "utf8"));
   writeFileSync(c.readme, joinFrontMatter(editFrontMatter(fmText, { ignore: patterns.length ? patterns : undefined }), body));
-  return finish(root, [c.name], [c.readme], result, warnings);
+  return finish(root, [c.readme], result, warnings, undefined, c.name);
 }
 
 // ---------------------------------------------------------------------------
@@ -400,7 +403,7 @@ export function create(root: Root, input: CreateInput): OpResult<{ ref: string; 
   const file = join(root.repoRoot, fileRel);
   writeFileSync(file, joinFrontMatter(fm, body));
   written.push(file);
-  return finish(root, [c.name], written, { ref: `${c.name}#${number}`, number, path: rel(root, file) }, note ? [note] : []);
+  return finish(root, written, { ref: `${c.name}#${number}`, number, path: rel(root, file) }, note ? [note] : []);
 }
 
 /** Skeleton prompt for acceptance criteria; italic, so `sectionIsBlank` still treats it as missing. */
@@ -510,7 +513,7 @@ export function update(root: Root, i: Initiative, input: UpdateInput): OpResult<
   writeInitiative(i, changes, body);
   const { written, moved } = relocate(root, i, moves);
   const cause = changes["status"] !== undefined ? `marking ${initiativeKey(i)} ${String(changes["status"])}` : undefined;
-  return finish(root, [i.collection], written, { ref: initiativeKey(i), ...(moved ? { moved } : {}) }, warnings, cause);
+  return finish(root, written, { ref: initiativeKey(i), ...(moved ? { moved } : {}) }, warnings, cause);
 }
 
 /** One entry of a batch_update: an initiative and the `update` fields for it; `status: "from-text"` reads it from the text. */
@@ -531,8 +534,7 @@ export interface BatchEntryResult {
 
 /**
  * Apply `update`-style changes to many initiatives in one call. Every entry is checked first; if any
- * fails nothing is written and every failure is returned. Otherwise each file is written once and
- * the READMEs are regenerated once. `dry_run` returns the same per-entry result without writing.
+ * fails nothing is written and every failure is returned. Otherwise each file is written once. `dry_run` returns the same per-entry result without writing.
  */
 export function batchUpdate(
   root: Root,
@@ -571,7 +573,7 @@ export function batchUpdate(
   for (const p of planned) writeInitiative(p.i, p.plan.changes, p.plan.body);
   const all = moves.flat();
   const written = all.length ? applyRelink(root, planRelink(root, all)) : [];
-  return finish(root, [...new Set(planned.map((p) => p.i.collection))], [...planned.map((p) => p.i.file).filter(existsSync), ...written], result);
+  return finish(root, [...planned.map((p) => p.i.file).filter(existsSync), ...written], result);
 }
 
 /** Statuses that show a callout under the H1 saying so (and why). */
@@ -651,7 +653,7 @@ export function setStatus(
   const moves = plannedMoves(root, i, status);
   writeInitiative(i, changes, body);
   const { written, moved } = relocate(root, i, moves);
-  return finish(root, [i.collection], written, { ref: initiativeKey(i), status, ...(branch ? { branch } : {}), ...(moved ? { moved } : {}) }, warnings, `marking ${initiativeKey(i)} ${status}`);
+  return finish(root, written, { ref: initiativeKey(i), status, ...(branch ? { branch } : {}), ...(moved ? { moved } : {}) }, warnings, `marking ${initiativeKey(i)} ${status}`);
 }
 
 /**
@@ -716,7 +718,7 @@ export function addQuestion(root: Root, i: Initiative, text: string, implementat
     warnings.push("A blocking question was added to a designed initiative; it is back to draft.");
   }
   writeInitiative(i, changes, body);
-  return finish(root, [i.collection], [i.file], { ref: initiativeKey(i), id, status }, warnings);
+  return finish(root, [i.file], { ref: initiativeKey(i), id, status }, warnings);
 }
 
 /** The open question `sel` names, by label (`id`) or by text (`match`); explains a label that is resolved, split or unknown. */
@@ -775,7 +777,7 @@ export function resolveQuestion(
   const sectionName = recordedIn ?? OPEN_QUESTIONS;
   const s = findSection(body, sectionName);
   const section = s ? lines(body).slice(s.heading.line, s.end).join("\n").trim() : "";
-  return finish(root, [i.collection], [i.file], { ref: initiativeKey(i), id: q.id, question: q.text, recordedIn, section });
+  return finish(root, [i.file], { ref: initiativeKey(i), id: q.id, question: q.text, recordedIn, section });
 }
 
 /** A part of a split question: its text, and optionally its own (implementation) marker and an answer. */
@@ -848,7 +850,7 @@ export function splitQuestion(
     if (why) warnings.push(`Part ${p.id}: ${compoundHint(why)}`);
   }
   writeInitiative(i, changes, body);
-  return finish(root, [i.collection], [i.file], {
+  return finish(root, [i.file], {
     ref: initiativeKey(i),
     id: q.id,
     question: q.text,
@@ -974,7 +976,7 @@ export function setDependencies(
     const s = findSection(body, name);
     return s ? lines(body).slice(s.heading.line, s.end).join("\n").trim() : "";
   };
-  return finish(root, [i.collection], [i.file], {
+  return finish(root, [i.file], {
     ref: initiativeKey(i),
     dependencies: sectionText(DEPENDENCIES),
     related: sectionText(RELATED),
@@ -1049,7 +1051,6 @@ export function complete(
   if (moved) warnings.push(`Moved into its status folder: ${moved.moves.map((m) => `${m.from} → ${m.to}`).join(", ")}.`);
   const out = finish(
     root,
-    [i.collection],
     written,
     {
       ref: initiativeKey(i),
@@ -1136,7 +1137,7 @@ export function repad(root: Root, collection: string, opts: { width?: number; dr
   const result: RepadResult = { collection: c.name, width, dryRun: opts.dry_run !== false, moves: plan.moves, rewrites: plan.rewrites };
   if (result.dryRun) return { result, touched: [], warnings };
   const written = applyRelink(root, plan);
-  return finish(root, [c.name], written, result, warnings);
+  return finish(root, written, result, warnings);
 }
 
 export interface RenumberResult {
@@ -1192,7 +1193,7 @@ export function renumber(root: Root, i: Initiative, opts: { to?: number; dry_run
   const result: RenumberResult = { from: initiativeKey(i), to: `${c.name}#${n}`, number: n, dryRun: opts.dry_run === true, moves: plan.moves, rewrites: plan.rewrites };
   if (shared) warnings.push(`Number ${i.number} is shared in ${c.name}, so "${c.name}#${i.number}" references were left alone; check any that meant this initiative.`);
   if (result.dryRun) return { result, touched: [], warnings };
-  return finish(root, [c.name], applyRelink(root, plan), result, warnings);
+  return finish(root, applyRelink(root, plan), result, warnings);
 }
 
 export interface RenameCollectionResult {
@@ -1235,7 +1236,7 @@ export function renameCollection(root: Root, collection: string, to: string, opt
   }
   const result: RenameCollectionResult = { from: c.path, to: dest, name, dryRun: opts.dry_run === true, moves: plan.moves, rewrites: plan.rewrites };
   if (result.dryRun) return { result, touched: [], warnings: [] };
-  return finish(root, [c.name], applyRelink(root, plan), result);
+  return finish(root, applyRelink(root, plan), result);
 }
 
 export interface FixEdit {
@@ -1337,7 +1338,7 @@ export function fix(root: Root, opts: { collection?: string; dry_run?: boolean }
   }
   const result = { dryRun, edits, unfixed };
   if (dryRun || written.length === 0) return { result, touched: [], warnings: [] };
-  return finish(root, collections.map((c) => c.name), written, result);
+  return finish(root, written, result);
 }
 
 /** 1-based line of a front-matter key in the file (the opening `---` is line 1). */
@@ -1358,7 +1359,7 @@ export function tidy(root: Root, collection: string, opts: { dry_run?: boolean }
   const plan = planRelink(root, moves);
   const result = { collection: c.name, dryRun: opts.dry_run !== false, moves: plan.moves, rewrites: plan.rewrites };
   if (result.dryRun || !moves.length) return { result, touched: [], warnings: [] };
-  return finish(root, [c.name], applyRelink(root, plan), result);
+  return finish(root, applyRelink(root, plan), result);
 }
 
 export function regenerateReadmes(root: Root, collection?: string, check = false) {

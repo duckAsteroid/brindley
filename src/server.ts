@@ -20,7 +20,7 @@ import {
 } from "./repo.js";
 import { blockers, dependants, dependencyReport, displayRef, isActive, isReady, target, topoSort } from "./deps.js";
 import { collectionBlock, mermaid, regenerate, rootBlock } from "./readme.js";
-import { currentBranch, mergeInProgress, otherWorktrees, worktrees } from "./git.js";
+import { currentBranch, otherWorktrees, worktrees } from "./git.js";
 import { validate } from "./validate.js";
 import { checkDocs } from "./docs.js";
 import { dimensionReport, filterByDimensions, orderByDimensions } from "./dimensions.js";
@@ -54,7 +54,7 @@ export const INSTRUCTIONS = `Brindley manages planned work as Markdown files in 
 - \`fields\` lists every front-matter field a collection understands and the values each allows (statuses and aliases, types, tags, dimensions with their order and default) — look there rather than guessing.
 - For progress at a glance — for managers or anyone outside the team — \`report\` writes a one-page HTML report from the collections and their git history (work complete against scope over time, what was delivered, added and taken out this period) and returns the figures.
 - If you implement in a git worktree, call \`use_worktree\` with its path first, so your edits land there; every result ends with the checkout it worked on.
-- Brindley moves files only for a collection that declares \`folders:\` (status → folder); then status changes move them and rewrite links. Every write regenerates the collection README's generated block. \`validate\` reports structural problems (missing or conflicting statuses, files outside their status folder, duplicate numbers, broken links, …).
+- Brindley moves files only for a collection that declares \`folders:\` (status → folder); then status changes move them and rewrite links. Writes leave generated blocks (collection README tables, theme lists, milestone progress) alone; only \`regenerate_readmes\` refreshes them, so parallel agents don't conflict there. Before pushing to a shared remote (e.g. GitHub), run \`regenerate_readmes\` and commit what it changes; don't regenerate on local branches or worktrees. \`validate\` reports structural problems (missing or conflicting statuses, files outside their status folder, duplicate numbers, broken links, …).
 - Every open question has a label written in the file (\`**Q3**\`; split parts are Q3.1, Q3.2). Address questions by label (\`id: "Q3"\`) or \`match\`: labels never change when other questions are resolved or split, and are never reused in a file. A label marked \`provisional\` is not written yet; the first question write (or \`fix\`) writes it.
 - One decision per open question. If a question poses several (several "?", or a list of sub-questions), split it with \`split_question\` before discussing it — answering any part already settled in the same call.
 - The workflow prompts (\`design-review\`, \`implement\`, \`spike\`, \`triage\`) are also available as text from the \`brief\` tool, for agents that cannot fetch prompts.
@@ -62,7 +62,6 @@ export const INSTRUCTIONS = `Brindley manages planned work as Markdown files in 
 
 export interface ServerOptions {
   cwd: string;
-  autoReadme?: boolean;
 }
 
 const dimensionValue = z.union([z.string(), z.number()]);
@@ -284,7 +283,7 @@ ${verifyStep(root, i)}
    Docs this initiative is expected to touch: ${docs.length ? docs.map((x) => `\`${x}\``).join(", ") : "none listed — decide and state."}
 2. Settle the initiative's wording into a concise account of what was decided and built; move rejected alternatives and design debate into \`## Appendix: Rejected alternatives\`.
 3. Call \`complete\` with \`docs_impact\`: the doc paths you updated, or \`"none: <reason>"\`. Run \`check_docs\` on what you wrote.
-4. Commit the code, docs, initiative and regenerated READMEs together.
+4. Commit the code, docs and initiative together. Don't regenerate READMEs on this branch; before pushing to a shared remote (e.g. GitHub), run \`regenerate_readmes\` and commit what it changes.
 
 ${done.length ? `## Done dependencies (for context)\n\n${done.map((x) => `- ${x.ref} ${x.title} — ${x.path}`).join("\n")}\n\n` : ""}<initiative path="${i.rel}">
 ${readFileSync(i.file, "utf8")}
@@ -339,14 +338,11 @@ export function createServer(opts: ServerOptions): McpServer {
     const notes: string[] = [];
     if (root.collections.length === 0)
       notes.push("No collections in this repository yet. Mark a folder as one with create_collection.");
-    if (opts.autoReadme !== false) {
-      const onlyConflicted = mergeInProgress(root.repoRoot);
-      const changes = regenerate(root, { onlyConflicted });
-      if (changes.length) {
-        for (const c of changes)
-          notes.push(`${c.path.slice(root.repoRoot.length + 1)} was ${c.reason === "conflict" ? "conflicted" : "stale"}; regenerated.`);
-        root = loadRoot(root.repoRoot);
-      }
+    // A generated block with conflict markers is unusable and either side is disposable: heal it.
+    const changes = regenerate(root, { onlyConflicted: true });
+    if (changes.length) {
+      for (const c of changes) notes.push(`${c.path.slice(root.repoRoot.length + 1)} was conflicted; regenerated.`);
+      root = loadRoot(root.repoRoot);
     }
     return { root, notes };
   };
@@ -379,7 +375,7 @@ export function createServer(opts: ServerOptions): McpServer {
     content: [{ type: "text" as const, text: e instanceof Error ? e.message : String(e) }],
   });
 
-  /** Register a tool whose handler receives a freshly loaded (and self-healed) root. */
+  /** Register a tool whose handler receives a freshly loaded root, with conflicted generated blocks healed. */
   const tool = <S extends z.ZodRawShape>(
     name: string,
     description: string,

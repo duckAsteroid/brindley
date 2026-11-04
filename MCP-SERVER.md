@@ -13,8 +13,9 @@
   front-matter, mis-number files, or forget lifecycle rules.
 - Answer the questions people actually ask: *what's ready? what's blocked, and on what? what's
   still undecided?*
-- **Never require mass rewrites.** Every write touches only the initiative being changed, plus the
-  generated block in that collection's README (tables + Mermaid graph, §6.1).
+- **Never require mass rewrites.** Every write touches only the initiative being changed (or, for
+  the collection tools, that collection's README). Generated blocks are refreshed only by
+  `regenerate_readmes` (§6.1), so parallel branches don't conflict on them.
 - **Shrink repo agent files** to repo-specific workflow. In a typical implementing agent,
   step 1 (validate dependencies) becomes one `get` call, and step 6 (move to `completed/`, update
   README table and graph) becomes one `complete` call (see Appendix A).
@@ -133,18 +134,18 @@ un-reach one; `create`, or a tag change, can un-reach one by adding open work to
 |------|--------|-----------|
 | `create` | `collection` (a name, or a folder path — a new folder is marked as a collection), `title`, `type?`, `tags?`, `goal?`, `depends_on?`, `related?`, `why?`, `owner?` | Coins the next number by repo scan (§6), writes `<n>-<slug>.md` with `status: draft`, H1, and a section skeleton (Goal, Dependencies, Open Questions, Acceptance criteria) in which no section is left empty: each holds `_None._` or an italic prompt until filled. Adding to a section replaces its placeholder, and resolving the last open question puts `_None._` back. `depends_on`/`related` (refs like `lgm#22`, or URLs) become links under `## Dependencies` / `## Related`, with `why` (if given) appended to each dependency — without it, dependencies get a `_why this is needed_` prompt; related links get no note. |
 | `update` | `ref`, `title?`, `type?`, `owner?`, `tags?`, `status?`, `dimensions?`, `section?`, `content?` | `status` records the status an initiative already has when its front-matter has none — no lifecycle checks; `done` also writes `docs_impact: "none: completed before Brindley"`; refused once a status is recorded (that is a transition, for `set_status`). Works on done initiatives too: it is how settled work (findings, an appendix) is refined. `dimensions` sets scoring dimension values (`{ priority: high }`), refusing a value outside the dimension's set or a name its collection doesn't have; `null` clears one. Edits front-matter / H1, or replaces a named body section (adding it if missing); `content` is the section body, and a leading heading naming the section is dropped. Cannot change the number or filename. |
-| `batch_update` | `entries`, `dry_run = false` | `update`-style changes to many initiatives at once: each entry is a ref plus any of `status`, `reason`, `type`, `owner`, `tags`, `status_note`, `docs`, `dimensions`; `status: "from-text"` reads the status from the initiative's text (FORMAT §10's status-inferable). All or nothing: every entry is checked first, and if any fails nothing is written and every failure is returned with its entry. Otherwise each file is written once and the READMEs regenerated once; the result lists what each file got. `dry_run` returns the same without writing. |
+| `batch_update` | `entries`, `dry_run = false` | `update`-style changes to many initiatives at once: each entry is a ref plus any of `status`, `reason`, `type`, `owner`, `tags`, `status_note`, `docs`, `dimensions`; `status: "from-text"` reads the status from the initiative's text (FORMAT §10's status-inferable). All or nothing: every entry is checked first, and if any fails nothing is written and every failure is returned with its entry. Otherwise each file is written once; the result lists what each file got. `dry_run` returns the same without writing. |
 | `set_status` | `ref`, `status`, `force = false`, `superseded_by?`, `reason?`, `outcome?` | Enforces transition rules (refuses `→ designed` with blocking open questions; refuses `→ in-progress` when blocked), explaining why. `force` overrides with a warning. Abandoning requires `reason`; abandoned, superseded and deferred work gets a callout under its H1 with the reason (also kept as `status_note`) and, for superseded, a link to its replacement — rewritten when the status or note changes, removed on reopen. `outcome` is written into `## Outcome`. Starting work (`in-progress`) records `branch` — the checked-out one, or the `branch` argument — and is refused if the initiative is already in progress in another worktree or on another branch; leaving in-progress removes it. |
 | `add_question` | `ref`, `text`, `implementation = false` | Appends to `## Open Questions` (creating it if needed), labelled with the next free label (FORMAT §6), which it returns as `id`; a label written at the start of `text` is replaced. A blocking question on a `designed` initiative moves it back to `draft`, and says so. Warns when the text looks like more than one decision (§5.1). |
 | `split_question` | `ref`, `id` \| `match`, `into`, `record_in?`, `mode = "remove"` | Replaces one unresolved question with its parts, in its place and order, in one write. Each part is text or `{ text, implementation?, answer? }`; parts are labelled under the question's label (Q3 → Q3.1, Q3.2, skipping any already used), inherit its `(implementation)` marker unless they set their own, and keep a numbered list's marker. A part with an `answer` is settled as `resolve_question` settles one: recorded in `record_in` (default `Decisions`), or ticked with `mode: "tick"`. Refuses a resolved question and fewer than two parts; a `designed` initiative left with a blocking part goes back to `draft`. Returns the parts left open with their labels and the decisions recorded. |
 | `resolve_question` | `ref`, `id` \| `match`, `answer`, `record_in?`, `mode = "remove"` | Default (`remove`): deletes the question and appends the decision, under the question's label, to the `record_in` section (default `## Decisions`, created if missing — e.g. pass `Agreed direction`). `mode: "tick"` instead keeps it as `- [x] **Q3** … — answer`. Returns the label and the edited sections so the agent can smooth the prose. |
 | `set_dependencies` | `ref`, `add?`, `remove?`, `related_add?`, `related_remove?`, `why?` | Edits the `## Dependencies` / `## Related` sections: adds a bullet with a relative link (plus `why`), removes the bullet(s) linking to a target — bullets only: a link left in a paragraph is reported with its file line and the advice to delete it or move the sentence to `## Related` / `## See also`, and "not linked" means no link at all. Accepts refs (`lgm#22`, numbers, paths) or URLs. Refuses cycles and unknown initiatives. |
-| `complete` | `ref`, `docs_impact` | For a spike: warns if `## Findings` is missing, defaults `docs_impact` to none, and lists the open questions in initiatives linking to the spike that the findings may answer. Otherwise `docs_impact` is **required**: the project doc paths updated (relative to the repo root; absolute paths inside it are accepted), or `"none: <reason>"`. Each listed path must exist (if it exists only in another worktree, the error says so: the server works on the checkout it was started in), be outside every collection, match the `docs:` globs, and differ from `HEAD` (i.e. actually edited in this change); otherwise refused with the reason. Runs `check_docs` on the listed files and returns any warnings. Then sets `done` (pre-check: was `in-progress`, warns otherwise), warns if design-debate content (e.g. a rejected-alternatives table or section) is still in the main body rather than in `## Appendix: Rejected alternatives`, regenerates the READMEs, and reports which initiatives **became ready** as a result. No other initiative files are modified. |
+| `complete` | `ref`, `docs_impact` | For a spike: warns if `## Findings` is missing, defaults `docs_impact` to none, and lists the open questions in initiatives linking to the spike that the findings may answer. Otherwise `docs_impact` is **required**: the project doc paths updated (relative to the repo root; absolute paths inside it are accepted), or `"none: <reason>"`. Each listed path must exist (if it exists only in another worktree, the error says so: the server works on the checkout it was started in), be outside every collection, match the `docs:` globs, and differ from `HEAD` (i.e. actually edited in this change); otherwise refused with the reason. Runs `check_docs` on the listed files and returns any warnings. Then sets `done` (pre-check: was `in-progress`, warns otherwise), warns if design-debate content (e.g. a rejected-alternatives table or section) is still in the main body rather than in `## Appendix: Rejected alternatives`, and reports which initiatives **became ready** as a result. No other initiative files are modified. |
 | `renumber` | `ref`, `to?`, `dry_run?` | Fixes a post-merge number collision: gives the initiative `to`, or the next number coined as `create` does; renames its file and asset folder (slug kept, padded to the collection's width) and rewrites every link and `"<collection>#<n>"` reference to it — by name or alias, and a bare `superseded_by` in its own collection. For one file of a `duplicate-number` pair, pass it by path; that number's references are ambiguous, so they are left and a warning says so. Refuses a number already in use. |
 | `fix` | `collection?`, `dry_run = true` | Repairs the validate findings with one obvious fix, editing text in place and never renaming or moving a file: a `broken-link` whose filename matches exactly one initiative in its collection is relinked to it; `depends_on` / `related` front-matter becomes links under `## Dependencies` / `## Related` and the field is removed; unlabelled open questions get the labels they are reported with (rule `question-label`). Returns each edit (file, line, rule, before, after) and what it left (`unfixed`: no or several candidates, or a front-matter entry that isn't an initiative); writes only with `dry_run: false`. Renames are `repad`'s and `renumber`'s job. |
 | `tidy` | `collection`, `dry_run = true` | For a collection with `folders:` (FORMAT §2), moves every initiative to where its status belongs — its folder, or the top of the collection — with its asset folder, rewriting every link to them. Returns each move and link rewrite; writes only with `dry_run: false`. Refuses a collection without `folders:`. After that, `set_status`, `complete`, `update` and `batch_update` keep files in step as statuses change. |
 | `repad` | `collection`, `width?`, `dry_run = true` | Pads every initiative number in a collection to one width (FORMAT §3) — `width`, or the width most of its files use — renaming files and their asset folders and rewriting every link to them across the repo. Returns each rename and each link rewrite (file, line, before, after); writes only with `dry_run: false`. Refuses a width too small for the highest number; warns when the highest number fills 80% of it. |
-| `regenerate_readmes` | `collection?`, `check = false` | Rebuilds the generated blocks in collection READMEs (one, or all). `check: true` only reports which are stale — for CI. Rarely needed by hand, since writes and the staleness check (§6.1) keep them current. |
+| `regenerate_readmes` | `collection?`, `check = false` | Rebuilds the generated blocks in collection READMEs (one, or all). `check: true` only reports which are stale — for CI. The only tool that refreshes generated blocks: run it, and commit what it changes, before pushing to a shared remote (§6.1). |
 
 ## 4. Resources
 
@@ -244,8 +245,8 @@ flags it in its list. These are hints, never refusals or `validate` findings.
   (1) and says so. Numbers coined on other people's unpushed branches remain invisible, so
   `validate` + `renumber` stay as the safety net.
 - **Concurrency:** single writer per working tree. Parallel agents use separate worktrees; at
-  merge, conflicts are limited to the files each actually changed plus the generated index (which
-  is regenerated, not merged).
+  merge, conflicts are limited to the files each actually changed; writes don't rewrite generated
+  blocks, and a conflicted one is regenerated, not merged.
 - **Validation on write:** writes that would violate an error-level rule are refused with an
   explanation; warnings are returned alongside success.
 - **Leniency on read:** malformed files are reported but never stop the rest of the collection
@@ -256,24 +257,25 @@ flags it in its list. These are hints, never refusals or `validate` findings.
 The server owns the generated block in every collection README, theme doc and milestone doc
 (FORMAT §8).
 
-**After every write.** Any tool that changes an initiative or collection regenerates, in the same
-call, every collection README's generated block. Usually only the edited collection's changes,
-but a status change can alter readiness in other collections through cross-collection
-dependencies. Because output is deterministic, an unaffected README is not rewritten. The tool
-result lists every file it touched, so the agent can include them in its commit.
+**Writes leave generated blocks alone.** A tool that changes initiatives writes only those files
+(plus moved files and rewritten links, for `folders:` collections), and its result lists exactly
+what it touched. Two agents that each create an initiative on their own branch therefore don't
+both edit the README's Active table, Mermaid graph or theme lists. The exceptions are
+`create_collection`, `update_collection` and `ignore`, which write a collection README themselves
+and refresh that README's generated block (not its theme or milestone docs) in the same call.
 
-**After edits the server didn't make.** Initiatives are also edited by hand, by agents without the
-server, by `git pull`, and by merges. At the start of every tool call the server regenerates
-each existing README's block in memory and compares it with what is on disk — generation is
-deterministic and cheap, so no stored fingerprint is needed. If stale, it rewrites the block and
-says so in the tool result ("README for `LOCK-42/slot-booking` was stale; regenerated"). This
-self-healing is on by default; `--no-auto-readme` turns it off, leaving staleness to `validate`.
+**`regenerate_readmes` refreshes them.** Generated blocks are brought up to date only when
+`regenerate_readmes` (or `brindley readmes`) runs: by a person, by an agent before pushing to a
+shared remote such as GitHub, or in CI on the default branch. Between runs a block shows the
+collection as of its last regeneration. Agents are told (in the server instructions and the
+`implement` brief) to regenerate and commit before pushing to a shared remote, and not on local
+branches or worktrees. `check: true` (`brindley readmes --check`, exit 1 when stale) lets CI
+enforce freshness; `validate` doesn't report staleness.
 
-**Merges.** If a generated block contains conflict markers, the server regenerates it outright
-(the block is derived, so either side is equally disposable). It never touches conflict markers
-outside the block. While a merge or rebase is in progress (`MERGE_HEAD` / `rebase-merge`
-present) self-healing is limited to conflicted blocks, to avoid adding unrelated changes to the
-merge.
+**Conflicted blocks.** At the start of every tool call the server regenerates any generated block
+that contains conflict markers (the block is derived, so either side is equally disposable) and
+says so in the result ("`LOCK-42/slot-booking/README.md` was conflicted; regenerated"). Stale but
+unconflicted blocks are left alone. Conflict markers outside the block are never touched.
 
 **Hand edits inside the block** are overwritten; the marker text says so. **Outside the block**
 is never modified — the free-form introduction is the humans'.
@@ -323,7 +325,7 @@ history the report shows the current files only, and says so.
   unchanged.
 - MCP-level tests via the SDK's in-memory client.
 - README generation: golden-file tests for tables and Mermaid; determinism (regenerating twice
-  gives identical bytes); self-healing after an out-of-band edit; conflict-marker recovery.
+  gives identical bytes); writes leaving generated blocks untouched; conflict-marker recovery.
 
 ## Open Questions
 
@@ -356,7 +358,7 @@ A worktree-based implementing agent written for the pre-Brindley practice has ro
 | 2. Worktree | Repo-specific git workflow. | Unchanged (stays in the agent file). |
 | 3–4. Trace, implement | Repo-specific. | Unchanged. |
 | 5. Update current-state docs | Decide and state which docs are affected; write present-tense, no history. List of candidate docs hard-coded in the agent. | Candidate docs come from the initiative's/collection's `docs`; writing rules come from the format; `check_docs` lints the result; `complete` refuses without a `docs_impact` statement. The agent file keeps only repo-specific guidance (which doc covers what). |
-| 6. Retire the note | Move to `completed/`, mark as completed, rewrite wording, edit README summary table, completed table, and dependency graph. | Rewrite wording, then `complete(ref)`. Nothing moves; README index regenerates. |
+| 6. Retire the note | Move to `completed/`, mark as completed, rewrite wording, edit README summary table, completed table, and dependency graph. | Rewrite wording, then `complete(ref)`. Nothing moves; `regenerate_readmes` refreshes the README index before pushing. |
 | 7–9. Verify, commit, merge | Repo-specific. | Unchanged. |
 
 The agent file loses its hard-coded collection path and its README-maintenance instructions; the

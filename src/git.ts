@@ -1,6 +1,6 @@
 import { execFileSync } from "node:child_process";
 import { existsSync, readdirSync, statSync } from "node:fs";
-import { isAbsolute, join, resolve } from "node:path";
+import { join, resolve } from "node:path";
 
 /** Run a read-only git command; returns null if git is unavailable or the command fails. */
 export function git(repoRoot: string, args: string[]): string | null {
@@ -18,15 +18,6 @@ export function git(repoRoot: string, args: string[]): string | null {
 
 export function isGitRepo(repoRoot: string): boolean {
   return git(repoRoot, ["rev-parse", "--is-inside-work-tree"])?.trim() === "true";
-}
-
-/** True while a merge or rebase is in progress. */
-export function mergeInProgress(repoRoot: string): boolean {
-  for (const p of ["MERGE_HEAD", "rebase-merge", "rebase-apply"]) {
-    const out = git(repoRoot, ["rev-parse", "--git-path", p])?.trim();
-    if (out && existsSync(isAbsolute(out) ? out : join(repoRoot, out))) return true;
-  }
-  return false;
 }
 
 /** Paths of the other worktrees of this repository. */

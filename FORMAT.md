@@ -38,7 +38,8 @@ Typical lifecycle:
 - **Prose first.** Initiatives are design documents. The format standardises only the handful of
   facts tools need (number, status, dependencies); everything else is the author's.
 - **Readable on GitHub.** Rendered files and collection READMEs should be useful to a human
-  browsing the repo.
+  browsing the repo. Generated README content shows the collection as of its last explicit
+  regeneration, which tools run before work is shared (§8), not after every edit.
 - **Small core, versioned.** The format carries a version number so it can evolve.
 - **Docs say what is; initiatives say why.** Project documentation describes only the current
   code. History, rationale and rejected alternatives belong in initiatives, never in the docs
@@ -632,7 +633,7 @@ is not allowed — the implementer must decide and state, which is what keeps do
 ## 8. Generated README content
 
 Each collection's `README.md` is its human entry point: front-matter (§2), a free-form
-introduction written by people, plus a **generated block** that tools keep current. Theme
+introduction written by people, plus a **generated block** that tools regenerate on request. Theme
 overview docs (§4.2) get the same treatment, with a generated list of the theme's initiatives, and
 so do milestone docs (§4.4), with where the milestone stands:
 
@@ -648,6 +649,9 @@ Rules for the generated block:
 - **Deterministic.** Same inputs, byte-identical output: stable ordering (by number), no
   timestamps, no counts that depend on when it ran. Regenerating an up-to-date README produces no
   diff, so it never causes churn or spurious merge conflicts.
+- **Regenerated explicitly**, not on every edit: writes to initiatives leave it alone, so parallel
+  branches don't conflict on it. Regenerate before sharing work (e.g. before pushing to a shared
+  remote); between regenerations it may lag the initiatives.
 - **On merge conflict**, discard both sides and regenerate — never hand-merge it.
 - **Outside the markers is never touched** by tools.
 - A repo with no tooling can omit the markers and maintain the README by hand.

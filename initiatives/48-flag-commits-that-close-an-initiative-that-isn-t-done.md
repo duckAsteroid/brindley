@@ -43,7 +43,7 @@ _None._
 ## Related
 
 - [26 Record the merge commit or PR when work is done](26-record-the-merge-commit-or-pr-when-work-is-done.md) — the other direction: from a done ticket to the commit that did it
-- [43 Writes no longer regenerate READMEs](43-writes-no-longer-regenerate-readmes.md) — another case of git and the files drifting apart
+- [43 Writes no longer regenerate READMEs](done/43-writes-no-longer-regenerate-readmes.md) — another case of git and the files drifting apart
 
 ## Open questions
 

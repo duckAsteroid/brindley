@@ -7,7 +7,7 @@ import { DELIVERED_BY, splitFrontMatter } from "./markdown.js";
 import { allInitiatives, declaredTags, elsewhereHint, findCollection, ignoreMatcher, initiativeKey, statusFromText, toPosix } from "./repo.js";
 import { itemLabels, stripCodeFences, withoutInlineCode } from "./markdown.js";
 import { FINDINGS, MEASURES, sectionIsBlank } from "./ops.js";
-import { readmeColumns, regenerate } from "./readme.js";
+import { readmeColumns } from "./readme.js";
 import { checkDocs } from "./docs.js";
 import { dimensionsOf, parseDimensions, sameValue } from "./dimensions.js";
 import { parseGraph } from "./graph.js";
@@ -152,10 +152,6 @@ export function validate(root: Root, opts: { collection?: string; docs?: boolean
       cycle[0]!,
       `Dependency cycle: ${cycle.join(" → ")}. If one of these links is a back-reference ("depended on by", "precedes") rather than something needed first, move it to ## Related (keeps a non-blocking link) or to a section such as ## See also (a plain link).`,
     );
-  }
-
-  for (const ch of regenerate(root, { check: true, collections })) {
-    warn("readme-stale", rel(ch.path), "Generated README content is out of date; run regenerate_readmes.");
   }
 
   if (opts.docs) {

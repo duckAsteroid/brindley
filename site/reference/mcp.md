@@ -41,8 +41,9 @@ accepts a name, an alias or a folder path.
 
 ## Writing
 
-Every write touches only the initiative (or collection README) concerned, plus the regenerated
-README blocks — and reports every file it touched, ready to commit. When a write reaches a
+Every write touches only the initiative (or collection README) concerned and reports every file it
+touched, ready to commit. Generated README blocks are refreshed only by `regenerate_readmes`: run
+it and commit the result before pushing to a shared remote. When a write reaches a
 [milestone](/guide/milestones), or un-reaches one, its result says so under `milestones`.
 
 | Tool | Parameters | Does |
@@ -56,7 +57,7 @@ README blocks — and reports every file it touched, ready to commit. When a wri
 | `resolve_question` | `ref`, `id` or `match`, `answer`, `record_in?`, `mode?` | Removes the question and records the decision under its label (or ticks it, with `mode: tick`). |
 | `set_dependencies` | `ref`, `add?`, `remove?`, `related_add?`, `related_remove?`, `why?` | Adds or removes links under `## Dependencies` / `## Related`. Removes bullets only: a link in a paragraph stays, and the warning gives its line to edit by hand. Refuses cycles. |
 | `complete` | `ref`, `docs_impact` | Marks it done. `docs_impact` lists the project docs changed (paths from the repo root, not initiative files), or `none: <reason>` (spikes default to none). Reports what became ready, and any milestone it reaches. |
-| `regenerate_readmes` | `collection?`, `check?` | Rebuilds generated README blocks; `check` only reports stale ones. |
+| `regenerate_readmes` | `collection?`, `check?` | Rebuilds generated README blocks — the only tool that does; `check` only reports stale ones. |
 
 ## Prompts
 

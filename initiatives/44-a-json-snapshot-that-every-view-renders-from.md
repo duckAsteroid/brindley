@@ -45,7 +45,7 @@ _None._
 
 ## Related
 
-- [Writes no longer regenerate READMEs](43-writes-no-longer-regenerate-readmes.md) — makes README regeneration an explicit step, which this feeds
+- [Writes no longer regenerate READMEs](done/43-writes-no-longer-regenerate-readmes.md) — makes README regeneration an explicit step, which this feeds
 - [Serve the progress report live over local HTTP](34-serve-the-progress-report-live-over-local-http.md) — could serve the snapshot and the HTML page too
 
 ## Open questions

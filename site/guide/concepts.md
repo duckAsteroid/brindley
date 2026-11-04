@@ -101,6 +101,8 @@ See [Milestones](/guide/milestones).
 
 ## Generated READMEs
 
-Each collection's README keeps its own introduction, plus a block Brindley regenerates on every
-change: a table of active work, a Mermaid dependency graph, the themes in use, the milestones its work counts towards, and completed work. You never edit
-that block by hand; on a merge conflict it is simply regenerated.
+Each collection's README keeps its own introduction, plus a block Brindley generates: a table of
+active work, a Mermaid dependency graph, the themes in use, the milestones its work counts towards,
+and completed work. You never edit that block by hand. Writes don't touch it, so parallel branches
+don't conflict there; run `regenerate_readmes` (or `brindley readmes`) and commit the result
+before pushing to a shared remote. On a merge conflict the block is simply regenerated.

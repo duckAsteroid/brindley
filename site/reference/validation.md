@@ -58,7 +58,6 @@
 | `spike-findings` | A finished spike without `## Findings`. |
 | `type-unknown` | A type the collection doesn't declare. |
 | `tag-format` / `tag-unknown` | A tag that isn't kebab-case, or isn't declared. |
-| `readme-stale` | A generated README block is out of date. |
 | `collection-done-open` | A collection marked done with open initiatives. |
 | `nested-collection` | A collection inside another collection's folder. |
 
