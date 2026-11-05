@@ -37,8 +37,8 @@
 - **Install:** `npx -y brindley` — no global install, nothing added to the repo's build. For Claude
   Code, the plugin in `plugin/` (listed by this repo's marketplace, `.claude-plugin/marketplace.json`)
   runs the server at the exact version its `.mcp.json` names, and wraps the §5 workflows as skills
-  (on the `brief` tool) and an implementer agent. `npm run release:prepare` commits the next
-  release's version into the plugin before it is tagged, and the release refuses a tag the plugin
+  (on the `brief` tool) and an implementer agent. `npm run release` (or `release:prepare`, before
+  tagging by hand) commits the next release's version into the plugin before it is tagged, and the release refuses a tag the plugin
   doesn't name.
 - **Repo:** the nearest git root above the server's working directory, or above `--cwd <dir>` when
   given (the plugin passes `${CLAUDE_PROJECT_DIR}`). A server started inside a

@@ -22,6 +22,7 @@
     "version:explain": "node scripts/version.mjs --explain",
     "version:sync": "node scripts/version.mjs --sync",
     "release:prepare": "node scripts/plugin-version.mjs --prepare",
+    "release": "node scripts/release.mjs",
     "prepack": "npm run build",
     "prepare": "npm run build"
   },

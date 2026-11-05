@@ -42,6 +42,26 @@ export function stampPlugin(version, dir = PLUGIN) {
 
 const git = (...args) => execFileSync("git", args, { cwd: ROOT, encoding: "utf8" }).trim();
 
+/**
+ * Write the next release's version into the plugin files and commit them (nothing, if the plugin
+ * already names it). Returns the version and whether it committed; throws if the working tree has
+ * changes or there is nothing to release.
+ */
+export function prepareRelease() {
+  if (git("status", "--porcelain", "--untracked-files=no"))
+    throw new Error("Commit or stash your changes first: the release commit holds only the plugin version.");
+  const v = computeVersion();
+  if (v.onTag || v.bump === "none")
+    throw new Error(`Nothing to release since ${v.base ?? "the first commit"} (no feat, fix, perf or breaking commits).`);
+  const version = v.version.replace(/-SNAPSHOT$/, "");
+  const current = pluginVersions();
+  if (current.manifest === version && current.server === version) return { version, committed: false };
+  stampPlugin(version);
+  git("add", join("plugin", MANIFEST), join("plugin", MCP));
+  git("commit", "-m", `chore(release): v${version}`);
+  return { version, committed: true };
+}
+
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const [arg, value] = process.argv.slice(2);
   if (arg === "--check") {
@@ -52,26 +72,14 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     }
     process.stdout.write(`${value}\n`);
   } else if (arg === "--prepare") {
-    if (git("status", "--porcelain", "--untracked-files=no")) {
-      process.stderr.write("Commit or stash your changes first: the release commit holds only the plugin version.\n");
+    try {
+      const { version, committed } = prepareRelease();
+      process.stdout.write(committed ? `Committed the plugin at ${version}.\n` : `The plugin already names ${version}; nothing to commit.\n`);
+      process.stdout.write(`Tag and push it with npm run release, or:\n  git tag -a v${version} -m "<highlights>" && git push origin main v${version}\n`);
+    } catch (e) {
+      process.stderr.write(`${e.message}\n`);
       process.exit(1);
     }
-    const v = computeVersion();
-    if (v.onTag || v.bump === "none") {
-      process.stderr.write(`Nothing to release since ${v.base ?? "the first commit"} (no feat, fix, perf or breaking commits).\n`);
-      process.exit(1);
-    }
-    const version = v.version.replace(/-SNAPSHOT$/, "");
-    const current = pluginVersions();
-    if (current.manifest === version && current.server === version) {
-      process.stdout.write(`The plugin already names ${version}; nothing to commit.\n`);
-    } else {
-      stampPlugin(version);
-      git("add", join("plugin", MANIFEST), join("plugin", MCP));
-      git("commit", "-m", `chore(release): v${version}`);
-      process.stdout.write(`Committed the plugin at ${version}.\n`);
-    }
-    process.stdout.write(`Tag and push it:\n  git tag -a v${version} -m "<highlights>" && git push origin main v${version}\n`);
   } else {
     process.stdout.write(`${JSON.stringify(pluginVersions())}\n`);
   }

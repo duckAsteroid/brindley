@@ -1,7 +1,9 @@
 name: Release
 
-# Publishes to npm when a release tag (vX.Y.Z) is pushed:
-#   npm run release:prepare   (commits the plugin at the next version)
+# Publishes to npm when a release tag (vX.Y.Z) is pushed, by:
+#   npm run release -- "<highlights>"   (commits the plugin at the next version, tags, pushes)
+# or by hand:
+#   npm run release:prepare
 #   git tag -a v1.2.3 -m "<highlights>" && git push origin main v1.2.3
 on:
   push:

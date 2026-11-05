@@ -41,10 +41,13 @@ cd site && npm install && npm run dev   # the documentation site
 
 The version comes from git: the last `vX.Y.Z` tag, bumped by the Conventional Commits since it
 (`feat` → minor, `fix`/`perf` → patch, `!` → major), with `-SNAPSHOT` off-tag — the same rules as
-[gradle-versioning](https://github.com/duckAsteroid/gradle-versioning). Release with
-`npm run release:prepare`, which commits the next version into the Claude Code plugin (`plugin/`),
-then tag and push — `git tag -a v1.0.0 -m "<highlights>" && git push origin main v1.0.0` — and the
-Release workflow checks the plugin names the tag's version, validates it, tests, publishes to npm
+[gradle-versioning](https://github.com/duckAsteroid/gradle-versioning). Release from an up-to-date,
+clean `main` with `npm run release -- "<highlights>"` (`--dry-run` to see the version first): it
+commits the next version into the Claude Code plugin (`plugin/`), tags it (annotated with the
+highlights; a plain tag without them) and pushes `main` and the tag together. The steps can also be
+run by hand: `npm run release:prepare`, then
+`git tag -a v1.0.0 -m "<highlights>" && git push origin main v1.0.0`. The tag starts the
+Release workflow, which checks the plugin names the tag's version, validates it, tests, publishes to npm
 (with provenance) and creates a GitHub Release. Its notes, and the site's
 [Releases](https://duckasteroid.github.io/brindley/releases) page, come from
 `node scripts/changelog.mjs`: the annotated tag's message as highlights (optional — a plain tag
