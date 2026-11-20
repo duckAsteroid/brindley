@@ -43,6 +43,7 @@ Planned work on Brindley itself: tools specified in MCP-SERVER.md but not yet bu
 | 47 | [Package and release the OpenCode sidebar plugin with Brindley](47-package-and-release-the-opencode-sidebar-plugin-with-brindle.md) | feature | draft | — | 6 | — |
 | 48 | [Flag commits that close an initiative that isn't done](48-flag-commits-that-close-an-initiative-that-isn-t-done.md) | feature | draft | — | 7 | — |
 | 49 | [Return tool results as structured content](49-return-tool-results-as-structured-content.md) | bug | draft | — | 5 | — |
+| 50 | [Store a collection's initiatives as GitHub issues](50-store-a-collection-s-initiatives-as-github-issues.md) | feature | draft | — | 8 (+2 impl.) | — |
 
 ### Dependencies
 
@@ -67,6 +68,7 @@ flowchart RL
   n47["✏️ 47 Package and release the OpenCode sidebar plugin with Brindley"]
   n48["✏️ 48 Flag commits that close an initiative that isn't done"]
   n49["✏️ 49 Return tool results as structured content"]
+  n50["✏️ 50 Store a collection's initiatives as GitHub issues"]
   n19["✅ <s>19 Scoring dimensions on initiatives</s>"]
   n45["✅ <s>45 Install Brindley as a Claude Code plugin</s>"]
   n21 --> n19
@@ -90,6 +92,7 @@ flowchart RL
   click n47 href "47-package-and-release-the-opencode-sidebar-plugin-with-brindle.md"
   click n48 href "48-flag-commits-that-close-an-initiative-that-isn-t-done.md"
   click n49 href "49-return-tool-results-as-structured-content.md"
+  click n50 href "50-store-a-collection-s-initiatives-as-github-issues.md"
   click n19 href "done/19-rank-initiatives-by-scoring-dimensions.md"
   click n45 href "done/45-install-brindley-as-a-claude-code-plugin.md"
 ```
