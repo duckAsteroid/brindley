@@ -42,13 +42,27 @@
   doesn't name.
 - **Repo:** the nearest git root above the server's working directory, or above `--cwd <dir>` when
   given (the plugin passes `${CLAUDE_PROJECT_DIR}`). A server started inside a
-  worktree therefore operates on that worktree's files. An agent that creates a worktree mid-session
-  calls `use_worktree` to switch the server to it; the switch lasts for the server process (one
-  client session) and every result names the checkout it worked on, with its branch. While the
-  server is still on the checkout it started in and other worktrees exist, that line names them
-  and how to switch, and any call that writes files there warns that the edits may belong in a
-  worktree. If the current worktree is removed, calls are refused until `use_worktree()` switches
-  back.
+  worktree therefore operates on that worktree's files by default.
+- **Checkout per call:** every tool takes `worktree?` — the checkout that call works on: the path
+  of a live worktree of the repository (`git worktree list`), absolute or relative to the checkout
+  the server started in, or `"."` for that checkout (the default). Any other path, including a
+  worktree whose folder is gone, is refused with the list of worktrees. The server holds no
+  checkout state, so a session and the subagents it starts — which share one server — never move
+  each other's calls. While other live worktrees exist:
+  - a **write** without `worktree` is refused. The message lists each other worktree with its
+    branch, marks one whose branch is contained in the starting checkout's `HEAD` and that has no
+    uncommitted changes as removable if its work is finished (`git worktree remove`), names
+    worktrees whose folder is gone as prunable (`git worktree prune`), and says how to pass
+    `worktree`. A call is a write unless the tool is read-only or the call is a dry run
+    (`dry_run`, or `regenerate_readmes` with `check`); `report`, which writes its HTML file, is a
+    write. Worktrees whose folder is gone don't cause the refusal.
+  - every result's JSON carries `worktree`: the checkout used, `"."` or its path relative to the
+    starting checkout. A result that isn't a JSON object is wrapped as `{ result, worktree }`;
+    `brief`, which returns Markdown, adds a `Worktree:` line instead.
+  With no other worktrees, `worktree` is optional everywhere and absent from results. Every
+  result also ends with a `Checkout:` line naming the checkout and branch; on the starting
+  checkout it lists the other worktrees and says to pass `worktree`. Resources and prompts read
+  the starting checkout.
 - **Collections** are found on every call by scanning the repo for `README.md` files whose
   front-matter has `brindley` (FORMAT §2), using `git ls-files` so gitignored paths (including
   worktrees under ignored folders) are skipped. There is no repo-level config file. With no
@@ -84,13 +98,13 @@ without reading this spec.
 
 ## 3. Tools
 
-All tools return structured JSON plus a short text rendering.
+All tools return structured JSON plus a short text rendering. Every tool except `version` also
+takes `worktree?`, the checkout the call works on (§2).
 
 ### Setup
 
 | Tool | Params | Behaviour |
 |------|--------|-----------|
-| `use_worktree` | `path?` | Switches the server to another git worktree of the same repository for the rest of its process, so an implementing agent's edits land in the worktree it builds in; refuses a path that isn't one. No `path` (or the original checkout) switches back. Returns the checkout in use. Not affected by a removed worktree, unlike every other tool. |
 | `create_collection` | `path`, `name?`, `title?`, `summary?`, `owner?`, `link?`, `agent?`, `docs?`, `types?`, `tags?`, `statuses?`, `ignore?`, `dimensions?`, `graph?`, `columns?`, `folders?` | Marks a folder as a collection: adds `brindley: 1` and the given details to its README front-matter, creating the folder and README if needed and keeping any existing README text. Works on a folder already full of numbered initiatives. Refuses a name already used by another collection. For the repo's first collection, also returns the format-rules agent snippet (FORMAT §9) to add to `AGENTS.md`/`CLAUDE.md`. `create` given a new folder path does the same implicitly. |
 | `ignore` | `collection`, `add?`, `remove?`, `dry_run?` | Adds or removes the collection's `ignore:` patterns (`.gitignore` semantics, FORMAT §2) without rewriting the whole list. Returns the resulting patterns, every numbered file now ignored, and what changed; `dry_run` previews without writing. |
 | `update_collection` | `collection`, `status?`, and any `create_collection` detail (`null` removes `dimensions`, `graph`, `columns` or `folders`) | Edits the collection README's front-matter, including the changeset's status (`active` / `done` / `abandoned`; warns when marking `done` with unfinished initiatives). Refuses to change `name`, since references would break. Structured settings (`dimensions`, `graph`, `columns`, `folders`) are checked as they would be read, and refused with the problems rather than written. |
@@ -140,7 +154,7 @@ un-reach one; `create`, or a tag change, can un-reach one by adding open work to
 | `split_question` | `ref`, `id` \| `match`, `into`, `record_in?`, `mode = "remove"` | Replaces one unresolved question with its parts, in its place and order, in one write. Each part is text or `{ text, implementation?, answer? }`; parts are labelled under the question's label (Q3 → Q3.1, Q3.2, skipping any already used), inherit its `(implementation)` marker unless they set their own, and keep a numbered list's marker. A part with an `answer` is settled as `resolve_question` settles one: recorded in `record_in` (default `Decisions`), or ticked with `mode: "tick"`. Refuses a resolved question and fewer than two parts; a `designed` initiative left with a blocking part goes back to `draft`. Returns the parts left open with their labels and the decisions recorded. |
 | `resolve_question` | `ref`, `id` \| `match`, `answer`, `record_in?`, `mode = "remove"` | Default (`remove`): deletes the question and appends the decision, under the question's label, to the `record_in` section (default `## Decisions`, created if missing — e.g. pass `Agreed direction`). `mode: "tick"` instead keeps it as `- [x] **Q3** … — answer`. Returns the label and the edited sections so the agent can smooth the prose. |
 | `set_dependencies` | `ref`, `add?`, `remove?`, `related_add?`, `related_remove?`, `why?` | Edits the `## Dependencies` / `## Related` sections: adds a bullet with a relative link (plus `why`), removes the bullet(s) linking to a target — bullets only: a link left in a paragraph is reported with its file line and the advice to delete it or move the sentence to `## Related` / `## See also`, and "not linked" means no link at all. Accepts refs (`lgm#22`, numbers, paths) or URLs. Refuses cycles and unknown initiatives. |
-| `complete` | `ref`, `docs_impact` | For a spike: warns if `## Findings` is missing, defaults `docs_impact` to none, and lists the open questions in initiatives linking to the spike that the findings may answer. Otherwise `docs_impact` is **required**: the project doc paths updated (relative to the repo root; absolute paths inside it are accepted), or `"none: <reason>"`. Each listed path must exist (if it exists only in another worktree, the error says so: the server works on the checkout it was started in), be outside every collection, match the `docs:` globs, and differ from `HEAD` (i.e. actually edited in this change); otherwise refused with the reason. Runs `check_docs` on the listed files and returns any warnings. Then sets `done` (pre-check: was `in-progress`, warns otherwise), warns if design-debate content (e.g. a rejected-alternatives table or section) is still in the main body rather than in `## Appendix: Rejected alternatives`, and reports which initiatives **became ready** as a result. No other initiative files are modified. |
+| `complete` | `ref`, `docs_impact` | For a spike: warns if `## Findings` is missing, defaults `docs_impact` to none, and lists the open questions in initiatives linking to the spike that the findings may answer. Otherwise `docs_impact` is **required**: the project doc paths updated (relative to the repo root; absolute paths inside it are accepted), or `"none: <reason>"`. Each listed path must exist (if it exists only in another worktree, the error says so and to pass that worktree as `worktree`), be outside every collection, match the `docs:` globs, and differ from `HEAD` (i.e. actually edited in this change); otherwise refused with the reason. Runs `check_docs` on the listed files and returns any warnings. Then sets `done` (pre-check: was `in-progress`, warns otherwise), warns if design-debate content (e.g. a rejected-alternatives table or section) is still in the main body rather than in `## Appendix: Rejected alternatives`, and reports which initiatives **became ready** as a result. No other initiative files are modified. |
 | `renumber` | `ref`, `to?`, `dry_run?` | Fixes a post-merge number collision: gives the initiative `to`, or the next number coined as `create` does; renames its file and asset folder (slug kept, padded to the collection's width) and rewrites every link and `"<collection>#<n>"` reference to it — by name or alias, and a bare `superseded_by` in its own collection. For one file of a `duplicate-number` pair, pass it by path; that number's references are ambiguous, so they are left and a warning says so. Refuses a number already in use. |
 | `fix` | `collection?`, `dry_run = true` | Repairs the validate findings with one obvious fix, editing text in place and never renaming or moving a file: a `broken-link` whose filename matches exactly one initiative in its collection is relinked to it; `depends_on` / `related` front-matter becomes links under `## Dependencies` / `## Related` and the field is removed; unlabelled open questions get the labels they are reported with (rule `question-label`). Returns each edit (file, line, rule, before, after) and what it left (`unfixed`: no or several candidates, or a front-matter entry that isn't an initiative); writes only with `dry_run: false`. Renames are `repad`'s and `renumber`'s job. |
 | `tidy` | `collection`, `dry_run = true` | For a collection with `folders:` (FORMAT §2), moves every initiative to where its status belongs — its folder, or the top of the collection — with its asset folder, rewriting every link to them. Returns each move and link rewrite; writes only with `dry_run: false`. Refuses a collection without `folders:`. After that, `set_status`, `complete`, `update` and `batch_update` keep files in step as statuses change. |

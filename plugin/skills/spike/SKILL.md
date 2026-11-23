@@ -9,5 +9,5 @@ Call the Brindley `brief` tool (`mcp__plugin_brindley_brindley__brief`) with `wo
 
 In Claude Code:
 
-- If you work in a git worktree, including one made with `EnterWorktree` or `claude --worktree`, call Brindley's `use_worktree` with its path as soon as it exists.
+- If you work in a git worktree, including one made with `EnterWorktree` or `claude --worktree`, pass its path as `worktree` on every Brindley call, reads included. While other worktrees exist, Brindley refuses writes without `worktree` (`"."` is the main checkout).
 - Leave the spike's branch in place when you finish; it may become the basis of the real implementation.

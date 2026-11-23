@@ -187,39 +187,106 @@ describe("MCP server", () => {
   });
 });
 
-describe("use_worktree", () => {
-  it("switches the server to another worktree, names the checkout, and switches back", async () => {
+describe("worktree argument", () => {
+  const text = (r: unknown) => (r as { content: { text: string }[] }).content.map((c) => c.text);
+  const refused = (r: unknown) => (r as { isError?: boolean }).isError === true;
+  const owner = (dir: string, file = "22-opening-hours-change-impact.md") => /^owner: (.*)$/m.exec(readFileSync(join(dir, C, file), "utf8"))?.[1];
+
+  it("works without it while there are no other worktrees, and leaves results unmarked", async () => {
+    fx = fixture({ files: lockExample });
+    const client = await connect(fx.repo);
+    const upd = await client.callTool({ name: "update", arguments: { ref: "sb#22", owner: "locks team" } });
+    expect(json(upd).worktree).toBeUndefined();
+    expect(text(upd)[1]).toMatch(/^Checkout: [^ ]+ \(main\)$/);
+    expect(owner(fx.repo)).toBe("locks team");
+    expect(json(await client.callTool({ name: "get", arguments: { ref: "sb#22" } })).worktree).toBeUndefined();
+  });
+
+  it("sends each call to the checkout it names, interleaved, on one server", async () => {
+    fx = fixture({ files: lockExample });
+    const a = `${fx.repo}-a`;
+    const b = `${fx.repo}-b`;
+    git(fx.repo, "worktree", "add", "-q", a, "-b", "feature-a");
+    git(fx.repo, "worktree", "add", "-q", b, "-b", "feature-b");
+    try {
+      const client = await connect(fx.repo);
+      const set = (worktree: string, who: string) => client.callTool({ name: "update", arguments: { ref: "sb#22", owner: who, worktree } });
+      // Interleaved writes from "two subagents" and "the parent": none moves another.
+      const ra = await set(a, "agent a");
+      const rp = await set(".", "parent");
+      const rb = await set(`../${b.split("/").at(-1)}`, "agent b"); // relative to the starting checkout
+      const ra2 = await set(a, "agent a again");
+      expect(owner(a)).toBe("agent a again");
+      expect(owner(b)).toBe("agent b");
+      expect(owner(fx.repo)).toBe("parent");
+      // Each result names the checkout it used, in the JSON and in the Checkout line.
+      expect(json(ra).worktree).toBe(`../${a.split("/").at(-1)}`);
+      expect(json(rp).worktree).toBe(".");
+      expect(json(rb).worktree).toBe(`../${b.split("/").at(-1)}`);
+      expect(text(ra2)[1]).toMatch(/^Checkout: .*-a \(worktree, feature-a\)$/);
+      expect(text(rp)[1]).toMatch(/^Checkout: .* \(where this server started, main\)\. Other worktrees: .*-a on feature-a; .*-b on feature-b — if you are working in one, pass its path as `worktree`\.$/);
+      // Reads are never refused, and say which checkout they read; array results are wrapped.
+      const read = json(await client.callTool({ name: "get", arguments: { ref: "sb#22" } }));
+      expect(read.worktree).toBe(".");
+      expect(read.owner ?? read.result?.owner).toBe("parent");
+      const list = json(await client.callTool({ name: "list", arguments: { worktree: b } }));
+      expect(list.worktree).toBe(`../${b.split("/").at(-1)}`);
+      expect(list.result.find((i: { ref: string }) => i.ref === "slot-booking#22")).toBeTruthy();
+      // A dry run is not a write.
+      expect(refused(await client.callTool({ name: "fix", arguments: {} }))).toBe(false);
+    } finally {
+      rmSync(a, { recursive: true, force: true });
+      rmSync(b, { recursive: true, force: true });
+    }
+  });
+
+  it("refuses a write that names no worktree while others exist, saying which look finished or prunable", async () => {
+    fx = fixture({ files: lockExample });
+    const done = `${fx.repo}-done`;
+    const busy = `${fx.repo}-busy`;
+    const gone = `${fx.repo}-gone`;
+    git(fx.repo, "worktree", "add", "-q", done, "-b", "merged-work");
+    git(fx.repo, "worktree", "add", "-q", busy, "-b", "open-work");
+    git(fx.repo, "worktree", "add", "-q", gone, "-b", "lost-work");
+    try {
+      git(busy, "commit", "-q", "--allow-empty", "-m", "wip");
+      rmSync(gone, { recursive: true, force: true });
+      const client = await connect(fx.repo);
+      const res = await client.callTool({ name: "update", arguments: { ref: "sb#22", owner: "nobody" } });
+      expect(refused(res)).toBe(true);
+      const msg = text(res)[0]!;
+      expect(msg).toMatch(/^Refused: this write names no `worktree`/);
+      expect(msg).toMatch(/-done on merged-work — everything on it is in main and nothing is uncommitted: if its work is finished, remove it \(git worktree remove \.\.\/[^)]*-done\)/);
+      expect(msg).toMatch(/-busy on open-work\n/);
+      expect(msg).not.toMatch(/-busy on open-work —/);
+      expect(msg).toMatch(/Prunable \(folder gone\): .*-gone on lost-work — run git worktree prune\./);
+      expect(msg).toMatch(/Pass `worktree`: .* or "\." for /);
+      expect(owner(fx.repo)).not.toBe("nobody");
+      // A worktree whose folder is gone can't be targeted, and alone doesn't trigger the refusal.
+      expect(refused(await client.callTool({ name: "list", arguments: { worktree: gone } }))).toBe(true);
+      git(fx.repo, "worktree", "remove", done);
+      git(fx.repo, "worktree", "remove", "--force", busy);
+      const after = await client.callTool({ name: "update", arguments: { ref: "sb#22", owner: "somebody" } });
+      expect(refused(after)).toBe(false);
+      expect(owner(fx.repo)).toBe("somebody");
+    } finally {
+      for (const d of [done, busy, gone]) rmSync(d, { recursive: true, force: true });
+    }
+  });
+
+  it("refuses a path that isn't a live worktree, listing those that are", async () => {
     fx = fixture({ files: lockExample });
     const wt = `${fx.repo}-wt`;
     git(fx.repo, "worktree", "add", "-q", wt, "-b", "feature");
     try {
       const client = await connect(fx.repo);
-      const text = (r: unknown) => (r as { content: { text: string }[] }).content.map((c) => c.text);
-      // Not a worktree of this repo: refused.
-      const bad = await client.callTool({ name: "use_worktree", arguments: { path: "/tmp" } });
-      expect((bad as { isError?: boolean }).isError).toBe(true);
-      // Before switching, with a worktree around: every reply names it, and a write warns.
-      const early = await client.callTool({ name: "update", arguments: { ref: "sb#23", owner: "gates team" } });
-      expect(text(early)[1]).toMatch(/^Checkout: .* \(where this server started, main\)\. Other worktrees: .*-wt on feature — if you are working in one, call use_worktree with its path\.$/);
-      expect(json(early).warnings.at(-1)).toMatch(/^Written to .*, where this server started, but other worktrees exist \(.*-wt on feature\)\. If you are implementing in one, call use_worktree with its path first/);
-      // Switch, then write: the edit lands in the worktree only.
-      const sw = json(await client.callTool({ name: "use_worktree", arguments: { path: wt } }));
-      expect(sw.switched).toBe(true);
-      const upd = await client.callTool({ name: "update", arguments: { ref: "sb#22", owner: "locks team" } });
-      expect(text(upd)[1]).toMatch(/^Checkout: .*-wt \(worktree, feature\)$/);
-      expect(json(upd).warnings ?? []).toEqual([]); // switched: no nudge
-      expect(readFileSync(join(wt, C, "22-opening-hours-change-impact.md"), "utf8")).toContain("owner: locks team");
-      expect(readFileSync(join(fx.repo, C, "22-opening-hours-change-impact.md"), "utf8")).not.toContain("owner: locks team");
-      // Back to where the server started.
-      const back = json(await client.callTool({ name: "use_worktree", arguments: {} }));
-      expect(back.switched).toBe(false);
-      // A removed worktree is refused loudly, and use_worktree() still works.
-      json(await client.callTool({ name: "use_worktree", arguments: { path: wt } }));
+      const bad = await client.callTool({ name: "get", arguments: { ref: "sb#22", worktree: "/tmp" } });
+      expect(refused(bad)).toBe(true);
+      expect(text(bad)[0]).toMatch(/^\/tmp is not a worktree of the repository at .*\. Its worktrees: "\." \(.*, where this server started\); \.\.\/.*-wt on feature\.$/);
+      // Removing a worktree affects only calls that name it.
       rmSync(wt, { recursive: true, force: true });
-      const gone = await client.callTool({ name: "list", arguments: {} });
-      expect((gone as { isError?: boolean }).isError).toBe(true);
-      expect(text(gone)[0]).toMatch(/no longer exists\. Call use_worktree\(\) to return to/);
-      expect(json(await client.callTool({ name: "use_worktree", arguments: {} })).switched).toBe(false);
+      expect(refused(await client.callTool({ name: "get", arguments: { ref: "sb#22", worktree: wt } }))).toBe(true);
+      expect(refused(await client.callTool({ name: "update", arguments: { ref: "sb#22", owner: "x" } }))).toBe(false);
     } finally {
       rmSync(wt, { recursive: true, force: true });
     }

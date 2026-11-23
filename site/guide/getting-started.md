@@ -21,8 +21,12 @@ or, inside a session, `/plugin marketplace add duckAsteroid/brindley` then
 - an implementer agent, `brindley:implementer`, that builds one initiative from its brief through
   to `complete`.
 
-The plugin runs an exact server version, not the latest one on npm; `claude plugin update
-brindley@brindley` moves you to the newest release.
+The plugin runs an exact server version, not the latest one on npm; `claude plugin marketplace
+update brindley` then `claude plugin update brindley@brindley` moves you to the newest release.
+
+The plugin provides the server, so a repo that uses it doesn't also register Brindley — no
+`brindley` entry in the repo's `.mcp.json`, and no `claude mcp add`. Two registrations give agents
+every tool twice, possibly at different versions.
 
 A plugin cannot grant itself permissions, so Claude Code asks before each Brindley tool call. To
 allow them all, add the rule to `.claude/settings.json` (for everyone in the repo) or

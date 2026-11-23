@@ -9,6 +9,6 @@ Call the Brindley `brief` tool (`mcp__plugin_brindley_brindley__brief`) with `wo
 
 In Claude Code:
 
-- If you work in a git worktree, including one made with `EnterWorktree` or `claude --worktree`, call Brindley's `use_worktree` with its path as soon as it exists, so the initiative edits land on that branch.
+- If you work in a git worktree, including one made with `EnterWorktree` or `claude --worktree`, pass its path as `worktree` on every Brindley call, reads included, so the initiative edits land on that branch. While other worktrees exist, Brindley refuses writes without `worktree` (`"."` is the main checkout). Remove the worktree once its work is merged.
 - To hand the work to a sub-agent instead, use the `brindley:implementer` agent with the initiative's reference.
 - Ask the user about unsettled product, data or API choices in your reply text, not with the `AskUserQuestion` tool.

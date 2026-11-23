@@ -61,9 +61,12 @@ Finishing:
    alternatives to `## Appendix: Rejected alternatives`.
 3. **`complete`** it, stating which docs changed — or `none: <reason>`.
 
-If the agent builds in a git worktree, the brief tells it to call `use_worktree` with the
-worktree's path once it exists — so status changes and `complete` land in that branch — and
-`use_worktree()` to switch back after merging.
+If the agent builds in a git worktree, the brief tells it to pass the worktree's path as
+`worktree` on every Brindley call — so it reads that branch's copy and its status changes and
+`complete` land in that branch — and to remove the worktree once its work is merged. Subagents
+share their session's Brindley server, so this per-call argument is what keeps several agents in
+several worktrees apart. While other worktrees exist, Brindley refuses a write that doesn't name
+its checkout; in the main checkout, pass `worktree: "."`.
 
 If your repo has its own implementing-agent instructions (worktrees, build commands), point the
 collection's `agent:` field at them and the brief tells the agent to follow them.

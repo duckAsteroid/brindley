@@ -65,8 +65,8 @@ With `docs: true`, project docs are linted too (see `check_docs`).
 
 ## Paths and worktrees
 
-Brindley works on the git checkout it was started in. Errors about a path you give a tool (a
-reference by path, a collection folder, a `docs_impact` path) name that checkout. When another
-worktree of the repository has the missing file, the message says which one — usually the sign
-that the server was started in a different checkout from the one being changed. Call
-`use_worktree` with that worktree's path to switch the server to it.
+Each tool call works on one checkout: the one its `worktree` argument names, or the checkout the
+server was started in. Errors about a path you give a tool (a reference by path, a collection
+folder, a `docs_impact` path) name that checkout. When another worktree of the repository has the
+missing file, the message says which one — usually the sign that the call should have named that
+worktree. Pass its path as `worktree` and try again.

@@ -4,13 +4,21 @@ You rarely call these by name — ask your agent in plain words and it picks the
 tool takes `ref`, use `name#n` (`sb#22`), a bare number when unambiguous, or a path; `collection`
 accepts a name, an alias or a folder path.
 
+Every tool also takes `worktree`: the checkout the call works on — the path of a git worktree of
+the repo (absolute, or relative to where the server started), or `"."` for the checkout the
+server started in, which is the default. An agent building in a worktree passes its path on every
+call. While the repo has other worktrees, a write that leaves `worktree` out is refused — the
+message lists the worktrees, flags the ones that look finished (to `git worktree remove`) or whose
+folder is gone (to `git worktree prune`) — and every result says which checkout it used in a
+`worktree` field (`"."` or the worktree's path). Reads and dry runs are never refused. Removing
+finished worktrees lets writes go through without `worktree` again.
+
 ## Collections
 
 | Tool | Parameters | Does |
 |------|------------|------|
 | `create_collection` | `path`, `name?`, `aliases?`, `title?`, `summary?`, `owner?`, `link?`, `agent?`, `docs?`, `types?`, `tags?`, `statuses?`, `ignore?` | Marks a folder as a collection (creating it if needed). The first one in a repo also returns the AGENTS.md snippet. |
 | `update_collection` | `collection`, `status?`, and the same details | Edits the collection README's front-matter. Its name can't be changed here. Takes `dimensions`, `graph`, `columns` and `folders` too — refused if they wouldn't read cleanly; `null` removes one. |
-| `use_worktree` | `path?` | Switches the server to another worktree of the repo for this session, so edits land where the agent is building; no `path` switches back. Every result names its checkout and branch; until you switch, it also lists the other worktrees, and writes warn that they're landing in the starting checkout. |
 | `ignore` | `collection`, `add?`, `remove?`, `dry_run?` | Adds or removes `.gitignore`-style patterns for numbered files that aren't initiatives; `dry_run` previews. |
 | `fix` | `collection?`, `dry_run?` | Repairs findings with one obvious fix — a broken link to an initiative that moved (one match by filename), dependencies written in front-matter, open questions without a label — editing text only. Plans unless `dry_run: false`. |
 | `rename_collection` | `collection`, `to`, `dry_run?` | Moves a collection to a new folder, rewriting links into and out of it, and `name#n` references when its name follows the folder. |

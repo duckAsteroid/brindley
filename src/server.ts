@@ -1,5 +1,5 @@
 import { existsSync, readFileSync, realpathSync } from "node:fs";
-import { resolve } from "node:path";
+import { relative, resolve } from "node:path";
 import { McpServer, ResourceTemplate } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { STATUSES, type Initiative, type Root } from "./model.js";
@@ -20,7 +20,7 @@ import {
 } from "./repo.js";
 import { blockers, dependants, dependencyReport, displayRef, isActive, isReady, target, topoSort } from "./deps.js";
 import { collectionBlock, mermaid, regenerate, rootBlock } from "./readme.js";
-import { currentBranch, otherWorktrees, worktrees } from "./git.js";
+import { currentBranch, worktrees } from "./git.js";
 import { validate } from "./validate.js";
 import { checkDocs } from "./docs.js";
 import { dimensionReport, filterByDimensions, orderByDimensions } from "./dimensions.js";
@@ -53,7 +53,7 @@ export const INSTRUCTIONS = `Brindley manages planned work as Markdown files in 
 - Initiatives can carry scoring dimensions — \`priority\`, \`impact\`, \`complexity\` by default, plus any a collection declares — each a front-matter field whose value comes from an ordered set. Set them with \`update\` (\`dimensions\`), filter and order with \`list\` (\`where\`, \`order_by\`). A ticket with none set simply hasn't been scored yet.
 - \`fields\` lists every front-matter field a collection understands and the values each allows (statuses and aliases, types, tags, dimensions with their order and default) — look there rather than guessing.
 - For progress at a glance — for managers or anyone outside the team — \`report\` writes a one-page HTML report from the collections and their git history (work complete against scope over time, what was delivered, added and taken out this period) and returns the figures.
-- If you implement in a git worktree, call \`use_worktree\` with its path first, so your edits land there; every result ends with the checkout it worked on.
+- Every tool takes an optional \`worktree\`: the checkout the call works on. If you work in a git worktree, pass its path on every call, reads included, so you see and edit that branch's copy. While other worktrees exist, writes without \`worktree\` are refused; \`"."\` is the checkout this server started in. Remove your worktree once its work is merged — while it exists, every agent's writes need \`worktree\`. Every result ends with the checkout it worked on.
 - Brindley moves files only for a collection that declares \`folders:\` (status → folder); then status changes move them and rewrite links. Writes leave generated blocks (collection README tables, theme lists, milestone progress) alone; only \`regenerate_readmes\` refreshes them, so parallel agents don't conflict there. Before pushing to a shared remote (e.g. GitHub), run \`regenerate_readmes\` and commit what it changes; don't regenerate on local branches or worktrees. \`validate\` reports structural problems (missing or conflicting statuses, files outside their status folder, duplicate numbers, broken links, …).
 - Every open question has a label written in the file (\`**Q3**\`; split parts are Q3.1, Q3.2). Address questions by label (\`id: "Q3"\`) or \`match\`: labels never change when other questions are resolved or split, and are never reused in a file. A label marked \`provisional\` is not written yet; the first question write (or \`fix\`) writes it.
 - One decision per open question. If a question poses several (several "?", or a list of sub-questions), split it with \`split_question\` before discussing it — answering any part already settled in the same call.
@@ -270,7 +270,7 @@ ${verifyStep(root, i)}
 
 - Ask about any product, data or API choice the initiative doesn't settle before writing code. \`(implementation)\` questions are yours to settle — record each decision in the initiative (\`resolve_question\`).
 - Set \`status\` to in-progress (\`set_status\`) when you begin.
-- If you work in a git worktree: once it exists, call \`use_worktree\` with its path, so every Brindley edit (status, questions, \`complete\`) lands in that worktree and its commit. After merging, call \`use_worktree()\` with no path before removing the worktree.
+- If you work in a git worktree: pass its path as \`worktree\` on every Brindley call, reads included, so every edit (status, questions, \`complete\`) lands in that worktree and its commit and you read that branch's copy. While other worktrees exist, writes without \`worktree\` are refused (\`"."\` is the checkout the server started in). Once your work is merged, remove the worktree: while it exists, every agent's writes need \`worktree\`.
 
 ## While building
 
@@ -327,13 +327,59 @@ export function briefText(root: Root, workflow: Workflow, args: { ref?: string |
 export function createServer(opts: ServerOptions): McpServer {
   const server = new McpServer({ name: "brindley", version: VERSION }, { instructions: INSTRUCTIONS });
 
-  // The checkout the server works on: where it was started, unless use_worktree has switched it.
+  // The checkout the server started in. Each call names its own checkout (`worktree`), defaulting to this one;
+  // the server holds no switch, so one caller can never move another (a session and its subagents share it).
   const started = findRepoRoot(opts.cwd);
-  let checkout = started;
+  const real = (p: string) => (existsSync(p) ? realpathSync(p) : resolve(p));
+  const startedReal = real(started);
 
-  const open = (): { root: Root; notes: string[] } => {
-    if (checkout !== started && !existsSync(checkout))
-      throw new BrindleyError(`The worktree ${checkout} no longer exists. Call use_worktree() to return to ${started}, or name another worktree.`);
+  /** The repository's other worktrees, each marked live (its folder exists) or not. */
+  const others = () =>
+    worktrees(started)
+      .filter((w) => real(w.path) !== startedReal)
+      .map((w) => ({ ...w, live: existsSync(w.path) }));
+  const liveOthers = () => others().filter((w) => w.live);
+  const shown = (p: string) => relative(startedReal, real(p)) || ".";
+  const describe = (w: { path: string; branch: string | null }) => `${shown(w.path)}${w.branch ? ` on ${w.branch}` : " (detached)"}`;
+
+  /** The checkout a call's `worktree` argument names: the starting checkout when omitted or ".", else a live worktree. */
+  const checkoutFor = (arg: string | undefined): string => {
+    if (arg === undefined) return started;
+    const want = real(resolve(started, arg));
+    if (want === startedReal) return started;
+    const live = liveOthers();
+    if (live.some((w) => real(w.path) === want)) return want;
+    throw new BrindleyError(
+      `${want} is not a worktree of the repository at ${started}. Its worktrees: "." (${started}, where this server started)${live.map((w) => `; ${describe(w)}`).join("")}.`,
+    );
+  };
+
+  /**
+   * A write that names no `worktree` while other worktrees exist can't say which checkout it means:
+   * refuse it, naming the worktrees — and which look finished — so they get tidied away.
+   */
+  const refuseUnnamedWrite = () => {
+    const all = others();
+    const live = all.filter((w) => w.live);
+    if (!live.length) return;
+    const base = currentBranch(started) ?? "HEAD";
+    const lines = live.map((w) => {
+      const merged = w.branch !== null && git(started, ["merge-base", "--is-ancestor", `refs/heads/${w.branch}`, "HEAD"]) !== null;
+      const clean = git(w.path, ["status", "--porcelain"])?.trim() === "";
+      return `- ${describe(w)}${merged && clean ? ` — everything on it is in ${base} and nothing is uncommitted: if its work is finished, remove it (git worktree remove ${shown(w.path)})` : ""}`;
+    });
+    const gone = all.filter((w) => !w.live);
+    throw new BrindleyError(
+      [
+        `Refused: this write names no \`worktree\`, and this repository has other worktrees, so which checkout it is meant for is ambiguous:`,
+        ...lines,
+        ...(gone.length ? [`Prunable (folder gone): ${gone.map(describe).join("; ")} — run git worktree prune.`] : []),
+        `Pass \`worktree\`: the path of the worktree you are working in, or "." for ${started}, where this server started. Once finished worktrees are removed, writes need no \`worktree\`.`,
+      ].join("\n"),
+    );
+  };
+
+  const open = (checkout: string): { root: Root; notes: string[] } => {
     let root = openRepo(checkout);
     const notes: string[] = [];
     if (root.collections.length === 0)
@@ -347,27 +393,27 @@ export function createServer(opts: ServerOptions): McpServer {
     return { root, notes };
   };
 
-  /** Other worktrees, when the server is still on the checkout it started in (the case to nudge about). */
-  const unswitchedOthers = () =>
-    checkout === started ? worktrees(started).filter((w) => w.path !== resolve(started) && existsSync(w.path)) : [];
-  const describe = (w: { path: string; branch: string | null }) => `${w.path}${w.branch ? ` on ${w.branch}` : ""}`;
-
   /**
-   * Every result names the checkout it worked on, after the JSON — and, when the server hasn't
-   * switched but other worktrees exist, names them and how to switch, since that is how edits
-   * end up in the wrong checkout.
+   * Every result names the checkout it worked on, after the JSON — and, on the starting checkout
+   * while other worktrees exist, names them and how to target one.
    */
-  const checkoutLine = () => {
+  const checkoutLine = (checkout: string) => {
     const branch = currentBranch(checkout);
     if (checkout !== started) return `Checkout: ${checkout} (worktree${branch ? `, ${branch}` : ""})`;
-    const others = unswitchedOthers();
-    if (!others.length) return `Checkout: ${checkout}${branch ? ` (${branch})` : ""}`;
-    return `Checkout: ${checkout} (where this server started${branch ? `, ${branch}` : ""}). Other worktrees: ${others.map(describe).join("; ")} — if you are working in one, call use_worktree with its path.`;
+    const live = liveOthers();
+    if (!live.length) return `Checkout: ${checkout}${branch ? ` (${branch})` : ""}`;
+    return `Checkout: ${checkout} (where this server started${branch ? `, ${branch}` : ""}). Other worktrees: ${live.map(describe).join("; ")} — if you are working in one, pass its path as \`worktree\`.`;
   };
-  const reply = (value: unknown) => ({
+  /** While other worktrees exist, the result itself says which checkout it used (wrapping a non-object result). */
+  const withWorktree = (value: unknown, checkout: string): unknown => {
+    if (!liveOthers().length) return value;
+    const worktree = shown(checkout);
+    return value && typeof value === "object" && !Array.isArray(value) ? { ...value, worktree } : { result: value, worktree };
+  };
+  const reply = (value: unknown, checkout: string) => ({
     content: [
-      { type: "text" as const, text: JSON.stringify(value, null, 2) },
-      { type: "text" as const, text: checkoutLine() },
+      { type: "text" as const, text: JSON.stringify(withWorktree(value, checkout), null, 2) },
+      { type: "text" as const, text: checkoutLine(checkout) },
     ],
   });
   const fail = (e: unknown) => ({
@@ -375,63 +421,54 @@ export function createServer(opts: ServerOptions): McpServer {
     content: [{ type: "text" as const, text: e instanceof Error ? e.message : String(e) }],
   });
 
-  /** Register a tool whose handler receives a freshly loaded root, with conflicted generated blocks healed. */
+  const worktreeArg = z
+    .string()
+    .optional()
+    .describe('The checkout to work on: the path of the git worktree you are working in (absolute, or relative to the checkout this server started in), or "." for that checkout (the default). While other worktrees exist, writes without it are refused.');
+
+  /**
+   * Register a tool whose handler receives a freshly loaded root of the checkout the call names,
+   * with conflicted generated blocks healed. A tool is a write unless `readOnly`, or `dry` says
+   * this call only previews.
+   */
   const tool = <S extends z.ZodRawShape>(
     name: string,
     description: string,
     shape: S,
     handler: (root: Root, args: z.infer<z.ZodObject<S>>) => unknown,
-    annotations: { readOnlyHint?: boolean } = {},
+    kind: { readOnly?: boolean; dry?: (args: z.infer<z.ZodObject<S>>) => boolean } = {},
   ) => {
-    server.registerTool(name, { description, inputSchema: shape, annotations }, (async (args: z.infer<z.ZodObject<S>>) => {
-      try {
-        const { root, notes } = open();
-        const out = handler(root, args) as Record<string, unknown> | unknown;
-        if (out && typeof out === "object" && "touched" in (out as object) && "result" in (out as object)) {
-          const r = out as ops.OpResult;
-          // Writing to the starting checkout while worktrees exist: the edits may belong in one of them.
-          const others = r.touched.length ? unswitchedOthers() : [];
-          if (others.length)
-            r.warnings = [
-              ...r.warnings,
-              `Written to ${checkout}, where this server started, but other worktrees exist (${others.map(describe).join("; ")}). If you are implementing in one, call use_worktree with its path first — these edits are here, not there.`,
-            ];
-          return reply({ ...(r.result as object), ...(r.milestones ? { milestones: r.milestones } : {}), touched: r.touched, warnings: r.warnings, ...(notes.length ? { notes } : {}) });
+    server.registerTool(
+      name,
+      { description, inputSchema: { ...shape, worktree: worktreeArg }, annotations: kind.readOnly ? { readOnlyHint: true } : {} },
+      (async (all: z.infer<z.ZodObject<S>> & { worktree?: string }) => {
+        try {
+          const { worktree, ...rest } = all;
+          const args = rest as z.infer<z.ZodObject<S>>;
+          const checkout = checkoutFor(worktree);
+          if (worktree === undefined && !kind.readOnly && !kind.dry?.(args)) refuseUnnamedWrite();
+          const { root, notes } = open(checkout);
+          const out = handler(root, args) as Record<string, unknown> | unknown;
+          if (out && typeof out === "object" && "touched" in (out as object) && "result" in (out as object)) {
+            const r = out as ops.OpResult;
+            return reply(
+              { ...(r.result as object), ...(r.milestones ? { milestones: r.milestones } : {}), touched: r.touched, warnings: r.warnings, ...(notes.length ? { notes } : {}) },
+              checkout,
+            );
+          }
+          return reply(notes.length ? { result: out, notes } : out, checkout);
+        } catch (e) {
+          return fail(e);
         }
-        return reply(notes.length ? { result: out, notes } : out);
-      } catch (e) {
-        return fail(e);
-      }
-    }) as never);
+      }) as never,
+    );
   };
+  const readOnly = { readOnly: true };
+  /** Tools whose `dry_run` defaults to false / true. */
+  const dryIfAsked = { dry: (a: { dry_run?: boolean }) => a.dry_run === true };
+  const dryUnlessOff = { dry: (a: { dry_run?: boolean }) => a.dry_run !== false };
 
   // --- Setup ------------------------------------------------------------------
-
-  // Not a `tool`: it must work even when the current worktree has gone, which `open` refuses.
-  server.registerTool(
-    "use_worktree",
-    {
-      description:
-        "Switch this server to another git worktree of the same repository, for the rest of this session: every later call reads and writes that checkout. Call it right after creating the worktree you will implement in, so initiative edits land in that branch's commit. With no `path` (or the original checkout's path), switch back — do that after merging, before removing the worktree. Returns the checkout now in use.",
-      inputSchema: { path: z.string().optional().describe("The worktree's folder; omit to return to the checkout the server started in.") },
-    },
-    (async (a: { path?: string }) => {
-      try {
-        const real = (p: string) => (existsSync(p) ? realpathSync(p) : resolve(p));
-        if (a.path === undefined || real(resolve(started, a.path)) === real(started)) checkout = started;
-        else {
-          const want = real(resolve(started, a.path));
-          const trees = otherWorktrees(started).filter(existsSync).map(real);
-          if (!trees.includes(want))
-            throw new BrindleyError(`${want} is not a worktree of the repository at ${started} (git worktree list: ${trees.join(", ") || "no others"}).`);
-          checkout = want;
-        }
-        return reply({ checkout, started, switched: checkout !== started });
-      } catch (e) {
-        return fail(e);
-      }
-    }) as never,
-  );
 
   const collectionFields = {
     title: z.string().optional(),
@@ -496,7 +533,7 @@ export function createServer(opts: ServerOptions): McpServer {
       description: "The Brindley server's version (computed from git tags + Conventional Commits) and build commit.",
       annotations: { readOnlyHint: true },
     },
-    async () => reply({ name: "brindley", version: VERSION, commit: COMMIT, formatVersion: 1 }),
+    async () => reply({ name: "brindley", version: VERSION, commit: COMMIT, formatVersion: 1 }, started),
   );
 
   tool(
@@ -509,6 +546,7 @@ export function createServer(opts: ServerOptions): McpServer {
       dry_run: z.boolean().optional(),
     },
     (root, a) => ops.setIgnore(root, a.collection, { add: a.add, remove: a.remove, dryRun: a.dry_run }),
+    dryIfAsked,
   );
 
   // --- Reading ----------------------------------------------------------------
@@ -532,7 +570,7 @@ export function createServer(opts: ServerOptions): McpServer {
           ignoredFiles: c.ignored,
         };
       }),
-    { readOnlyHint: true },
+    readOnly,
   );
 
   tool(
@@ -548,7 +586,7 @@ export function createServer(opts: ServerOptions): McpServer {
             : root.collections;
       return cols.map((c) => ({ collection: c.name, fields: fieldsFor(root, c) }));
     },
-    { readOnlyHint: true },
+    readOnly,
   );
 
   tool(
@@ -582,7 +620,7 @@ export function createServer(opts: ServerOptions): McpServer {
       if (a.order_by?.length) items = orderByDimensions(root, items, a.order_by);
       return items.map((i) => summary(root, i));
     },
-    { readOnlyHint: true },
+    readOnly,
   );
 
   tool(
@@ -590,7 +628,7 @@ export function createServer(opts: ServerOptions): McpServer {
     "Full detail of one initiative (ticket/issue), including its dependency report (each dependency classified satisfied / blocking / external / missing), dependants, open questions and acceptance criteria.",
     { ref: refArg, collection: z.string().optional() },
     (root, a) => detail(root, resolveRef(root, a.ref, a.collection)),
-    { readOnlyHint: true },
+    readOnly,
   );
 
   tool(
@@ -604,7 +642,7 @@ export function createServer(opts: ServerOptions): McpServer {
           (i) => isReady(root, i) && !elsewhereOf(root, i).length && (!a.collection || i.collection === canonicalCollection(root, a.collection)) && (!a.type || i.type === a.type),
         ),
       ).map((i) => ({ ...summary(root, i), external: dependencyReport(root, i).filter((d) => d.classification === "external").map((d) => d.ref) })),
-    { readOnlyHint: true },
+    readOnly,
   );
 
   tool(
@@ -670,7 +708,7 @@ export function createServer(opts: ServerOptions): McpServer {
         mermaid: mermaid(root, unique, from, settings),
       };
     },
-    { readOnlyHint: true },
+    readOnly,
   );
 
   tool(
@@ -695,7 +733,7 @@ export function createServer(opts: ServerOptions): McpServer {
         }))
         .filter((x) => x.questions.length > 0);
     },
-    { readOnlyHint: true },
+    readOnly,
   );
 
   tool(
@@ -703,7 +741,7 @@ export function createServer(opts: ServerOptions): McpServer {
     "The next unresolved blocking question in one initiative (the first labelled after `after`, if given), with its label (`id`) and the count remaining. Drives the design-review conversation.",
     { ref: refArg, collection: z.string().optional(), after: z.string().optional().describe('A question label, e.g. "Q3": return the first open question labelled after it.') },
     (root, a) => ops.nextQuestion(resolveRef(root, a.ref, a.collection), a.after),
-    { readOnlyHint: true },
+    readOnly,
   );
 
   tool(
@@ -728,7 +766,7 @@ export function createServer(opts: ServerOptions): McpServer {
         };
       });
     },
-    { readOnlyHint: true },
+    readOnly,
   );
 
   tool(
@@ -773,7 +811,7 @@ export function createServer(opts: ServerOptions): McpServer {
         };
       });
     },
-    { readOnlyHint: true },
+    readOnly,
   );
 
   tool(
@@ -781,7 +819,7 @@ export function createServer(opts: ServerOptions): McpServer {
     "Is this initiative (ticket/issue) complete and ready to work on? Runs the preflight the implement and spike briefs start with: status, dependencies, blocking open questions, acceptance criteria (or ## Measures for a spike), validation errors. `ready: false` means stop and report, don't start.",
     { ref: refArg, collection: z.string().optional() },
     (root, a) => preflightOf(root, resolveRef(root, a.ref, a.collection)),
-    { readOnlyHint: true },
+    readOnly,
   );
 
   tool(
@@ -793,7 +831,7 @@ export function createServer(opts: ServerOptions): McpServer {
       docs: z.boolean().optional().describe("Also lint project docs"),
     },
     (root, a) => validate(root, { collection: a.collection, docs: a.docs }).filter((f) => !a.rules?.length || a.rules.includes(f.rule)),
-    { readOnlyHint: true },
+    readOnly,
   );
 
   tool(
@@ -801,7 +839,7 @@ export function createServer(opts: ServerOptions): McpServer {
     "Lint project docs for history phrasing, design debate and links into initiatives (docs must describe only what the code is). Defaults to docs changed vs HEAD.",
     { paths: z.array(z.string()).optional() },
     (root, a) => checkDocs(root, a.paths),
-    { readOnlyHint: true },
+    readOnly,
   );
 
   // --- Writing ----------------------------------------------------------------
@@ -855,6 +893,7 @@ export function createServer(opts: ServerOptions): McpServer {
     "Repair the validate findings that have one obvious fix, editing text in place (never renaming or moving a file): a broken link whose filename matches exactly one initiative in its collection, `depends_on` / `related` front-matter (turned into links under ## Dependencies / ## Related), and open questions without a label (given the labels they are reported with). Anything ambiguous is listed in `unfixed`. Dry run by default: returns each edit (file, line, before, after); pass dry_run: false to write. Padding is fixed by repad, numbers by renumber.",
     { collection: z.string().optional(), dry_run: z.boolean().optional() },
     (root, a) => ops.fix(root, { collection: a.collection, dry_run: a.dry_run }),
+    dryUnlessOff,
   );
 
   tool(
@@ -862,6 +901,7 @@ export function createServer(opts: ServerOptions): McpServer {
     "Move a collection to a new folder, rewriting every relative link into it from anywhere in the repo and out of it from inside. If its name comes from its folder (no `name:` in its README), the name changes too and \"<name>#<n>\" references by the old name, path or automatic alias are rewritten; explicit aliases are kept. Refuses a destination that exists or is inside another collection, and a new name another collection uses. `dry_run: true` returns the plan.",
     { collection: z.string(), to: z.string().describe("The new folder, relative to the repo root."), dry_run: z.boolean().optional() },
     (root, a) => ops.renameCollection(root, a.collection, a.to, { dry_run: a.dry_run }),
+    dryIfAsked,
   );
 
   tool(
@@ -874,6 +914,7 @@ export function createServer(opts: ServerOptions): McpServer {
       dry_run: z.boolean().optional(),
     },
     (root, a) => ops.renumber(root, resolveRef(root, a.ref, a.collection), { to: a.to, dry_run: a.dry_run }),
+    dryIfAsked,
   );
 
   tool(
@@ -881,6 +922,7 @@ export function createServer(opts: ServerOptions): McpServer {
     "For a collection that declares `folders:` (status → folder), move every initiative to where its status belongs — its folder, or the top of the collection — with its asset folder, rewriting every link to them. Dry run by default: returns each move and link rewrite; pass dry_run: false to apply. Status changes keep things in step after that; tidy is for files already out of place.",
     { collection: z.string(), dry_run: z.boolean().optional() },
     (root, a) => ops.tidy(root, a.collection, { dry_run: a.dry_run }),
+    dryUnlessOff,
   );
 
   tool(
@@ -892,6 +934,7 @@ export function createServer(opts: ServerOptions): McpServer {
       dry_run: z.boolean().optional().describe("Default true: plan only."),
     },
     (root, a) => ops.repad(root, a.collection, { width: a.width, dry_run: a.dry_run }),
+    dryUnlessOff,
   );
 
   tool(
@@ -917,6 +960,7 @@ export function createServer(opts: ServerOptions): McpServer {
       dry_run: z.boolean().optional(),
     },
     (root, a) => ops.batchUpdate(root, a.entries, { dry_run: a.dry_run }),
+    dryIfAsked,
   );
 
   tool(
@@ -1013,13 +1057,14 @@ export function createServer(opts: ServerOptions): McpServer {
     "Rebuild the generated README blocks (tables + Mermaid). check=true only reports what is stale (for CI).",
     { collection: z.string().optional(), check: z.boolean().optional() },
     (root, a) => ops.regenerateReadmes(root, a.collection, a.check),
+    { dry: (a) => a.check === true },
   );
 
   // --- Resources --------------------------------------------------------------
 
   const tryRoot = (): Root | null => {
     try {
-      return open().root;
+      return open(started).root;
     } catch {
       return null;
     }
@@ -1030,7 +1075,7 @@ export function createServer(opts: ServerOptions): McpServer {
     "brindley://index",
     { description: "Overview of all collections, cross-collection dependencies and themes", mimeType: "text/markdown" },
     async (uri) => {
-      const root = open().root;
+      const root = open(started).root;
       return { contents: [{ uri: uri.href, mimeType: "text/markdown", text: `# Initiatives\n\n${rootBlock(root)}\n` }] };
     },
   );
@@ -1048,7 +1093,7 @@ export function createServer(opts: ServerOptions): McpServer {
     }),
     { description: "One collection's overview: tables and dependency graph", mimeType: "text/markdown" },
     async (uri, vars) => {
-      const root = open().root;
+      const root = open(started).root;
       const c = findCollection(root, String(vars["path"]));
       if (!c) throw new BrindleyError(`No collection ${vars["path"]}.`);
       return { contents: [{ uri: uri.href, mimeType: "text/markdown", text: `# ${c.meta.title}\n\n${collectionBlock(root, c)}\n` }] };
@@ -1068,7 +1113,7 @@ export function createServer(opts: ServerOptions): McpServer {
     }),
     { description: "The raw Markdown of one initiative (brindley://initiative/<collection>/<number>)", mimeType: "text/markdown" },
     async (uri, vars) => {
-      const root = open().root;
+      const root = open(started).root;
       const m = /^(.+)\/(\d+)$/.exec(String(vars["ref"]));
       const i = m ? lookup(root, m[1]!, Number(m[2])) : undefined;
       if (!i) throw new BrindleyError(`No initiative ${vars["ref"]}.`);
@@ -1087,7 +1132,7 @@ export function createServer(opts: ServerOptions): McpServer {
     }),
     { description: "A theme as one document: its overview doc (if any), then every initiative tagged with it, across collections", mimeType: "text/markdown" },
     async (uri, vars) => {
-      const root = open().root;
+      const root = open(started).root;
       const tag = String(vars["tag"]);
       const items = allInitiatives(root).filter((i) => i.tags.includes(tag));
       const desc = declaredTags(root)?.[tag];
@@ -1112,18 +1157,21 @@ export function createServer(opts: ServerOptions): McpServer {
         workflow: z.enum(WORKFLOWS),
         ref: refArg.optional(),
         collection: z.string().optional().describe("triage: just this collection"),
+        worktree: worktreeArg,
       },
       annotations: { readOnlyHint: true },
     },
-    (async (a: { workflow: Workflow; ref?: string | number; collection?: string }) => {
+    (async (a: { workflow: Workflow; ref?: string | number; collection?: string; worktree?: string }) => {
       try {
-        const { root, notes } = open();
+        const checkout = checkoutFor(a.worktree);
+        const { root, notes } = open(checkout);
         const text = briefText(root, a.workflow, a);
         return {
           content: [
             { type: "text" as const, text },
             ...(notes.length ? [{ type: "text" as const, text: notes.join("\n") }] : []),
-            { type: "text" as const, text: checkoutLine() },
+            ...(liveOthers().length ? [{ type: "text" as const, text: `Worktree: ${shown(checkout)}` }] : []),
+            { type: "text" as const, text: checkoutLine(checkout) },
           ],
         };
       } catch (e) {
@@ -1142,7 +1190,7 @@ export function createServer(opts: ServerOptions): McpServer {
       description: "Work through an initiative's (ticket's/issue's) open questions with the user, one at a time, grounded in the code.",
       argsSchema: { ref: z.string().describe('Initiative: "collection#n" or a number') },
     },
-    ({ ref }) => prompt(briefText(open().root, "design-review", { ref })),
+    ({ ref }) => prompt(briefText(open(started).root, "design-review", { ref })),
   );
 
   server.registerPrompt(
@@ -1151,7 +1199,7 @@ export function createServer(opts: ServerOptions): McpServer {
       description: "Hand-off brief for an agent implementing one initiative (ticket/issue).",
       argsSchema: { ref: z.string().describe('Initiative: "collection#n" or a number') },
     },
-    ({ ref }) => prompt(briefText(open().root, "implement", { ref })),
+    ({ ref }) => prompt(briefText(open(started).root, "implement", { ref })),
   );
 
   server.registerPrompt(
@@ -1161,7 +1209,7 @@ export function createServer(opts: ServerOptions): McpServer {
         "Hand-off brief for a spike (type: spike): build enough to measure what the initiative's ## Measures asks, record ## Findings, and keep the code on its own branch — it may become the basis of the real implementation.",
       argsSchema: { ref: z.string().describe('Spike initiative: "collection#n" or a number') },
     },
-    ({ ref }) => prompt(briefText(open().root, "spike", { ref })),
+    ({ ref }) => prompt(briefText(open(started).root, "spike", { ref })),
   );
 
   server.registerPrompt(
@@ -1170,7 +1218,7 @@ export function createServer(opts: ServerOptions): McpServer {
       description: "Review the initiatives (tickets/issues): stale drafts, unresolved questions, blocked chains, unconfirmed external dependencies, and what to pick next.",
       argsSchema: { collection: z.string().optional() },
     },
-    ({ collection }) => prompt(briefText(open().root, "triage", { collection })),
+    ({ collection }) => prompt(briefText(open(started).root, "triage", { collection })),
   );
 
   return server;

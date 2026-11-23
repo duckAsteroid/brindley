@@ -575,12 +575,12 @@ export function statusFromText(
 
 /**
  * " It exists in the worktree …" when another worktree of this repository has the repo-relative
- * path — the surprising case, since the server works on one checkout. Empty otherwise.
+ * path — the surprising case, since a call works on one checkout. Empty otherwise.
  */
 export function elsewhereHint(root: Root, relPath: string): string {
   const found = otherWorktrees(root.repoRoot).filter((wt) => existsSync(join(wt, relPath)));
   return found.length
-    ? ` It exists in the worktree ${found.join(", ")}, but this server is working on ${root.repoRoot}. If that worktree is where you are working, call use_worktree("${found[0]}") and try again.`
+    ? ` It exists in the worktree ${found.join(", ")}, but this call is working on ${root.repoRoot}. If that worktree is where you are working, pass its path as \`worktree\` and try again.`
     : "";
 }
 
