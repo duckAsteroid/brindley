@@ -1,8 +1,0 @@
-{
-  "mcpServers": {
-    "brindley": {
-      "command": "npx",
-      "args": ["-y", "brindley@latest"]
-    }
-  }
-}
