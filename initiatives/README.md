@@ -142,6 +142,7 @@ flowchart RL
 | 35 | [Stable question labels instead of positional indexes](done/35-stable-question-labels-instead-of-positional-indexes.md) | feature | 2026-10-30 |
 | 43 | [Writes no longer regenerate READMEs](done/43-writes-no-longer-regenerate-readmes.md) | feature | 2026-11-04 |
 | 45 | [Install Brindley as a Claude Code plugin](done/45-install-brindley-as-a-claude-code-plugin.md) | feature | 2026-10-25 |
+| 51 | [Stop subagents and worktrees tangling the server's checkout](done/51-stop-subagents-and-worktrees-tangling-the-server-s-checkout.md) | bug | 2026-11-23 |
 
 ### Closed
 
