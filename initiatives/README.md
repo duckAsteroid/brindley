@@ -44,6 +44,7 @@ Planned work on Brindley itself: tools specified in MCP-SERVER.md but not yet bu
 | 48 | [Flag commits that close an initiative that isn't done](48-flag-commits-that-close-an-initiative-that-isn-t-done.md) | feature | draft | — | 7 | — |
 | 49 | [Return tool results as structured content](49-return-tool-results-as-structured-content.md) | bug | draft | — | 5 | — |
 | 50 | [Store a collection's initiatives as GitHub issues](50-store-a-collection-s-initiatives-as-github-issues.md) | feature | draft | — | 8 (+2 impl.) | — |
+| 53 | [Document the Claude Code and OpenCode deployments on their own site pages](53-document-the-claude-code-and-opencode-deployments-on-their-o.md) | docs | draft | — | 2 | — |
 
 ### Dependencies
 
@@ -69,6 +70,7 @@ flowchart RL
   n48["✏️ 48 Flag commits that close an initiative that isn't done"]
   n49["✏️ 49 Return tool results as structured content"]
   n50["✏️ 50 Store a collection's initiatives as GitHub issues"]
+  n53["✏️ 53 Document the Claude Code and OpenCode deployments on their own site pages"]
   n19["✅ <s>19 Scoring dimensions on initiatives</s>"]
   n45["✅ <s>45 Install Brindley as a Claude Code plugin</s>"]
   n21 --> n19
@@ -93,6 +95,7 @@ flowchart RL
   click n48 href "48-flag-commits-that-close-an-initiative-that-isn-t-done.md"
   click n49 href "49-return-tool-results-as-structured-content.md"
   click n50 href "50-store-a-collection-s-initiatives-as-github-issues.md"
+  click n53 href "53-document-the-claude-code-and-opencode-deployments-on-their-o.md"
   click n19 href "done/19-rank-initiatives-by-scoring-dimensions.md"
   click n45 href "done/45-install-brindley-as-a-claude-code-plugin.md"
 ```
@@ -143,9 +146,12 @@ flowchart RL
 | 43 | [Writes no longer regenerate READMEs](done/43-writes-no-longer-regenerate-readmes.md) | feature | 2026-11-04 |
 | 45 | [Install Brindley as a Claude Code plugin](done/45-install-brindley-as-a-claude-code-plugin.md) | feature | 2026-10-25 |
 | 51 | [Stop subagents and worktrees tangling the server's checkout](done/51-stop-subagents-and-worktrees-tangling-the-server-s-checkout.md) | bug | 2026-11-23 |
+| 52 | [Bring the brindley-sidebar Claude Code mod into the project](done/52-bring-the-brindley-sidebar-claude-code-mod-into-the-project.md) | feature | 2026-11-25 |
+| 54 | [Rename the plugin's MCP server from brindley to core](done/54-rename-the-plugin-s-mcp-server-from-brindley-to-core.md) | refactor | 2026-11-25 |
 
 ### Closed
 
 - 15 [Show in-progress work blocked on an open question](15-show-in-progress-work-blocked-on-an-open-question.md) (abandoned — Not needed: the stop-and-ask rule shipped in 1.1.1, and check_ready, validate's open-questions warning and the Open Qs column already show the blocked state)
+- 55 [Sidebar misses unrecognised statuses in collections too large for one list result](55-sidebar-misses-unrecognised-statuses-in-collections-too-larg.md) (superseded — superseded by sidebar#1 — Sidebar issues live in their own collection, sidebar (sidebar/initiatives/).)
 
 <!-- brindley:generated:end -->

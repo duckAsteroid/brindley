@@ -16,7 +16,17 @@ Planned work on the brindley-sidebar Claude Code plugin: the pane beside the cha
 
 ### Active
 
-_None._
+| # | Initiative | Type | Status | Ready / blocked by | Open Qs | Owner |
+|---|------------|------|--------|--------------------|---------|-------|
+| 1 | [Sidebar misses unrecognised statuses in collections too large for one list result](01-sidebar-misses-unrecognised-statuses-in-collections-too-larg.md) | bug | draft | — | 1 | — |
+
+### Dependencies
+
+```mermaid
+flowchart RL
+  n1["✏️ 1 Sidebar misses unrecognised statuses in collections too large for one list result"]
+  click n1 href "01-sidebar-misses-unrecognised-statuses-in-collections-too-larg.md"
+```
 
 ### Completed
 
