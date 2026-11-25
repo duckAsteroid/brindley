@@ -35,7 +35,7 @@ allow them all, add the rule to `.claude/settings.json` (for everyone in the rep
 ```json
 {
   "permissions": {
-    "allow": ["mcp__plugin_brindley_brindley"]
+    "allow": ["mcp__plugin_brindley_core"]
   }
 }
 ```

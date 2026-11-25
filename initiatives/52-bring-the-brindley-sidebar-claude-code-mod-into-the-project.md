@@ -11,7 +11,7 @@ Ship the brindley-sidebar mod (https://github.com/dcsmiff/claudecode-brindley-si
 
 ## Dependencies
 
-- [54 Rename the plugin's MCP server from brindley to core](54-rename-the-plugin-s-mcp-server-from-brindley-to-core.md) — the sidebar looks for the plugin's server as `plugin:brindley:core`, so the rename ships first
+- [54 Rename the plugin's MCP server from brindley to core](done/54-rename-the-plugin-s-mcp-server-from-brindley-to-core.md) — the sidebar looks for the plugin's server as `plugin:brindley:core`, so the rename ships first
 
 ## Related
 

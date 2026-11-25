@@ -1,6 +1,6 @@
 {
   "mcpServers": {
-    "brindley": {
+    "core": {
       "command": "npx",
       "args": [
         "-y",

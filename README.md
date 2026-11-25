@@ -22,7 +22,7 @@ claude plugin install brindley --marketplace duckAsteroid/brindley
 
 It brings the MCP server at a pinned version, the workflows as skills (`/brindley:design-review`,
 `/brindley:implement`, `/brindley:spike`, `/brindley:triage`) and an implementer agent. Allow its
-tools with the permission rule `mcp__plugin_brindley_brindley`.
+tools with the permission rule `mcp__plugin_brindley_core`.
 
 Then ask your agent to *"make `docs/plans` a collection"*. For the people outside the team,
 `npx -y brindley@latest report` writes a one-page progress report from the collections and their

@@ -36,7 +36,7 @@ you allow them. To allow them all, add the rule to `.claude/settings.json` (for 
 ```json
 {
   "permissions": {
-    "allow": ["mcp__plugin_brindley_brindley"]
+    "allow": ["mcp__plugin_brindley_core"]
   }
 }
 ```

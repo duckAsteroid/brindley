@@ -30,12 +30,12 @@ describe("plugin version", () => {
       writeFileSync(join(dir, ".claude-plugin", "plugin.json"), JSON.stringify({ name: "brindley", version: "1.0.0" }));
       writeFileSync(
         join(dir, ".mcp.json"),
-        JSON.stringify({ mcpServers: { brindley: { command: "npx", args: ["-y", "brindley@1.0.0", "serve", "--cwd", "${CLAUDE_PROJECT_DIR}"] } } }),
+        JSON.stringify({ mcpServers: { core: { command: "npx", args: ["-y", "brindley@1.0.0", "serve", "--cwd", "${CLAUDE_PROJECT_DIR}"] } } }),
       );
       expect(pluginVersions(dir)).toEqual({ manifest: "1.0.0", server: "1.0.0" });
       stampPlugin("1.1.0", dir);
       expect(pluginVersions(dir)).toEqual({ manifest: "1.1.0", server: "1.1.0" });
-      expect(JSON.parse(readFileSync(join(dir, ".mcp.json"), "utf8")).mcpServers.brindley.args).toEqual([
+      expect(JSON.parse(readFileSync(join(dir, ".mcp.json"), "utf8")).mcpServers.core.args).toEqual([
         "-y",
         "brindley@1.1.0",
         "serve",

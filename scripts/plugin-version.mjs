@@ -23,7 +23,7 @@ const writeJson = (dir, file, value) => writeFileSync(join(dir, file), `${JSON.s
 
 /** The versions the plugin manifest and its MCP server config name. */
 export function pluginVersions(dir = PLUGIN) {
-  const server = readJson(dir, MCP).mcpServers.brindley.args.map((a) => PACKAGE.exec(a)?.[1]).find(Boolean) ?? null;
+  const server = readJson(dir, MCP).mcpServers.core.args.map((a) => PACKAGE.exec(a)?.[1]).find(Boolean) ?? null;
   return { manifest: readJson(dir, MANIFEST).version ?? null, server };
 }
 
@@ -33,7 +33,7 @@ export function stampPlugin(version, dir = PLUGIN) {
   manifest.version = version;
   writeJson(dir, MANIFEST, manifest);
   const mcp = readJson(dir, MCP);
-  const args = mcp.mcpServers.brindley.args;
+  const args = mcp.mcpServers.core.args;
   const at = args.findIndex((a) => PACKAGE.test(a));
   if (at < 0) throw new Error(`${MCP} has no brindley@<version> argument to stamp`);
   args[at] = `brindley@${version}`;
