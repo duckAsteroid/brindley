@@ -1,9 +1,14 @@
 ---
 type: bug
-status: draft
+status: superseded
 updated: 2026-11-25
+superseded_by: sidebar#1
+status_note: Sidebar issues live in their own collection, sidebar (sidebar/initiatives/).
 ---
 # Sidebar misses unrecognised statuses in collections too large for one list result
+
+> [!NOTE]
+> **Superseded** by [sidebar#1 Sidebar misses unrecognised statuses in collections too large for one list result](../sidebar/initiatives/01-sidebar-misses-unrecognised-statuses-in-collections-too-larg.md) (2026-11-25): Sidebar issues live in their own collection, sidebar (sidebar/initiatives/).
 
 ## Goal
 

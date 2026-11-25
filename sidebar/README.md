@@ -174,7 +174,7 @@ The code:
 - `hooks/register.tsx` wires the events, the commands and the pane.
 - `hooks/lib/` holds the logic and the views.
 - `types/index.d.ts` is the `$.state` contract.
-- Planned work lives in Brindley's `initiatives/` collection. The pane's
+- Planned work lives in `initiatives/`, the `sidebar` Brindley collection. The pane's
   original design record is
   [cbs#1](https://github.com/dcsmiff/claudecode-brindley-sidebar/blob/main/docs/initiatives/01-brindley-initiative-pane-for-claude-code.md)
   in its first repository.
