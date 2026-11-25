@@ -23,13 +23,16 @@ claude plugin install brindley --marketplace duckAsteroid/brindley
 It brings the MCP server at a pinned version, the workflows as skills (`/brindley:design-review`,
 `/brindley:implement`, `/brindley:spike`, `/brindley:triage`) and an implementer agent. Allow its
 tools with the permission rule `mcp__plugin_brindley_core`. An optional second plugin,
-`brindley-sidebar` (from the same marketplace), shows the initiatives in a pane beside the chat.
+`brindley-sidebar` (from the same marketplace), shows the initiatives in a pane beside the chat
+([Claude Code guide](https://duckasteroid.github.io/brindley/guide/claude-code)).
 
 Then ask your agent to *"make `docs/plans` a collection"*. For the people outside the team,
 `npx -y brindley@latest report` writes a one-page progress report from the collections and their
-git history ([example](https://duckasteroid.github.io/brindley/guide/reporting)). Without the plugin
-(`claude mcp add -s user brindley -- npx -y brindley@latest`) and for other MCP clients (opencode,
-…), see [getting started](https://duckasteroid.github.io/brindley/guide/getting-started).
+git history ([example](https://duckasteroid.github.io/brindley/guide/reporting)). For Claude Code
+without the plugin (`claude mcp add -s user brindley -- npx -y brindley@latest`), see the
+[Claude Code guide](https://duckasteroid.github.io/brindley/guide/claude-code); for
+[OpenCode](https://duckasteroid.github.io/brindley/guide/opencode) and other MCP clients, see
+[getting started](https://duckasteroid.github.io/brindley/guide/getting-started).
 
 ## Developing Brindley
 

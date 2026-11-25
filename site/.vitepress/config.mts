@@ -25,6 +25,8 @@ export default defineConfig({
         text: "Guide",
         items: [
           { text: "Getting started", link: "/guide/getting-started" },
+          { text: "Claude Code", link: "/guide/claude-code" },
+          { text: "OpenCode", link: "/guide/opencode" },
           { text: "Concepts", link: "/guide/concepts" },
           { text: "The workflow", link: "/guide/workflow" },
           { text: "Spikes", link: "/guide/spikes" },
