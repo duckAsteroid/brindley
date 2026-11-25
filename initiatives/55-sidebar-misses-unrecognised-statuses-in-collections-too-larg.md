@@ -11,7 +11,7 @@ An initiative whose status Brindley does not recognise shows in the Claude Code 
 
 ## Dependencies
 
-- [52 Bring the brindley-sidebar Claude Code mod into the project](52-bring-the-brindley-sidebar-claude-code-mod-into-the-project.md) — the sidebar code lives in this repo once #52 is done
+- [52 Bring the brindley-sidebar Claude Code mod into the project](done/52-bring-the-brindley-sidebar-claude-code-mod-into-the-project.md) — the sidebar code lives in this repo once #52 is done
 
 ## Related
 

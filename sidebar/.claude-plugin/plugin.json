@@ -1,0 +1,54 @@
+{
+  "name": "brindley-sidebar",
+  "displayName": "Brindley sidebar",
+  "version": "5.0.0",
+  "description": "A pane beside the chat showing the repository's Brindley initiatives: counts, what to pick up next, and a detail view that queues work.",
+  "author": {
+    "name": "Darren Smith",
+    "url": "https://github.com/dcsmiff"
+  },
+  "homepage": "https://duckasteroid.github.io/brindley/",
+  "repository": "https://github.com/duckAsteroid/brindley",
+  "license": "MIT",
+  "keywords": [
+    "planning",
+    "initiatives",
+    "sidebar"
+  ],
+  "types": "./types/index.d.ts",
+  "userConfig": {
+    "order": {
+      "type": "string",
+      "title": "Row order",
+      "description": "How the Pick up next rows are ordered.",
+      "options": [
+        "status-recency",
+        "status-priority",
+        "recency",
+        "priority"
+      ],
+      "default": "status-recency"
+    },
+    "exclude": {
+      "type": "string",
+      "multiple": true,
+      "title": "Excluded collections",
+      "description": "Globs matched against each collection's repo-relative path; matching collections are dropped.",
+      "default": [
+        "**/test-corpus/**"
+      ]
+    },
+    "maxRows": {
+      "type": "number",
+      "title": "Rows while collapsed",
+      "description": "How many active rows Pick up next shows while collapsed.",
+      "default": 8
+    },
+    "server": {
+      "type": "string",
+      "title": "Brindley MCP server",
+      "description": "The Brindley MCP server's name as /mcp lists it. The default is the brindley plugin's server; set it to the name you registered when Brindley is connected another way (e.g. brindley for claude mcp add brindley).",
+      "default": "plugin:brindley:core"
+    }
+  }
+}

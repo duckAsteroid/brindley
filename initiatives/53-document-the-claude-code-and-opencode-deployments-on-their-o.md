@@ -17,7 +17,7 @@ _None._
 
 - [45 Install Brindley as a Claude Code plugin](done/45-install-brindley-as-a-claude-code-plugin.md)
 - [47 Package and release the OpenCode sidebar plugin with Brindley](47-package-and-release-the-opencode-sidebar-plugin-with-brindle.md)
-- [52 Bring the brindley-sidebar Claude Code mod into the project](52-bring-the-brindley-sidebar-claude-code-mod-into-the-project.md)
+- [52 Bring the brindley-sidebar Claude Code mod into the project](done/52-bring-the-brindley-sidebar-claude-code-mod-into-the-project.md)
 
 ## Background
 

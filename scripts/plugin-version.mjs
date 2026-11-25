@@ -1,6 +1,8 @@
 #!/usr/bin/env node
-// Keeps the Claude Code plugin (plugin/) on one exact server version. Claude Code reads the plugin
-// from this repo's main branch, so the version must be committed before the release is tagged.
+// Keeps the Claude Code plugins on one exact version: the core plugin (plugin/) and the npx spec of
+// its MCP server, and the sidebar plugin (sidebar/), which parses that server's tool output. Claude
+// Code reads the plugins from this repo's main branch, so the version must be committed before the
+// release is tagged.
 //
 // Usage: node scripts/plugin-version.mjs                 print the version the plugin files name
 //        node scripts/plugin-version.mjs --check <ver>   exit 1 unless both plugin files name <ver>
@@ -14,6 +16,7 @@ import { computeVersion } from "./version.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const PLUGIN = join(ROOT, "plugin");
+const SIDEBAR = join(ROOT, "sidebar");
 const MANIFEST = join(".claude-plugin", "plugin.json");
 const MCP = ".mcp.json";
 const PACKAGE = /^brindley@(.+)$/;
@@ -21,14 +24,23 @@ const PACKAGE = /^brindley@(.+)$/;
 const readJson = (dir, file) => JSON.parse(readFileSync(join(dir, file), "utf8"));
 const writeJson = (dir, file, value) => writeFileSync(join(dir, file), `${JSON.stringify(value, null, 2)}\n`);
 
-/** The versions the plugin manifest and its MCP server config name. */
-export function pluginVersions(dir = PLUGIN) {
+/** The versions the core plugin's manifest, its MCP server config and the sidebar's manifest name. */
+export function pluginVersions(dir = PLUGIN, sidebarDir = SIDEBAR) {
   const server = readJson(dir, MCP).mcpServers.core.args.map((a) => PACKAGE.exec(a)?.[1]).find(Boolean) ?? null;
-  return { manifest: readJson(dir, MANIFEST).version ?? null, server };
+  return {
+    manifest: readJson(dir, MANIFEST).version ?? null,
+    server,
+    sidebar: readJson(sidebarDir, MANIFEST).version ?? null,
+  };
 }
 
-/** Write `version` into the plugin manifest and the npx package spec of its MCP server. */
-export function stampPlugin(version, dir = PLUGIN) {
+/** Whether every plugin file names `version`. */
+export function pinsVersion(versions, version) {
+  return versions.manifest === version && versions.server === version && versions.sidebar === version;
+}
+
+/** Write `version` into both plugin manifests and the npx package spec of the core plugin's server. */
+export function stampPlugin(version, dir = PLUGIN, sidebarDir = SIDEBAR) {
   const manifest = readJson(dir, MANIFEST);
   manifest.version = version;
   writeJson(dir, MANIFEST, manifest);
@@ -38,6 +50,9 @@ export function stampPlugin(version, dir = PLUGIN) {
   if (at < 0) throw new Error(`${MCP} has no brindley@<version> argument to stamp`);
   args[at] = `brindley@${version}`;
   writeJson(dir, MCP, mcp);
+  const sidebar = readJson(sidebarDir, MANIFEST);
+  sidebar.version = version;
+  writeJson(sidebarDir, MANIFEST, sidebar);
 }
 
 const git = (...args) => execFileSync("git", args, { cwd: ROOT, encoding: "utf8" }).trim();
@@ -54,10 +69,9 @@ export function prepareRelease() {
   if (v.onTag || v.bump === "none")
     throw new Error(`Nothing to release since ${v.base ?? "the first commit"} (no feat, fix, perf or breaking commits).`);
   const version = v.version.replace(/-SNAPSHOT$/, "");
-  const current = pluginVersions();
-  if (current.manifest === version && current.server === version) return { version, committed: false };
+  if (pinsVersion(pluginVersions(), version)) return { version, committed: false };
   stampPlugin(version);
-  git("add", join("plugin", MANIFEST), join("plugin", MCP));
+  git("add", join("plugin", MANIFEST), join("plugin", MCP), join("sidebar", MANIFEST));
   git("commit", "-m", `chore(release): v${version}`);
   return { version, committed: true };
 }
@@ -66,7 +80,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   const [arg, value] = process.argv.slice(2);
   if (arg === "--check") {
     const v = pluginVersions();
-    if (v.manifest !== value || v.server !== value) {
+    if (!pinsVersion(v, value)) {
       process.stderr.write(`plugin names ${JSON.stringify(v)}, not ${value}; run npm run release:prepare before tagging\n`);
       process.exit(1);
     }

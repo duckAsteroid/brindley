@@ -19,7 +19,7 @@ _None._
 ## Related
 
 - [45 Install Brindley as a Claude Code plugin](45-install-brindley-as-a-claude-code-plugin.md)
-- [52 Bring the brindley-sidebar Claude Code mod into the project](../52-bring-the-brindley-sidebar-claude-code-mod-into-the-project.md)
+- [52 Bring the brindley-sidebar Claude Code mod into the project](52-bring-the-brindley-sidebar-claude-code-mod-into-the-project.md)
 - [53 Document the Claude Code and OpenCode deployments on their own site pages](../53-document-the-claude-code-and-opencode-deployments-on-their-o.md)
 
 ## Design

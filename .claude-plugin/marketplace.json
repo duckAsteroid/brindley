@@ -10,6 +10,11 @@
       "name": "brindley",
       "source": "./plugin",
       "description": "Plan work as Markdown initiatives in git: the Brindley MCP server, its workflows as skills, and an implementer agent"
+    },
+    {
+      "name": "brindley-sidebar",
+      "source": "./sidebar",
+      "description": "A pane beside the Claude Code chat showing the repository's Brindley initiatives: counts, what to pick up next, and a detail view that queues work. Needs the brindley plugin (or another Brindley MCP server)"
     }
   ]
 }

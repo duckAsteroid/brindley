@@ -40,6 +40,28 @@ allow them all, add the rule to `.claude/settings.json` (for everyone in the rep
 }
 ```
 
+### Claude Code: the sidebar (optional)
+
+A second plugin in the same marketplace, `brindley-sidebar`, shows the repository's initiatives in
+a pane beside the chat: counts by status, what to pick up next, and a detail view that queues an
+initiative as Claude's next turn.
+
+```sh
+claude plugin install brindley-sidebar --marketplace duckAsteroid/brindley
+```
+
+or `/plugin install brindley-sidebar@brindley` inside a session. It reads everything through the
+Brindley MCP server and adds no tools of its own. The pane opens by itself only in the terminal's
+fullscreen layout; `/initiatives` opens or closes it anywhere, and `/brindley <collection>` pins it
+to one collection.
+
+Its `server` option names the server to read, as `/mcp` lists it, and defaults to the `brindley`
+plugin's, `plugin:brindley:core`. When Brindley is connected another way (e.g.
+`claude mcp add brindley`), set `server` to that name in `/config`. Both plugins carry the same
+version, since the sidebar reads that release's tool output, so update them together. Its other
+options (`order`, `exclude`, `maxRows`) are described in the
+[sidebar README](https://github.com/duckAsteroid/brindley/tree/main/sidebar#options).
+
 ### Any MCP client
 
 Brindley is published to [npm](https://www.npmjs.com/package/brindley), so your MCP client runs it

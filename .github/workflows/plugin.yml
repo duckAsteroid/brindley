@@ -1,11 +1,11 @@
 name: Plugin
 
-# Validates the Claude Code plugin and its marketplace whenever either changes.
+# Validates the Claude Code plugins and their marketplace, and tests the sidebar, whenever any of them changes.
 on:
   push:
-    paths: ["plugin/**", ".claude-plugin/**", ".github/workflows/plugin.yml"]
+    paths: ["plugin/**", "sidebar/**", ".claude-plugin/**", "scripts/plugin-version.mjs", ".github/workflows/plugin.yml"]
   pull_request:
-    paths: ["plugin/**", ".claude-plugin/**", ".github/workflows/plugin.yml"]
+    paths: ["plugin/**", "sidebar/**", ".claude-plugin/**", "scripts/plugin-version.mjs", ".github/workflows/plugin.yml"]
 
 permissions:
   contents: read
@@ -26,5 +26,11 @@ jobs:
       - name: Validate the plugin
         run: npx -y @anthropic-ai/claude-code@2.1.308 plugin validate --strict plugin
 
-      - name: Check both plugin files pin the same server version
+      - name: Validate the sidebar
+        run: npx -y @anthropic-ai/claude-code@2.1.308 plugin validate --strict sidebar
+
+      - name: Test the sidebar
+        run: npx -y @anthropic-ai/claude-code@2.1.308 plugin test sidebar
+
+      - name: Check the plugin files all pin the same version
         run: node scripts/plugin-version.mjs --check "$(node -p 'require("./plugin/.claude-plugin/plugin.json").version')"
