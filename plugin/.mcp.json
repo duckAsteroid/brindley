@@ -4,7 +4,7 @@
       "command": "npx",
       "args": [
         "-y",
-        "brindley@5.0.0",
+        "brindley@6.0.0",
         "serve",
         "--cwd",
         "${CLAUDE_PROJECT_DIR}"

@@ -1,7 +1,7 @@
 {
   "name": "brindley",
   "displayName": "Brindley",
-  "version": "5.0.0",
+  "version": "6.0.0",
   "description": "Design fully before anyone digs: plan work as Markdown initiatives in git, with the Brindley MCP server, its design-review, implement, spike and triage workflows as skills, and an implementer agent",
   "author": {
     "name": "Chris Senior",
